@@ -1,0 +1,665 @@
+{% extends "base.html" %}
+
+{% block title %}Creator Management{% endblock %}
+{% block page_title %}Creator Management{% endblock %}
+
+{% block extra_css %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', path='css/creator-management.css') }}">
+{% endblock %}
+
+
+{% block content %}
+  <div class="pin-management-container">
+
+    <!-- Broadcast Message Section -->
+    <div class="broadcast-section">
+      <div class="broadcast-header">
+        <h2 class="broadcast-title">
+          <span class="broadcast-icon">
+            <i class="fas fa-bullhorn"></i>
+          </span>
+          System Broadcast
+        </h2>
+        <div class="broadcast-stats">
+          <div class="stat-item">
+            <i class="fas fa-users"></i>
+            <span id="connectedUsers">0</span> online
+          </div>
+          <div class="connection-status">
+            <div class="connection-dot disconnected" id="wsConnectionDot"></div>
+            <span id="wsConnectionStatus">Connecting...</span>
+          </div>
+        </div>
+      </div>
+
+      <form id="broadcast-form" class="broadcast-form">
+        <div class="form-group">
+          <label for="broadcast_message">Broadcast Message</label>
+          <div class="textarea-wrapper">
+            <textarea 
+              id="broadcast_message" 
+              name="message" 
+              class="broadcast-textarea"
+              placeholder="Type your announcement here... This will be displayed to all users in a banner at the top of every page."
+              maxlength="280"
+            ></textarea>
+            <div class="character-counter safe" id="charCounter">
+              <span id="charCount">0</span> / <span id="charLimit">280</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Message Type</label>
+          <div class="type-selector">
+            <div class="type-option info selected" data-type="info">
+              <i class="fas fa-info-circle"></i> Information
+            </div>
+            <div class="type-option warning" data-type="warning">
+              <i class="fas fa-exclamation-triangle"></i> Warning
+            </div>
+            <div class="type-option alert" data-type="alert">
+              <i class="fas fa-exclamation-circle"></i> Alert
+            </div>
+          </div>
+        </div>
+
+        <div id="broadcast-preview" class="broadcast-preview" style="display: none;">
+          <div class="preview-label">Preview:</div>
+          <div class="preview-content" id="preview-text"></div>
+        </div>
+
+        <div class="broadcast-actions">
+          <button type="submit" class="broadcast-btn broadcast-btn-primary" id="sendBroadcastBtn">
+            <i class="fas fa-paper-plane"></i>
+            Send Broadcast
+          </button>
+          <button type="button" class="broadcast-btn broadcast-btn-secondary" id="clearBroadcastBtn">
+            <i class="fas fa-trash"></i>
+            Clear Active
+          </button>
+          <button type="button" class="broadcast-btn broadcast-btn-secondary" id="previewBtn">
+            <i class="fas fa-eye"></i>
+            Preview
+          </button>
+        </div>
+      </form>
+
+      <div id="broadcastStatus" class="broadcast-status" style="display: none;">
+        <div class="status-header">
+          <i class="fas fa-check-circle"></i>
+          <span id="statusTitle">Broadcast Status</span>
+        </div>
+        <div class="status-details" id="statusMessage">
+          Broadcast sent successfully
+        </div>
+      </div>
+    </div>
+    
+    <!-- PIN Management Section -->
+    <div class="pin-section">
+      <div class="pin-section-header">
+        <h2>Current Creator PIN</h2>
+        <div class="pin-actions">
+          <button id="generatePin" class="pin-button pin-button-primary">
+            <i class="fas fa-rotate"></i> Generate New PIN
+          </button>
+          <button id="scheduleRotation" class="pin-button pin-button-secondary">
+            <i class="fas fa-clock"></i> Schedule Monthly Rotation
+          </button>
+        </div>
+      </div>
+      <div class="pin-display">
+        <span class="pin-value" id="currentPin">{{ user.creator_pin }}</span>
+        <button id="copyPin" class="pin-button pin-button-secondary">
+          <i class="fas fa-copy"></i> Copy
+        </button>
+      </div>
+      <div class="rotation-schedule" id="rotationSchedule" style="display: none;">
+        <div class="schedule-info">
+          <i class="fas fa-calendar-alt"></i>
+          <span id="nextRotation">Next rotation scheduled for: </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Discord Integration Section -->
+    <div class="pin-section">
+      <div class="pin-section-header">
+        <h2>Discord Integration</h2>
+        <div class="pin-actions">
+          <button id="cleanupDiscordButton" class="pin-button pin-button-warning">
+            <i class="fas fa-trash"></i> Delete All Messages
+          </button>
+          <button id="syncDiscordButton" class="pin-button pin-button-primary">
+            <i class="fab fa-discord"></i> Sync Albums to Discord
+          </button>
+        </div>
+      </div>
+
+      <form id="discord-settings-form" class="discord-settings">
+        <div class="form-group">
+          <label for="discord_webhook_url">Discord Webhook URL</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="discord_webhook_url" name="webhook_url" placeholder="https://discord.com/api/webhooks/..." autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="discord_webhook_url"></i>
+          </div>
+          <div class="help-text">
+            Create a webhook in your Discord server: Server Settings → Integrations → Webhooks → New Webhook
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="discord_bot_token">Discord Bot Token</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="discord_bot_token" name="bot_token" placeholder="Bot token for advanced message cleanup" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="discord_bot_token"></i>
+          </div>
+          <div class="help-text">
+            Used for advanced message cleanup
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="discord_base_url">Site Base URL</label>
+          <div class="form-input-wrapper">
+            <input type="text" id="discord_base_url" name="base_url" placeholder="https://yoursite.com" autocomplete="off">
+          </div>
+          <div class="help-text">
+            Your site's base URL for links in Discord messages
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 1rem;">
+          <button type="submit" id="save-discord-settings" class="pin-button pin-button-primary">
+            <i class="fas fa-save"></i> Save Settings
+          </button>
+        </div>
+
+        <div id="discordSyncStatus" class="mt-4" style="display: none;">
+          <div class="token-info">
+            <div class="status-indicator">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Syncing albums to Discord...</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="discordSyncResult" class="mt-4" style="display: none;">
+          <div class="token-info">
+            <div class="status-indicator">
+              <i class="fas fa-check-circle"></i>
+              <span id="discordSyncMessage">Albums synced successfully</span>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Ko-fi Integration Section -->
+    <div class="pin-section">
+      <div class="pin-section-header">
+        <h2>Ko-fi Integration Settings</h2>
+        <div class="pin-actions">
+          <button id="test-kofi-connection" class="pin-button pin-button-secondary">
+            <i class="fas fa-link"></i> Test Connection
+          </button>
+        </div>
+      </div>
+
+      <form id="kofi-settings-form" class="settings-form">
+        <div class="form-group">
+          <label for="google_sheet_url">Google Sheet API URL</label>
+          <div class="form-input-wrapper">
+            <input
+              type="text"
+              id="google_sheet_url"
+              name="google_sheet_url"
+              autocomplete="off"
+              placeholder="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
+            >
+            <div class="help-text">
+              URL of your deployed Google Apps Script for Ko-fi webhook processing
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="verification_token">Verification Token</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="verification_token" name="verification_token" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="verification_token"></i>
+            <div class="help-text">
+              Token used to verify webhook requests from Ko-fi
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="pin-button pin-button-primary">
+            <i class="fas fa-save"></i> Save Settings
+          </button>
+        </div>
+      </form>
+
+      <div id="kofiConnectionResult" class="mt-4" style="display: none;">
+        <div class="token-info">
+          <div class="status-indicator">
+            <i class="fas fa-check-circle"></i>
+            <span id="kofiConnectionMessage">Connection test successful</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- End Ko-fi Integration Section -->
+
+
+<!-- Guest Trial Settings Section -->
+<div class="pin-section">
+  <div class="pin-section-header">
+    <h2>Guest Trial Settings</h2>
+    <div class="pin-actions">
+      <button id="view-registration-stats" class="pin-button pin-button-secondary">
+        <i class="fas fa-chart-line"></i> View Statistics
+      </button>
+      <button id="test-guest-trial" class="pin-button pin-button-secondary">
+        <i class="fas fa-vial"></i> Test Guest Trial
+      </button>
+    </div>
+  </div>
+
+  <form id="guest-trial-settings-form" class="settings-form">
+    <!-- Basic Guest Trial Settings -->
+    <div class="form-section">
+      <h3 style="margin: 0 0 1rem 0; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+        <i class="fas fa-user-clock"></i> Basic Trial Configuration
+      </h3>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="guest_trial_enabled" name="is_enabled" style="margin-right: 0.5rem;">
+          Enable Guest Trials
+        </label>
+        <div class="help-text">
+          Allow new users to register for free trials without payment
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="trial_duration_hours">Trial Duration (Hours)</label>
+        <input
+          type="number"
+          id="trial_duration_hours"
+          name="trial_duration_hours"
+          min="1"
+          max="168"
+          step="1"
+          placeholder="48"
+        >
+        <div class="help-text">
+          How long trials last (1-168 hours, recommended: 48 = 2 days)
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="guest_tier_amount">Guest Trial Tier Value (USD/EUR)</label>
+        <div class="form-input-wrapper">
+          <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">$</span>
+          <input
+            type="number"
+            id="guest_tier_amount"
+            name="guest_tier_amount"
+            min="0"
+            max="100000"
+            step="1"
+            placeholder="0"
+            style="padding-left: 24px;"
+          >
+        </div>
+        <div class="help-text">
+          What tier level guest trials should have access to (in dollars/euros). Set to $0 to disable guest trials.
+        </div>
+      </div>
+    </div>
+
+    <!-- Abuse Prevention Settings -->
+    <div class="form-section" style="margin-top: 2rem;">
+      <h3 style="margin: 0 0 1rem 0; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+        <i class="fas fa-shield-alt"></i> Abuse Prevention
+      </h3>
+
+      <div class="form-group">
+        <label for="max_trials_per_email">Max Trials Per Email</label>
+        <input
+          type="number"
+          id="max_trials_per_email"
+          name="max_trials_per_email_per_week"
+          min="1"
+          max="10"
+          step="1"
+          placeholder="1"
+        >
+        <div class="help-text">
+          How many trials one email can request per week
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="max_trials_per_device">Max Trials Per Device</label>
+        <input
+          type="number"
+          id="max_trials_per_device"
+          name="max_trials_per_device_per_month"
+          min="1"
+          max="10"
+          step="1"
+          placeholder="1"
+        >
+        <div class="help-text">
+          How many trials one device can request per month
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="max_trials_per_ip">Max Trials Per IP</label>
+        <input
+          type="number"
+          id="max_trials_per_ip"
+          name="max_trials_per_ip_per_day"
+          min="1"
+          max="20"
+          step="1"
+          placeholder="3"
+        >
+        <div class="help-text">
+          How many trials one IP address can request per day
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW: Registration Limits Section -->
+    <div class="form-section" style="margin-top: 2rem;">
+      <h3 style="margin: 0 0 1rem 0; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+        <i class="fas fa-tachometer-alt"></i> Registration Limits
+      </h3>
+
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="registration_limit_enabled" name="registration_limit_enabled" style="margin-right: 0.5rem;">
+          Enable Registration Limits
+        </label>
+        <div class="help-text">
+          Master switch to enable/disable all registration limits
+        </div>
+      </div>
+
+      <div id="registration-limits-config" style="display: none;">
+        <!-- Daily Limits -->
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="enable_daily_reset" name="enable_daily_reset" style="margin-right: 0.5rem;">
+            Enable Daily Reset (24-hour cycles)
+          </label>
+          <div class="help-text">
+            When enabled, daily counter resets every 24 hours automatically
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="max_daily_registrations">Max Daily Registrations</label>
+          <input
+            type="number"
+            id="max_daily_registrations"
+            name="max_daily_registrations"
+            min="0"
+            max="10000"
+            step="1"
+            placeholder="50"
+          >
+          <div class="help-text">
+            Maximum registrations per 24-hour period (0 = unlimited daily)
+          </div>
+        </div>
+
+        <!-- Total Limits -->
+        <div class="form-group">
+          <label for="max_total_registrations">Max Total Registrations</label>
+          <input
+            type="number"
+            id="max_total_registrations"
+            name="max_total_registrations"
+            min="0"
+            max="100000"
+            step="1"
+            placeholder="0"
+          >
+          <div class="help-text">
+            Hard cap on total registrations ever (0 = unlimited total)
+          </div>
+        </div>
+
+        <!-- Current Status Display -->
+        <div class="registration-status" id="registration-status" style="display: none;">
+          <div class="token-info">
+            <div class="status-indicator">
+              <i class="fas fa-info-circle"></i>
+              <span>Current Registration Status</span>
+            </div>
+            <div class="status-details" id="registration-status-details">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Reset Counters Button -->
+        <div class="form-group" style="margin-top: 1rem;">
+          <button type="button" id="reset-counters" class="pin-button pin-button-warning">
+            <i class="fas fa-redo"></i> Reset Counters
+          </button>
+          <div class="help-text">
+            Manually reset daily or total registration counters
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Section -->
+    <div class="help-text" style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin-top: 2rem; border-left: 4px solid #007bff;">
+      <strong>💡 How it works:</strong> Set amount to $0 to disable guest trials. When you change the amount, 
+      any existing guest trial tier will be automatically updated to the new value. Registration limits help prevent abuse and manage server load.
+    </div>
+
+    <div class="form-actions" style="margin-top: 2rem;">
+      <button type="submit" class="pin-button pin-button-primary">
+        <i class="fas fa-save"></i> Save Guest Trial Settings
+      </button>
+    </div>
+  </form>
+
+  <div id="guestTrialConnectionResult" class="mt-4" style="display: none;">
+    <div class="token-info">
+      <div class="status-indicator">
+        <i class="fas fa-check-circle"></i>
+        <span id="guestTrialConnectionMessage">Settings saved successfully</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Registration Statistics Modal -->
+<div id="registration-stats-modal" class="connection-test-modal" style="display: none;">
+  <div class="modal-content" style="max-width: 800px;">
+    <div class="test-header success">
+      <i class="fas fa-chart-line"></i>
+      <h3>Registration Statistics & Analytics</h3>
+    </div>
+    
+    <div class="registration-stats-content" id="registration-stats-content">
+      <!-- Populated by JavaScript -->
+    </div>
+    
+    <div class="modal-actions">
+      <button class="pin-button pin-button-secondary" id="refresh-stats">
+        <i class="fas fa-sync"></i> Refresh Data
+      </button>
+      <button class="pin-button pin-button-primary" onclick="document.getElementById('registration-stats-modal').style.display = 'none'">
+        <i class="fas fa-times"></i> Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Counters Modal -->
+<div id="reset-counters-modal" class="connection-test-modal" style="display: none;">
+  <div class="modal-content">
+    <div class="test-header warning">
+      <i class="fas fa-exclamation-triangle"></i>
+      <h3>Reset Registration Counters</h3>
+    </div>
+    
+    <div class="test-details">
+      <p style="margin-bottom: 1.5rem; color: var(--text-primary);">
+        Choose which counters to reset. <strong>This action cannot be undone.</strong>
+      </p>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="reset-daily-counter" checked style="margin-right: 0.5rem;">
+          <strong>Reset Daily Counter</strong>
+        </label>
+        <div class="help-text">Reset the 24-hour registration count to 0</div>
+      </div>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="reset-total-counter" style="margin-right: 0.5rem;">
+          <strong>Reset Total Counter</strong>
+        </label>
+        <div class="help-text" style="color: var(--warning-color);">
+          ⚠️ Reset the lifetime registration count to 0 (use with caution)
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="pin-button pin-button-secondary" onclick="document.getElementById('reset-counters-modal').style.display = 'none'">
+        <i class="fas fa-times"></i> Cancel
+      </button>
+      <button class="pin-button pin-button-warning" id="confirm-reset-counters">
+        <i class="fas fa-redo"></i> Reset Selected Counters
+      </button>
+    </div>
+  </div>
+</div>
+
+
+    <!-- Patreon Integration Section -->
+    <div class="pin-section">
+      <div class="pin-section-header">
+        <h2>Patreon Integration Settings</h2>
+        <div class="form-group campaign-selector">
+          <label for="campaign_selector">Select Campaign</label>
+          <div class="selector-wrapper">
+            <select id="campaign_selector" class="campaign-dropdown">
+              <option value="">Select a campaign...</option>
+              <option value="new">➕ Create New Campaign</option>
+            </select>
+            <button id="delete-campaign" class="pin-button pin-button-warning" style="display: none;">
+              <i class="fas fa-trash"></i> Delete Campaign
+            </button>
+          </div>
+          <div id="new-campaign-input" class="mt-4" style="display: none;">
+            <input
+              type="text"
+              id="new_campaign_name"
+              class="form-control"
+              placeholder="Enter new campaign name"
+              style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; width: 100%;"
+            >
+          </div>
+        </div>
+
+        <div class="pin-actions">
+          <button id="sync-campaigns" class="pin-button pin-button-secondary">
+            <i class="fas fa-sync-alt"></i> Sync Campaigns
+          </button>
+          <button id="refresh-token" class="pin-button pin-button-primary">
+            <i class="fas fa-sync"></i> Refresh Access Token
+          </button>
+          <button id="full-refresh-token" class="pin-button pin-button-warning">
+            <i class="fas fa-sync-alt"></i> Full Token Refresh
+          </button>
+          <button id="test-connection" class="pin-button pin-button-secondary">
+            <i class="fas fa-link"></i> Test Connection
+          </button>
+        </div>
+      </div>
+
+      <div id="token-status"></div>
+
+      <form id="patreon-settings-form" class="settings-form">
+        <div class="form-group">
+          <label for="access_token">Access Token</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="access_token" name="access_token" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="access_token"></i>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="refresh_token">Refresh Token</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="refresh_token" name="refresh_token" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="refresh_token"></i>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="campaign_id">Campaign ID</label>
+          <div class="form-input-wrapper">
+            <input type="text" id="campaign_id" name="campaign_id" autocomplete="off">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="webhook_secret">Webhook Secret</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="webhook_secret" name="webhook_secret" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="webhook_secret"></i>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="client_id">Client ID</label>
+          <div class="form-input-wrapper">
+            <input type="text" id="client_id" name="client_id" autocomplete="off">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="client_secret">Client Secret</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="client_secret" name="client_secret" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="client_secret"></i>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="pin-button pin-button-primary">
+            <i class="fas fa-save"></i> Save Settings
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div id="notification" class="notification"></div>
+    <div id="pinHistory" class="pin-history"></div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script type="module" src="{{ url_for('static', path='js/creator-management-shared.js') }}"></script>
+  
+  {# Bootstrap data for SSR mode #}
+  <script id="creator-management-bootstrap-data" type="application/json">
+    {
+      "user_id": {{ user.id }},
+      "creator_pin": "{{ user.creator_pin }}"
+    }
+  </script>
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}My Albums - Web Audio{% endblock %}
+
+{% block page_title %}My Albums{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/my-albums.css') }}">
+{% endblock %}
+
+{% block content %}
+    <div class="my-albums-page">
+        <div class="page-header">
+            <h1>My Albums</h1>
+            <div class="album-stats" id="albumStats">
+                {% if albums %}
+                    {{ albums|length }} album{{ 's' if albums|length != 1 else '' }}
+                {% endif %}
+            </div>
+        </div>
+
+        {% if albums %}
+        <div class="albums-grid" id="albumsGrid">
+            {% for album in albums %}
+            <div class="album-card" data-album-id="{{ album.id }}" onclick="navigateToAlbum('{{ album.id }}')">
+                <div class="album-cover-container">
+                    <img src="{{ album.cover_path }}"
+                         alt="{{ album.title }}"
+                         class="album-cover"
+                         onerror="this.src='/static/images/default-album.jpg'">
+                    <div class="album-actions" onclick="event.stopPropagation();">
+                        <button
+                            class="btn-icon remove"
+                            onclick="removeFromCollection('{{ album.id }}', event)"
+                            title="Remove from collection">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="album-info">
+                    <h3>{{ album.title }}</h3>
+                    <div class="album-meta">
+                        <span>{{ album.tracks|length }} tracks</span>
+                        {% if album.view_count %}
+                        <span title="Times viewed">
+                            <i class="fas fa-eye"></i> {{ album.view_count }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="added-date">
+                        Added {{ album.added_at.strftime('%B %d, %Y') }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="albums-grid" id="albumsGrid">
+            <div class="empty-collection">
+                <i class="fas fa-music"></i>
+                <h2>Your Collection is Empty</h2>
+                <p>Start adding albums from the collection to keep track of your favorites.</p>
+                <a href="/collection" class="btn-primary">Browse Collection</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <!-- Bootstrap data for SSR hydration -->
+    <script id="my-albums-bootstrap-data" type="application/json">
+{
+    "albums": {{ albums | tojson if albums else '[]' }}
+}
+    </script>
+
+    <script>
+        async function removeFromCollection(albumId, event) {
+            event.stopPropagation(); // Prevent triggering the album navigation
+
+            if (!confirm('Are you sure you want to remove this album from your collection?')) {
+                return;
+            }
+
+            const albumCard = document.querySelector(`[data-album-id="${albumId}"]`);
+            if (!albumCard) return;
+
+            try {
+                const response = await fetch(`/api/my-albums/${albumId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to remove album');
+                }
+
+                // Add removal animation
+                albumCard.classList.add('removing');
+                
+                // Remove the card after animation
+                setTimeout(() => {
+                    albumCard.remove();
+                    
+                    // Check if there are any albums left
+                    const remainingAlbums = document.querySelectorAll('.album-card');
+                    if (remainingAlbums.length === 0) {
+                        // If no albums left, show empty state
+                        const container = document.getElementById('albumsGrid');
+                        if (container) {
+                            container.innerHTML = `
+                                <div class="empty-collection">
+                                    <i class="fas fa-music"></i>
+                                    <h2>Your Collection is Empty</h2>
+                                    <p>Start adding albums from the collection to keep track of your favorites.</p>
+                                    <a href="/collection" class="btn-primary">Browse Collection</a>
+                                </div>
+                            `;
+                        }
+                    }
+                }, 300);
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to remove album');
+            }
+        }
+
+        function navigateToAlbum(albumId) {
+            window.location.href = `/album/${albumId}`;
+        }
+        
+
+    </script>
+{% endblock %}

@@ -1,0 +1,479 @@
+/* Mini Player Base Styles */
+.mini-player {
+    position: fixed !important; /* Force fixed positioning */
+    height: 48px;
+    z-index: 1000;
+    display: none;
+    width: 420px;
+    bottom: 16px !important; /* Force bottom positioning */
+    right: 16px !important;  /* Force right positioning */
+    left: auto !important;   /* Override any left positioning */
+    top: auto !important;    /* Override any top positioning */
+    background: #1F2937;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    cursor: move;
+    /* KEY: Single transition system for collapse */
+    transition: transform 0.3s ease;
+    will-change: transform;
+    transform-origin: right center; /* Set transform origin to right side */
+}
+
+/* Remove transition during dragging */
+.mini-player.dragging {
+    transition: none !important;
+}
+
+/* Activate Mini Player */
+.mini-player.active {
+    display: flex;
+    align-items: center;
+    animation: slideIn 0.3s ease;
+}
+
+/* Mini Player Content */
+.mini-player-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 6px;
+    position: relative;
+    width: 100%;
+    padding-right: 40px; /* Space for close button */
+    padding-left: 40px;  /* Space for collapse tab */
+}
+
+/* Cover Image */
+.mini-player-cover {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+/* Track Info */
+.mini-player-info {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100px;
+}
+
+.mini-player-title {
+    color: #F9FAFB;
+    font-weight: 500;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+    margin-bottom: 1px;
+}
+
+.mini-player-album {
+    color: #9CA3AF;
+    font-size: 0.65rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+/* Controls */
+.mini-player-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    margin: 0 4px;
+}
+
+.mini-control-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    color: #E5E7EB;
+    transition: transform 0.3s ease;
+}
+
+/* Play Button */
+#miniPlayerPlayPause {
+    background-color: #60A5FA;
+    color: #FFFFFF;
+    width: 28px;
+    height: 28px;
+}
+
+#miniPlayerPlayPause:hover {
+    background-color: #3B82F6;
+}
+
+.mini-control-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #FFFFFF;
+}
+
+/* Progress Bar Area */
+.mini-player-progress {
+    flex: 1;
+    min-width: 0;
+    margin: 1px;
+}
+
+.mini-progress-bar {
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 1px;
+    cursor: pointer;
+    position: relative;
+    margin-bottom: 2px;
+}
+
+.mini-progress {
+    height: 100%;
+    background: #60A5FA;
+    border-radius: 1px;
+    width: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: width 0.1s linear;
+}
+
+.mini-time-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    color: #9CA3AF;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.mini-time-info span {
+    min-width: 34px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* 15s Skip Buttons */
+.mini-control-btn[title="Skip -15s"]::after,
+.mini-control-btn[title="Skip +15s"]::after {
+    content: "15";
+    font-size: 0.55rem;
+    font-weight: 500;
+    position: absolute;
+    bottom: 1px;
+    color: #FFFFFF;
+}
+
+/* Close Button */
+#closeMiniPlayer {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease;
+}
+
+#closeMiniPlayer:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #FFFFFF;
+}
+
+#closeMiniPlayer:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+}
+
+/* Expand Button */
+#expandPlayer {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 3px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-left: 2px;
+    color: #E5E7EB;
+}
+
+#expandPlayer:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Progress Bar Hover Effects */
+.mini-progress-bar:hover {
+    height: 4px;
+    margin-top: -1px;
+}
+
+.mini-progress-bar:hover .mini-progress {
+    background: #3B82F6;
+}
+
+/* Focus States */
+.mini-control-btn:focus,
+#expandPlayer:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+}
+
+.mini-control-btn i {
+    font-size: 0.8rem;
+}
+
+/* Loading States */
+.mini-control-btn.loading {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.mini-control-btn.loading i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Disabled States */
+.mini-control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: none;
+}
+
+/* ===== COLLAPSE TAB SYSTEM ===== */
+
+/* Tab positioned on the LEFT edge of the player */
+#miniPlayerCollapseTab {
+    position: absolute;
+    top: 50%;
+    left: -16px; /* Position it outside the player, on the left side */
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    background: #1F2937;
+    border-radius: 0 4px 4px 0; /* Rounded on the right, flat on the left */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1001;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+    transition: background 0.2s;
+}
+
+#miniPlayerCollapseTab:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#miniPlayerCollapseIcon {
+    transition: transform 0.3s ease;
+    color: #e5e7eb;
+    font-size: 1rem;
+}
+
+/* When collapsed, slide the ENTIRE player to the RIGHT, hiding it completely and leaving only the tab visible */
+.mini-player.collapsed {
+    transform: translateX(calc(100% + 16px - 32px));
+}
+
+/* Flip the chevron when collapsed: initially points left (◄), when collapsed points right (►) */
+.mini-player.collapsed #miniPlayerCollapseIcon {
+    transform: rotate(180deg);
+}
+
+/* Volume Control */
+.volume-control {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .volume-control {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 4px;
+    }
+
+    .volume-slider {
+        width: 60px;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 1px;
+        cursor: pointer;
+    }
+
+    .volume-level {
+        height: 100%;
+        background: #60A5FA;
+        border-radius: 1px;
+        transition: width 0.1s ease;
+    }
+}
+
+/* Mobile Adjustments - BETTER APPROACH */
+@media (max-width: 640px) {
+    .mini-player {
+        width: auto;
+        bottom: 12px !important;
+        right: 12px !important;
+        left: auto !important;
+        height: 40px;
+    }
+    
+    .mini-player-content {
+        padding-left: 30px; /* Enough space for smaller tab */
+        padding-right: 40px;
+    }
+    
+    .mini-player-cover,
+    .mini-player-info {
+        display: none;
+    }
+    
+    .mini-player-controls {
+        margin: 0 2px;
+    }
+    
+    .mini-player-progress {
+        margin: 0;
+    }
+
+    /* Make tab smaller on mobile but keep it on the left side */
+    #miniPlayerCollapseTab {
+        left: -12px; /* Closer to player */
+        width: 24px; /* Smaller */
+        height: 24px; /* Smaller */
+        border-radius: 0 3px 3px 0; /* Smaller radius */
+    }
+    
+    #miniPlayerCollapseIcon {
+        font-size: 0.8rem; /* Smaller icon */
+    }
+
+    /* Adjust collapse transform for smaller tab */
+    .mini-player.collapsed {
+        transform: translateX(calc(100% + 12px - 24px));
+    }
+}
+
+/* Animation */
+@keyframes slideIn {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .mini-player,
+    .mini-control-btn,
+    .mini-progress,
+    .volume-level {
+        transition: none;
+    }
+    
+    .mini-player.active {
+        animation: none;
+    }
+}
+
+/* ========================================
+   MINIMAL MINI-PLAYER THEME COLOR CHANGES
+   Add this to your theme.css - only changes colors
+   ======================================== */
+
+/* Change only the background color */
+.mini-player {
+    background: var(--surface) !important; /* Instead of #1F2937 */
+    border: 1px solid var(--border-color) !important; /* Instead of rgba(255, 255, 255, 0.1) */
+}
+
+/* Change only text colors */
+.mini-player-title {
+    color: var(--text-primary) !important; /* Instead of #F9FAFB */
+}
+
+.mini-player-album {
+    color: var(--text-secondary) !important; /* Instead of #9CA3AF */
+}
+
+/* Change only control button colors */
+.mini-control-btn {
+    color: var(--text-primary) !important; /* Instead of #E5E7EB */
+}
+
+.mini-control-btn:hover {
+    background: var(--hover-bg) !important; /* Instead of rgba(255, 255, 255, 0.2) */
+}
+
+/* Change only progress bar colors */
+.mini-progress-bar {
+    background: var(--bg-secondary) !important; /* Instead of rgba(255, 255, 255, 0.1) */
+}
+
+.mini-progress {
+    background: var(--progress-fill) !important; /* Instead of #60A5FA */
+}
+
+/* Change only time info color */
+.mini-time-info {
+    color: var(--text-secondary) !important; /* Instead of #9CA3AF */
+}
+
+/* Change only close/expand button colors */
+#closeMiniPlayer,
+#expandPlayer {
+    color: var(--text-secondary) !important; /* Instead of #E5E7EB */
+}
+
+/* Change only collapse tab colors */
+#miniPlayerCollapseTab {
+    background: var(--surface) !important; /* Instead of #1F2937 */
+    border: 1px solid var(--border-color) !important;
+}
+
+#miniPlayerCollapseIcon {
+    color: var(--text-primary) !important; /* Instead of #e5e7eb */
+}
+
+/* Keep play button accent color */
+#miniPlayerPlayPause {
+    background-color: var(--button-primary) !important; /* Instead of #60A5FA */
+}
+
+#miniPlayerPlayPause:hover {
+    background-color: var(--button-primary-hover) !important; /* Instead of #3B82F6 */
+}

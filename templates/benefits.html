@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}Benefits Management - Music Streaming App{% endblock %}
+{% block page_title %}Benefits Management{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/benefits-management.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="benefits-container">
+    <div class="benefit-card">
+        <div class="benefit-header">
+            <div class="benefit-header-left">
+                <i class="fas fa-search"></i>
+                <div>
+                    <h2>Patron Search</h2>
+                    <p>Search and modify individual patron benefits</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="patron-search-input-group">
+            <input type="text" id="patronSearchInput" class="patron-search-input" placeholder="Search patrons by name or email...">
+            <button id="patronSearchBtn" class="patron-search-btn">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </div>
+
+        <div id="patronSearchResults"></div>
+
+        <div id="patronBenefitForm" class="patron-benefit-form" style="display: none;">
+            <div class="tier-header">
+                <div class="tier-info">
+                    <h3 id="selectedPatronName"></h3>
+                    <span id="selectedPatronTier" class="tier-amount"></span>
+                    <span id="selectedPatronType" class="tier-amount"></span>
+                </div>
+            </div>
+            <div class="patron-form-inputs">
+                <div class="input-group">
+                    <label>Albums per month:</label>
+                    <input type="number" id="patronAlbumInput" class="setting-input" min="0">
+                </div>
+                <div class="input-group">
+                    <label>Tracks per month:</label>
+                    <input type="number" id="patronTrackInput" class="setting-input" min="0">
+                </div>
+                <div class="input-group">
+                    <label>Book Requests per month:</label>
+                    <input type="number" id="patronBookRequestInput" class="setting-input" min="0">
+                </div>
+                <div class="input-group">
+                    <label>Chapters per book request:</label>
+                    <input type="number" id="patronChaptersInput" class="setting-input" min="0" placeholder="0">
+                </div>
+                <div class="input-group">
+                    <label>Max sessions:</label>
+                    <input type="number" id="patronSessionInput" class="setting-input" min="1" max="5">
+                </div>
+                <div class="input-group">
+                    <label>
+                        <input type="checkbox" id="patronReadAlongInput" class="read-along-checkbox">
+                        Read-Along Access
+                    </label>
+                    <small>Allow this patron to use read-along feature for TTS tracks</small>
+                </div>
+            </div>
+            <button id="patronUpdateBtn" class="save-btn">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+        </div>
+        
+        <div class="user-summary">
+            <div class="user-count patreon">
+                <i class="fab fa-patreon"></i>
+                <span>{{ patreon_users_count|default(0) }} Patreon user{{ 's' if patreon_users_count != 1 }}</span>
+            </div>
+            <div class="user-count kofi">
+                <i class="fas fa-coffee"></i>
+                <span>{{ kofi_users_count|default(0) }} Ko-fi user{{ 's' if kofi_users_count != 1 }}</span>
+            </div>
+            {% if guest_trial_users_count is defined %}
+            <div class="user-count guest-trial">
+                <i class="fas fa-user-clock"></i>
+                <span>{{ guest_trial_users_count|default(0) }} Guest trial user{{ 's' if guest_trial_users_count != 1 }}</span>
+            </div>
+            {% endif %}
+            <div class="user-count team">
+                <i class="fas fa-users"></i>
+                <span>{{ team_users_count|default(0) }} Team member{{ 's' if team_users_count != 1 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="benefit-card">
+        <div class="benefit-header">
+            <div class="benefit-header-left">
+                <i class="fas fa-sliders-h"></i>
+                <div>
+                    <h2>Tier Benefits</h2>
+                    <p>Configure all benefits for each tier and team members</p>
+                </div>
+            </div>
+            <div class="reset-buttons">
+                <button class="reset-all-btn" id="resetSessionsBtn">
+                    <i class="fas fa-users-slash"></i> Reset Sessions
+                </button>
+                <button class="reset-all-btn" id="resetDownloadsBtn">
+                    <i class="fas fa-sync"></i> Reset Downloads
+                </button>
+                <button class="reset-all-btn" id="resetBookRequestsBtn">
+                    <i class="fas fa-book"></i> Reset Book Requests
+                </button>
+            </div>
+        </div>
+        
+        <div class="platform-tabs">
+            <div class="platform-tab patreon active" data-platform="patreon">
+                <i class="fab fa-patreon"></i> Patreon Tiers
+            </div>
+            <div class="platform-tab kofi" data-platform="kofi">
+                <i class="fas fa-coffee"></i> Ko-fi Tiers
+            </div>
+        </div>
+        
+        <div id="patreonSection" class="platform-section active">
+            <div class="platform-section-header">
+                <h3 class="platform-section-title">
+                    <i class="fab fa-patreon" style="color: #f96854;"></i> Patreon Tiers
+                </h3>
+                <div class="header-actions">
+                    <button class="voice-management-btn open-voice-modal">
+                        <i class="fas fa-microphone"></i> Voice Management
+                    </button>
+                    <button class="create-tier-btn patreon open-patreon-modal">
+                        <i class="fas fa-plus"></i> Create Patreon Tier
+                    </button>
+                </div>
+            </div>
+            
+            <div id="patreonTiersContainer">
+                {% for tier in tiers %}
+                    {% if not tier.is_kofi %}
+                    <div class="tier-settings {% if not tier.is_active %}inactive{% endif %}" data-tier-id="{{ tier.id }}" data-tier-title="{{ tier.title }}">
+                        <div class="tier-header">
+                            <div class="tier-title-group">
+                                <div class="tier-info">
+                                    <h3>{{ tier.title }}<span class="tier-badge patreon">Patreon</span></h3>
+                                    <span class="tier-amount">${{ "%.2f"|format(tier.amount_cents/100) }}/month</span>
+                                </div>
+                                {% if tier.is_active %}
+                                <span class="patron-count">
+                                    <i class="fas fa-users"></i>
+                                    {{ tier.patron_count }} patron{{ 's' if tier.patron_count != 1 }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="tier-actions">
+                                {% if tier.is_active %}
+                                <div class="active-sessions">
+                                    <i class="fas fa-user-clock"></i>
+                                    {{ tier.active_sessions|default(0) }} active session{{ 's' if tier.active_sessions|default(0) != 1 }}
+                                </div>
+                                {% endif %}
+                                <button class="delete-tier-btn" data-tier-id="{{ tier.id }}" data-tier-title="{{ tier.title }}" data-platform="patreon">
+                                    <i class="fas fa-trash-alt"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {% if tier.is_active %}
+                        <div class="setting-row" data-tier-id="{{ tier.title }}">
+                            <div class="settings-inputs">
+                                <div class="input-group">
+                                    <label>Albums per month:</label>
+                                    <input type="number" class="setting-input album-input" value="{{ tier.album_downloads_allowed }}" min="0" data-tier-id="{{ tier.title }}">
+                                </div>
+                                <div class="input-group">
+                                    <label>Tracks per month:</label>
+                                    <input type="number" class="setting-input track-input" value="{{ tier.track_downloads_allowed }}" min="0" data-tier-id="{{ tier.title }}">
+                                </div>
+                                <div class="input-group">
+                                    <label>Book Requests per month:</label>
+                                    <input type="number" class="setting-input book-request-input" value="{{ tier.book_requests_allowed|default(0) }}" min="0" data-tier-id="{{ tier.title }}">
+                                </div>
+                                <div class="input-group">
+                                    <label>Chapters per book request:</label>
+                                    <input type="number" class="setting-input chapters-input" value="{{ tier.chapters_allowed_per_book_request|default(0) }}" min="0" data-tier-id="{{ tier.title }}" placeholder="0 = no limit set">
+                                    <small>Maximum chapters per book request (0 for unspecified)</small>
+                                </div>
+                                <div class="input-group">
+                                    <label>Max concurrent sessions:</label>
+                                    <input type="number" class="setting-input session-input" value="{{ tier.max_sessions|default(1) }}" min="1" max="5" data-tier-id="{{ tier.title }}">
+                                </div>
+                                <div class="input-group">
+                                    <label>
+                                        <input type="checkbox" class="read-along-checkbox" {% if tier.read_along_access %}checked{% endif %} data-tier-id="{{ tier.title }}">
+                                        Read-Along Access
+                                    </label>
+                                    <small>Allow users in this tier to use read-along feature for TTS tracks</small>
+                                </div>
+                            </div>
+                            <button class="save-btn" data-save-tier="{{ tier.title }}">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                            <div class="success-message">
+                                <i class="fas fa-check"></i> Saved successfully
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="no-tiers-message">
+                        <i class="fab fa-patreon fa-3x"></i>
+                        <h3>No Patreon tiers found</h3>
+                        <p>Create your first Patreon tier to get started</p>
+                        <button class="create-tier-btn patreon open-patreon-modal">
+                            <i class="fas fa-plus"></i> Create Patreon Tier
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div id="kofiSection" class="platform-section">
+            <div class="platform-section-header">
+                <h3 class="platform-section-title">
+                    <i class="fas fa-coffee" style="color: #29abe0;"></i> Ko-fi Tiers
+                </h3>
+                <div class="header-actions">
+                    <button class="voice-management-btn open-voice-modal">
+                        <i class="fas fa-microphone"></i> Voice Management
+                    </button>
+                    <button class="create-tier-btn kofi open-kofi-modal">
+                        <i class="fas fa-plus"></i> Create Ko-fi Tier
+                    </button>
+                </div>
+            </div>
+            
+            <div id="kofiTiersContainer">
+                {% for tier in tiers %}
+                    {% if tier.is_kofi %}
+                    <div class="tier-settings {% if not tier.is_active %}inactive{% endif %}" data-tier-id="{{ tier.id }}" data-tier-title="{{ tier.title }}">
+                        <div class="tier-header">
+                            <div class="tier-title-group">
+                                <div class="tier-info">
+                                    <h3>{{ tier.title }}<span class="tier-badge kofi">Ko-fi</span></h3>
+                                    <span class="tier-amount">${{ "%.2f"|format(tier.amount_cents/100) }}/month</span>
+                                </div>
+                                {% if tier.is_active %}
+                                <span class="patron-count">
+                                    <i class="fas fa-users"></i>
+                                    {{ tier.patron_count }} patron{{ 's' if tier.patron_count != 1 }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="tier-actions">
+                                {% if tier.is_active %}
+                                <div class="active-sessions">
+                                    <i class="fas fa-user-clock"></i>
+                                    {{ tier.active_sessions|default(0) }} active session{{ 's' if tier.active_sessions|default(0) != 1 }}
+                                </div>
+                                {% endif %}
+                                <button class="delete-tier-btn" data-tier-id="{{ tier.id }}" data-tier-title="{{ tier.title }}" data-platform="kofi">
+                                    <i class="fas fa-trash-alt"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {% if tier.is_active %}
+                        <div class="setting-row" data-tier-id="{{ tier.title }}">
+                            <div class="settings-inputs">
+                                <div class="input-group">
+                                    <label>Albums per month:</label>
+                                    <input type="number" class="setting-input album-input" value="{{ tier.album_downloads_allowed }}" min="0" data-tier-id="{{ tier.title }}">
+                                </div>
+                                <div class="input-group">
+                                    <label>Tracks per month:</label>
+                                    <input type="number" class="setting-input track-input" value="{{ tier.track_downloads_allowed }}" min="0" data-tier-id="{{ tier.title }}">
+                                </div>
+                                <div class="input-group">
+                                    <label>Book Requests per month:</label>
+                                    <input type="number" class="setting-input book-request-input" value="{{ tier.book_requests_allowed|default(0) }}" min="0" data-tier-id="{{ tier.title }}">
+                                </div>
+                                <div class="input-group">
+                                    <label>Chapters per book request:</label>
+                                    <input type="number" class="setting-input chapters-input" value="{{ tier.chapters_allowed_per_book_request|default(0) }}" min="0" data-tier-id="{{ tier.title }}" placeholder="0 = no limit set">
+                                    <small>Maximum chapters per book request (0 for unspecified)</small>
+                                </div>
+                                <div class="input-group">
+                                    <label>Max concurrent sessions:</label>
+                                    <input type="number" class="setting-input session-input" value="{{ tier.max_sessions|default(1) }}" min="1" max="5" data-tier-id="{{ tier.title }}">
+                                </div>
+                                <div class="input-group">
+                                    <label>
+                                        <input type="checkbox" class="read-along-checkbox" {% if tier.read_along_access %}checked{% endif %} data-tier-id="{{ tier.title }}">
+                                        Read-Along Access
+                                    </label>
+                                    <small>Allow users in this tier to use read-along feature for TTS tracks</small>
+                                </div>
+                            </div>
+                            <button class="save-btn" data-save-tier="{{ tier.title }}">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                            <div class="success-message">
+                                <i class="fas fa-check"></i> Saved successfully
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="no-tiers-message">
+                        <i class="fas fa-coffee fa-3x"></i>
+                        <h3>No Ko-fi tiers found</h3>
+                        <p>Create your first Ko-fi tier to get started</p>
+                        <button class="create-tier-btn kofi open-kofi-modal">
+                            <i class="fas fa-plus"></i> Create Ko-fi Tier
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="createTierModal" class="response-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <i class="fab fa-patreon patreon" id="modalIcon"></i>
+            <h3 id="createTierModalTitle">Create New Tier</h3>
+        </div>
+        <div class="modal-body">
+            <form id="createTierForm">
+                <div class="form-row">
+                    <label for="tierNameInput">Tier Name:</label>
+                    <input type="text" id="tierNameInput" placeholder="e.g. Basic Supporter" required>
+                    <small>Choose a clear name that describes what patrons get in this tier</small>
+                </div>
+                <div class="form-row">
+                    <label for="tierAmountInput">Amount (in USD):</label>
+                    <input type="number" id="tierAmountInput" min="0" step="0.01" placeholder="e.g. 5.00" required>
+                    <small>Enter price without $ symbol</small>
+                </div>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label for="tierAlbumInput">Albums per month:</label>
+                        <input type="number" id="tierAlbumInput" min="0" value="0" placeholder="0">
+                    </div>
+                    <div class="form-row">
+                        <label for="tierTrackInput">Tracks per month:</label>
+                        <input type="number" id="tierTrackInput" min="0" value="0" placeholder="0">
+                    </div>
+                    <div class="form-row">
+                        <label for="tierBookRequestInput">Book Requests per month:</label>
+                        <input type="number" id="tierBookRequestInput" min="0" value="0" placeholder="0">
+                    </div>
+                    <div class="form-row">
+                        <label for="tierChaptersInput">Chapters per book request:</label>
+                        <input type="number" id="tierChaptersInput" min="0" value="0" placeholder="0">
+                        <small>Maximum chapters allowed per book request (0 for unspecified)</small>
+                    </div>
+                    <div class="form-row">
+                        <label for="tierSessionInput">Max concurrent sessions:</label>
+                        <input type="number" id="tierSessionInput" min="1" max="5" value="1" placeholder="1">
+                        <small>Number of devices that can be logged in simultaneously (1-5)</small>
+                    </div>
+                    <div class="form-row">
+                        <label for="tierReadAlongInput">
+                            <input type="checkbox" id="tierReadAlongInput" style="margin-right: 0.5rem;">
+                            Read-Along Access
+                        </label>
+                        <small>Allow users in this tier to use read-along feature for TTS tracks</small>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button id="modalCancelBtn" class="modal-btn modal-btn-cancel">Cancel</button>
+            <button id="modalSubmitBtn" class="modal-btn modal-btn-submit">Create Tier</button>
+        </div>
+    </div>
+</div>
+
+<div id="deleteTierModal" class="response-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <i class="fas fa-exclamation-triangle" style="color: var(--danger-color);"></i>
+            <h3>Delete Tier</h3>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete the tier "<span id="deleteTierName"></span>"?</p>
+            <p style="color: var(--danger-color); margin-top: 1rem;"><strong>Warning:</strong> This will permanently remove this tier and cannot be undone.</p>
+            <p id="patronCountWarning" style="color: var(--danger-color); font-weight: bold; margin-top: 0.5rem; display: none;">
+                This tier has patrons! After deletion, these patrons will lose access to the benefits associated with this tier.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button id="deleteModalCancelBtn" class="modal-btn modal-btn-cancel">Cancel</button>
+            <button id="confirmDeleteTierBtn" class="modal-btn modal-btn-delete">Delete Tier</button>
+        </div>
+    </div>
+</div>
+
+<div id="voiceManagementModal" class="response-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <i class="fas fa-microphone voice"></i>
+            <h3>Voice Management</h3>
+        </div>
+        <div class="modal-body">
+            <div class="voice-management-tabs">
+                <div class="voice-tab active" data-voice-tab="assign">
+                    <i class="fas fa-link"></i> Assign Voices to Tiers
+                </div>
+                <div class="voice-tab" data-voice-tab="manage">
+                    <i class="fas fa-plus"></i> Manage Voices
+                </div>
+            </div>
+
+            <div id="voiceAssignSection" class="voice-section active">
+                <div class="voice-assignment-container">
+                    <h4>Assign Voices to Tiers</h4>
+                    <div class="bulk-select-all">
+                        <input type="checkbox" id="selectAllVoices">
+                        <label for="selectAllVoices">Select All Voices</label>
+                    </div>
+                    <div class="voice-selection-list" id="voiceSelectionList"></div>
+                    <div class="voice-assignment-form">
+                        <div class="form-row">
+                            <label for="voiceTierSelect">Assign to Tier:</label>
+                            <select id="voiceTierSelect" class="setting-input">
+                                <option value="">Select a tier...</option>
+                            </select>
+                            <small>Select which tier should have access to the selected voices</small>
+                        </div>
+                        <button type="button" class="add-voice-btn" id="assignVoicesBtn" disabled>
+                            <i class="fas fa-link"></i> Assign Selected Voices
+                        </button>
+                    </div>
+                    <div id="voiceAssignmentSuccess" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); border-radius: 0.5rem; color: #22C55E;">
+                        <i class="fas fa-check-circle"></i>
+                        <span id="voiceSuccessMessage">Voices assigned successfully!</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="voiceManageSection" class="voice-section">
+                <div class="add-voice-section">
+                    <h4>Add New Voice</h4>
+                    <form id="addVoiceForm">
+                        <div class="add-voice-form">
+                            <div class="input-group">
+                                <label for="newVoiceId">Voice ID:</label>
+                                <input type="text" id="newVoiceId" class="setting-input" placeholder="e.g. en-US-EmmaNeural" required>
+                                <small>Azure Speech Service voice identifier</small>
+                            </div>
+                            <div class="input-group">
+                                <label for="newVoiceDisplayName">Display Name:</label>
+                                <input type="text" id="newVoiceDisplayName" class="setting-input" placeholder="e.g. Emma" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="newVoiceLanguage">Language:</label>
+                                <select id="newVoiceLanguage" class="setting-input">
+                                    <option value="en-US">English (US)</option>
+                                    <option value="en-GB">English (UK)</option>
+                                    <option value="en-AU">English (Australia)</option>
+                                    <option value="fr-FR">French</option>
+                                    <option value="de-DE">German</option>
+                                    <option value="es-ES">Spanish</option>
+                                    <option value="it-IT">Italian</option>
+                                    <option value="ja-JP">Japanese</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="newVoiceGender">Gender:</label>
+                                <select id="newVoiceGender" class="setting-input">
+                                    <option value="female">Female</option>
+                                    <option value="male">Male</option>
+                                    <option value="neutral">Neutral</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="add-voice-btn">
+                            <i class="fas fa-plus"></i> Add Voice
+                        </button>
+                    </form>
+                </div>
+                <div id="allVoicesList" style="margin-top: 2rem;">
+                    <h4>All Available Voices</h4>
+                    <div id="voiceListContainer"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="voiceModalCancelBtn" class="modal-btn modal-btn-cancel">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Bootstrap data for SSR mode -->
+<script id="benefits-bootstrap-data" type="application/json">
+{
+    "tiers": {{ tiers | tojson }},
+    "patreon_users_count": {{ patreon_users_count | default(0) }},
+    "kofi_users_count": {{ kofi_users_count | default(0) }},
+    "team_users_count": {{ team_users_count | default(0) }}
+    {% if guest_trial_users_count is defined %}
+    ,"guest_trial_users_count": {{ guest_trial_users_count | default(0) }}
+    {% endif %}
+}
+</script>
+
+<!-- Load SSR initializer -->
+<script type="module" src="{{ url_for('static', path='js/benefits-management-ssr-init.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,1617 @@
+/* ===================================================================
+   RESET AND BASE STYLES
+   =================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-primary: #f8fafc;
+  --bg-secondary: white;
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --border-color: #e2e8f0;
+  --shadow-sm: rgba(0, 0, 0, 0.1);
+  --shadow-md: rgba(0, 0, 0, 0.15);
+}
+
+html.dark,
+body.dark {
+  --bg-primary: #1e3a5f;
+  --bg-secondary: #2d4a6f;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --border-color: #3d5a7f;
+  --shadow-sm: rgba(0, 0, 0, 0.3);
+  --shadow-md: rgba(0, 0, 0, 0.5);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* ===================================================================
+   HEADER AND NAVIGATION
+   =================================================================== */
+
+.header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 3px var(--shadow-sm);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.75rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.nav-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.nav-link:hover {
+  color: #3b82f6;
+}
+
+.theme-toggle-btn {
+  background: transparent;
+  border: 2px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.6rem 0.8rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--bg-primary);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  transform: rotate(15deg);
+}
+
+.theme-toggle-btn i {
+  transition: transform 0.3s ease;
+}
+
+.sign-in-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 50px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  font-size: 0.9rem;
+}
+
+.sign-in-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4);
+}
+
+/* ===================================================================
+   MAIN CONTENT AND HERO SECTION
+   =================================================================== */
+
+.main {
+  padding: 4rem 0;
+  text-align: center;
+  background: var(--bg-secondary);
+  transition: background-color 0.3s ease;
+}
+
+.hero {
+  margin-bottom: 4rem;
+}
+
+.hero h1 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero p {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+
+/* ===================================================================
+   BUTTONS AND CALL-TO-ACTION ELEMENTS
+   =================================================================== */
+
+.cta-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 50px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 50px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.btn-secondary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4);
+}
+
+.btn-tertiary {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 50px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 15px rgba(96, 165, 250, 0.3);
+}
+
+.btn-tertiary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(96, 165, 250, 0.4);
+}
+
+/* ===================================================================
+   CONTENT AREAS AND SECTIONS
+   =================================================================== */
+
+.content-area {
+  background: var(--bg-primary);
+  padding: 3rem 2rem 2rem;
+  transition: background-color 0.3s ease;
+}
+
+.section {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  padding: 3rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px var(--shadow-md);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.section h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.section p {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+}
+
+/* ===================================================================
+   PLANS AND MEMBERSHIP TIERS
+   =================================================================== */
+
+/* Plans Section Toggle */
+.plans-section {
+  display: none !important;
+  animation: slideDown 0.3s ease-out;
+}
+
+.plans-section.show {
+  display: block !important;
+}
+
+.show-plans-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 50px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.show-plans-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4);
+}
+
+/* Tiers Grid Layout */
+.tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.tier-card {
+  background: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2rem;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.tier-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.tier-card:hover {
+  transform: translateY(-5px);
+  border-color: #3b82f6;
+  box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+}
+
+.tier-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.tier-price {
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+}
+
+.tier-features {
+  list-style: none;
+  margin-bottom: 2rem;
+}
+
+.tier-features li {
+  padding: 0.5rem 0;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+.tier-features li:before {
+  content: "✓";
+  color: #10b981;
+  font-weight: bold;
+  margin-right: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.tier-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  padding: 1rem;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.tier-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+}
+
+/* ===================================================================
+   SUPPORT GRID AND CARDS
+   =================================================================== */
+
+.support-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.support-card {
+  background: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.support-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.support-card:hover {
+  transform: translateY(-5px);
+  border-color: #3b82f6;
+  box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+}
+
+.support-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  color: white;
+  font-size: 1.5rem;
+}
+
+.support-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.support-card p {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.support-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 50px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.support-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+/* ===================================================================
+   MODAL SYSTEM - COMPLETE FIXED VERSION
+   =================================================================== */
+
+/* Base Modal Overlay - Works for ALL modals */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  
+  /* Key fix: Use simple flexbox centering */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Add safe padding and enable scrolling */
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Base Modal - Applies to ALL modals */
+.modal {
+  background: var(--bg-secondary);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 450px;
+
+  /* Key fix: Use flexible height with constraints */
+  min-height: auto;
+  max-height: 90vh; /* Never exceed 90% of viewport */
+
+  padding: 2rem;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+
+  /* Enable internal scrolling when content is too tall */
+  overflow-y: auto;
+
+  /* Ensure modal can shrink if needed */
+  flex-shrink: 1;
+}
+
+.modal-overlay.active .modal {
+  transform: translateY(0);
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: #3b82f6;
+}
+
+.modal h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Login Options Tabs */
+.login-options {
+  display: flex;
+  background: var(--bg-primary);
+  border-radius: 12px;
+  padding: 0.25rem;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+.login-tab {
+  flex: 1;
+  padding: 0.75rem 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  transition: all 0.3s;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.login-tab.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.login-tab.register-tab.active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Device Confirmation Modal - Special handling for larger content */
+#deviceConfirmationModal {
+  z-index: 10000;
+}
+
+#deviceConfirmationModal.active {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+#deviceConfirmationModal .modal {
+  max-width: 600px;
+  
+  /* Allow this modal to use more space but still constrain */
+  max-height: 85vh; /* Slightly less to ensure it fits */
+  overflow-y: auto;
+}
+
+/* Device Warning Styles */
+#deviceConfirmationModal .device-warning {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+#deviceConfirmationModal .device-warning p {
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+  color: #92400e;
+}
+
+#deviceConfirmationModal .device-warning ul {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+#deviceConfirmationModal .device-warning li {
+  padding: 0.5rem 0;
+  color: #78350f;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#deviceConfirmationModal .warning-box {
+  background: #fecaca;
+  border: 2px solid #ef4444;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+#deviceConfirmationModal .warning-box strong {
+  color: #dc2626;
+  font-size: 1.1rem;
+}
+
+/* Button styling for device confirmation */
+#deviceConfirmationModal .confirmation-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+
+#deviceConfirmationModal .btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+#deviceConfirmationModal .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+#deviceConfirmationModal .btn-secondary {
+  background: #6b7280;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+#deviceConfirmationModal .btn-secondary:hover {
+  background: #4b5563;
+  transform: translateY(-2px);
+}
+
+/* OTP Modal */
+.otp-modal {
+  background: var(--bg-secondary);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+
+  /* Constrain height */
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.otp-input {
+  text-align: center;
+  font-size: 1.5rem;
+  letter-spacing: 0.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.resend-otp {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.resend-link {
+  color: #10b981;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.resend-link:hover {
+  text-decoration: underline;
+}
+
+.resend-link:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Success Modal with Confetti */
+.success-modal {
+  background: var(--bg-secondary);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 500px;
+  padding: 3rem;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+
+  /* Constrain height */
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.confetti-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+.success-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  font-size: 2rem;
+  color: white;
+  animation: bounce 0.6s ease-out;
+}
+
+/* Scrollbar styling for better UX */
+.modal::-webkit-scrollbar,
+.otp-modal::-webkit-scrollbar,
+.success-modal::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal::-webkit-scrollbar-track,
+.otp-modal::-webkit-scrollbar-track,
+.success-modal::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+html.dark .modal::-webkit-scrollbar-track,
+html.dark .otp-modal::-webkit-scrollbar-track,
+html.dark .success-modal::-webkit-scrollbar-track,
+body.dark .modal::-webkit-scrollbar-track,
+body.dark .otp-modal::-webkit-scrollbar-track,
+body.dark .success-modal::-webkit-scrollbar-track {
+  background: #334155;
+}
+
+.modal::-webkit-scrollbar-thumb,
+.otp-modal::-webkit-scrollbar-thumb,
+.success-modal::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+html.dark .modal::-webkit-scrollbar-thumb,
+html.dark .otp-modal::-webkit-scrollbar-thumb,
+html.dark .success-modal::-webkit-scrollbar-thumb,
+body.dark .modal::-webkit-scrollbar-thumb,
+body.dark .otp-modal::-webkit-scrollbar-thumb,
+body.dark .success-modal::-webkit-scrollbar-thumb {
+  background: #64748b;
+}
+
+.modal::-webkit-scrollbar-thumb:hover,
+.otp-modal::-webkit-scrollbar-thumb:hover,
+.success-modal::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+html.dark .modal::-webkit-scrollbar-thumb:hover,
+html.dark .otp-modal::-webkit-scrollbar-thumb:hover,
+html.dark .success-modal::-webkit-scrollbar-thumb:hover,
+body.dark .modal::-webkit-scrollbar-thumb:hover,
+body.dark .otp-modal::-webkit-scrollbar-thumb:hover,
+body.dark .success-modal::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* ===================================================================
+   FORMS AND INPUT ELEMENTS
+   =================================================================== */
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.875rem;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.3s;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-input.error {
+  border-color: #e53e3e;
+  background-color: #fff5f5;
+  animation: shake 0.5s ease-in-out;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.password-toggle:hover {
+  color: #3b82f6;
+}
+
+.forgot-pin {
+  text-align: right;
+  margin-top: 0.5rem;
+}
+
+.forgot-pin a {
+  color: white;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.forgot-pin a:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  text-decoration: none;
+}
+
+.submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  padding: 0.875rem;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.submit-btn.register-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.submit-btn.register-btn:hover:not(:disabled) {
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+}
+
+/* PIN Display Styles */
+.pin-display {
+  background: #f0fdf4;
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  letter-spacing: 0.2rem;
+  color: #15803d;
+}
+
+/* ===================================================================
+   MESSAGE AND NOTIFICATION STYLES
+   =================================================================== */
+
+.error-message {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  animation: slideIn 0.3s ease-out;
+}
+
+html.dark .error-message,
+body.dark .error-message {
+  background: #7f1d1d;
+  border-color: #991b1b;
+  color: #fca5a5;
+}
+
+.success-message {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: none;
+  font-size: 0.875rem;
+}
+
+html.dark .success-message,
+body.dark .success-message {
+  background: #14532d;
+  border-color: #166534;
+  color: #86efac;
+}
+
+/* Trial Info */
+.trial-info {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.trial-info h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #15803d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.trial-info ul {
+  list-style: none;
+  margin: 0.5rem 0 0 0;
+  padding: 0;
+}
+
+.trial-info li {
+  padding: 0.25rem 0;
+  color: #15803d;
+}
+
+.trial-info li:before {
+  content: "✓ ";
+  color: #10b981;
+  font-weight: bold;
+}
+
+/* Enhanced device security notice */
+.device-security-notice {
+  background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
+  border: 2px solid #0288d1;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.device-security-notice h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #01579b;
+}
+
+.device-security-notice p {
+  margin: 0;
+  color: #0277bd;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* ===================================================================
+   ANIMATIONS AND EFFECTS
+   =================================================================== */
+
+/* Slide Down Animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Shake Animation for Form Errors */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Slide In Animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Bounce Animation for Success Icon */
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0,0,0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -30px, 0);
+  }
+  70% {
+    transform: translate3d(0, -15px, 0);
+  }
+  90% {
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+/* Spinner Animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Confetti Animation */
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #10b981;
+  animation: confetti-fall 3s linear infinite;
+}
+
+.confetti:nth-child(2n) { background: #3b82f6; animation-delay: 0.2s; }
+.confetti:nth-child(3n) { background: #f59e0b; animation-delay: 0.4s; }
+.confetti:nth-child(4n) { background: #ef4444; animation-delay: 0.6s; }
+.confetti:nth-child(5n) { background: #8b5cf6; animation-delay: 0.8s; }
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(500px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Confirmation Modal Animation */
+#deviceConfirmationModal .modal {
+  animation: confirmationSlideIn 0.3s ease-out;
+}
+
+@keyframes confirmationSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Success Checkmark Animation */
+.success-checkmark {
+  display: inline-block;
+  animation: checkmark-pop 0.3s ease-out;
+}
+
+@keyframes checkmark-pop {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* ===================================================================
+   FOOTER
+   =================================================================== */
+
+.footer {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 2rem 0;
+  margin-top: 4rem;
+  text-align: center;
+  color: var(--text-secondary);
+  transition: all 0.3s ease;
+}
+
+/* ===================================================================
+   RESPONSIVE DESIGN - TABLET AND DESKTOP
+   =================================================================== */
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+
+  .hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .cta-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .nav-links {
+    gap: 0.5rem;
+  }
+
+  .nav-links button {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .section {
+    padding: 2rem;
+  }
+
+  .tiers-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .content-area {
+    padding: 2rem 1rem 1rem;
+  }
+
+  /* Ensure plans are hidden on tablet */
+  .plans-section {
+    display: none !important;
+  }
+  
+  .plans-section.show {
+    display: block !important;
+  }
+}
+
+/* ===================================================================
+   RESPONSIVE DESIGN - MOBILE DEVICES
+   =================================================================== */
+
+/* Support Grid Mobile Layout */
+@media (max-width: 768px) {
+  .support-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .support-card {
+    padding: 1.5rem;
+  }
+
+  .support-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .support-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .support-card p {
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+    line-height: 1.5;
+  }
+
+  .support-btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
+  }
+}
+
+/* Modal Mobile Fixes */
+@media (max-width: 768px) {
+  .modal-overlay {
+    /* Reduced padding on mobile */
+    padding: 0.5rem;
+    
+    /* Use safe area for modern phones */
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .modal, .otp-modal, .success-modal {
+    padding: 1.5rem;
+    width: 100%;
+    max-width: none;
+    border-radius: 16px;
+    
+    /* More conservative height on mobile */
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  #deviceConfirmationModal .modal {
+    padding: 1.5rem;
+    /* Even more conservative for the large modal */
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  /* Smaller login tabs on mobile */
+  .login-tab {
+    font-size: 0.7rem;
+    padding: 0.5rem 0.25rem;
+  }
+  
+  /* Make form inputs more mobile-friendly */
+  .form-input {
+    padding: 0.75rem;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .submit-btn {
+    padding: 0.875rem;
+    font-size: 0.9rem;
+  }
+
+  /* Device warning adjustments */
+  #deviceConfirmationModal .device-warning {
+    padding: 0.75rem;
+    margin: 0.75rem 0;
+    border-radius: 8px;
+  }
+  
+  #deviceConfirmationModal .device-warning p {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+  
+  #deviceConfirmationModal .device-warning li {
+    font-size: 0.8rem;
+    padding: 0.25rem 0;
+    line-height: 1.2;
+  }
+  
+  #deviceConfirmationModal .warning-box {
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    border-radius: 6px;
+  }
+  
+  #deviceConfirmationModal .warning-box strong {
+    font-size: 0.9rem;
+    line-height: 1.2;
+  }
+  
+  #deviceConfirmationModal .confirmation-buttons {
+    margin-top: 1rem;
+    gap: 0.5rem;
+    flex-direction: column;
+  }
+  
+  #deviceConfirmationModal .confirmation-buttons button {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    width: 100%;
+    border-radius: 6px;
+  }
+}
+
+/* Extra Small Screens */
+@media (max-width: 480px) {
+  .support-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .support-card {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+
+  .support-icon {
+    width: 45px;
+    height: 45px;
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .support-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .support-card p {
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+  }
+
+  .support-btn {
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  /* Ensure plans are hidden on small mobile */
+  .plans-section {
+    display: none !important;
+  }
+  
+  .plans-section.show {
+    display: block !important;
+  }
+
+  /* Modal fixes for extra small screens */
+  .modal-overlay {
+    padding: 0.25rem;
+    padding-top: max(0.25rem, env(safe-area-inset-top));
+    padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  }
+
+  .modal, .otp-modal, .success-modal {
+    padding: 1.25rem;
+    border-radius: 12px;
+    /* Very conservative height on small screens */
+    max-height: 80vh;
+  }
+
+  #deviceConfirmationModal .modal {
+    padding: 1.25rem;
+    max-height: 75vh;
+  }
+
+  /* Extra compact device confirmation on small screens */
+  #deviceConfirmationModal .modal h2 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  #deviceConfirmationModal .device-warning {
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+  }
+
+  #deviceConfirmationModal .device-warning p {
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+  }
+
+  #deviceConfirmationModal .device-warning li {
+    font-size: 0.75rem;
+    padding: 0.2rem 0;
+  }
+
+  #deviceConfirmationModal .warning-box {
+    padding: 0.4rem;
+    margin-top: 0.4rem;
+  }
+
+  #deviceConfirmationModal .warning-box strong {
+    font-size: 0.85rem;
+  }
+
+  #deviceConfirmationModal .confirmation-buttons button {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  /* Compact modal titles */
+  .modal h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+}
+
+/* ===================================================================
+   LANDSCAPE ORIENTATION FIXES
+   =================================================================== */
+
+@media (max-height: 600px) and (orientation: landscape) {
+  .modal-overlay {
+    padding: 0.25rem;
+    /* On landscape, align to start to ensure visibility */
+    align-items: flex-start;
+    padding-top: 0.5rem;
+  }
+
+  .modal, .otp-modal, .success-modal {
+    /* Very constrained height in landscape */
+    max-height: 70vh;
+    padding: 1rem;
+  }
+
+  #deviceConfirmationModal .modal {
+    max-height: 65vh;
+    padding: 1rem;
+  }
+
+  .modal h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  #deviceConfirmationModal .device-warning {
+    padding: 0.75rem;
+    margin: 0.75rem 0;
+  }
+
+  #deviceConfirmationModal .confirmation-buttons {
+    margin-top: 1rem;
+  }
+}
+
+/* Very Short Screens */
+@media (max-height: 500px) {
+  .modal-overlay {
+    align-items: flex-start;
+    padding-top: 0.25rem;
+  }
+  
+  .modal, .otp-modal, .success-modal {
+    max-height: 85vh;
+    padding: 0.75rem;
+  }
+
+  #deviceConfirmationModal .modal {
+    max-height: 80vh;
+    padding: 0.75rem;
+  }
+}
+
+/* ===================================================================
+   UTILITY CLASSES AND HELPERS
+   =================================================================== */
+
+/* Smooth scrolling for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus styles for accessibility */
+*:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .modal {
+    border: 2px solid #000;
+  }
+  
+  .btn-primary, .btn-secondary, .btn-tertiary {
+    border: 2px solid #000;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

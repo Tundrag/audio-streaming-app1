@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics{% endblock %}
+
+{% block page_title %}Statistics{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<!-- ✅ Shared CSS file used by both SSR and SPA -->
+<link rel="stylesheet" href="{{ url_for('static', path='/css/statistics.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Bootstrap data for SSR hydration -->
+<script id="statistics-bootstrap-data" type="application/json">
+{
+    "monthly_stats": {{ monthly_stats | tojson }},
+    "total_stats": {{ total_stats | tojson }}
+}
+</script>
+
+<!-- Server-rendered HTML - will be hydrated by controller -->
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Active Users Section -->
+    <div class="stats-card p-6 mb-8">
+        <div class="flex items-center justify-between border-b pb-4 mb-6" style="border-color: var(--custom-border);">
+            <h2 class="text-2xl font-bold stats-title">Active Users</h2>
+            <button id="refreshStats" class="pin-button pin-button-secondary">
+                <i class="fas fa-sync"></i> Refresh Stats
+            </button>
+        </div>
+
+        <div class="active-users-stats">
+            <div class="user-stat-row">
+                <span class="stat-label"><i class="fas fa-crown"></i> Creators:</span>
+                <span id="creatorCount" class="stat-value">0</span>
+            </div>
+            <div class="user-stat-row">
+                <span class="stat-label"><i class="fas fa-users"></i> Team:</span>
+                <span id="teamCount" class="stat-value">0</span>
+            </div>
+            <div class="user-stat-row">
+                <span class="stat-label"><i class="fas fa-user"></i> Patrons:</span>
+                <span id="patronCount" class="stat-value">0</span>
+            </div>
+            <div class="user-stat-row">
+                <span class="stat-label"><i class="fas fa-mug-hot"></i> Ko-fi Supporters:</span>
+                <span id="kofiCount" class="stat-value">0</span>
+            </div>
+            <div class="user-stat-row">
+                <span class="stat-label">
+                    <i class="fas fa-user-clock"></i> 
+                    Guest Trial Users:
+                    <div class="guest-trial-info">
+                        <span class="trial-badge" id="activeTrialBadge">0 Active</span>
+                        <span class="expired-badge" id="expiredTrialBadge">0 Expired</span>
+                    </div>
+                </span>
+                <span id="guestCount" class="stat-value">0</span>
+            </div>
+            <div class="user-stat-row total">
+                <span class="stat-label"><i class="fas fa-chart-line"></i> Total Active:</span>
+                <span id="totalCount" class="stat-value">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overall Statistics Section -->
+    <div class="stats-card p-6 mb-8">
+        <div class="flex items-center justify-between border-b pb-4 mb-6" style="border-color: var(--custom-border);">
+            <div>
+                <h2 class="text-2xl font-bold stats-title">Overall Statistics</h2>
+                <p class="text-sm stats-subtitle mt-1">Last 6 months (excluding creator downloads)</p>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+            <div class="stats-section p-4">
+                <div class="text-3xl font-bold stat-value-primary">
+                    {{ total_stats.albums }}
+                </div>
+                <div class="text-sm stats-subtitle">Total Albums Downloaded</div>
+            </div>
+            
+            <div class="stats-section p-4">
+                <div class="text-3xl font-bold stat-value-success">
+                    {{ total_stats.tracks }}
+                </div>
+                <div class="text-sm stats-subtitle">Total Tracks Downloaded</div>
+            </div>
+            
+            <div class="stats-section p-4">
+                <div class="text-3xl font-bold stat-value-primary">
+                    {{ total_stats.total_users }}
+                </div>
+                <div class="text-sm stats-subtitle">Total Users</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Download Statistics -->
+    <div class="stats-card p-6">
+        <div class="border-b pb-4 mb-6" style="border-color: var(--custom-border);">
+            <h2 class="text-2xl font-bold stats-title">Monthly Download History</h2>
+            <p class="text-sm stats-subtitle mt-1">Download activity by month (last 6 months)</p>
+        </div>
+
+        {% if monthly_stats %}
+        <div class="months-grid">
+            {% for month in monthly_stats %}
+            <div class="month-card" data-month-id="month-{{ loop.index }}">
+                <div class="month-header">
+                    <div class="month-name">{{ month.month_name }}</div>
+                    <div class="month-total">{{ month.total_downloads }}</div>
+                </div>
+                
+                <div class="month-breakdown">
+                    <div class="breakdown-item breakdown-albums">
+                        <i class="fas fa-compact-disc"></i>
+                        <span>{{ month.album_downloads.success }} albums</span>
+                    </div>
+                    <div class="breakdown-item breakdown-tracks">
+                        <i class="fas fa-music"></i>
+                        <span>{{ month.track_downloads.success }} tracks</span>
+                    </div>
+                </div>
+                
+                <div class="month-status">
+                    <span class="status-success">{{ month.successful_downloads }} successful</span>
+                    <span class="status-failed">{{ month.failed_downloads }} failed</span>
+                </div>
+
+                <!-- Tier Breakdown (Initially Hidden) -->
+                <div id="month-{{ loop.index }}" class="tier-breakdown hidden">
+                    <div class="tier-breakdown-header">
+                        <h4>Downloads by Tier:</h4>
+                    </div>
+                    {% for tier_name, tier_data in month.tier_breakdown.items() %}
+                    <div class="tier-item">
+                        <div class="tier-item-header">
+                            <span class="tier-name">{{ tier_name }}</span>
+                            {% if tier_data.amount_cents > 0 %}
+                                <span class="tier-price">${{ "%.2f"|format(tier_data.amount_cents/100) }}/mo</span>
+                            {% endif %}
+                            <span class="tier-total">{{ tier_data.total }}</span>
+                        </div>
+                        <div class="tier-item-details">
+                            {% if tier_data.albums.success > 0 %}
+                                <span class="tier-detail-albums">{{ tier_data.albums.success }} albums</span>
+                            {% endif %}
+                            {% if tier_data.tracks.success > 0 %}
+                                <span class="tier-detail-tracks">{{ tier_data.tracks.success }} tracks</span>
+                            {% endif %}
+                            {% if tier_data.albums.failed > 0 or tier_data.tracks.failed > 0 %}
+                                <span class="tier-detail-failed">{{ tier_data.albums.failed + tier_data.tracks.failed }} failed</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-months">
+            <i class="fas fa-chart-line"></i>
+            <h3>No Download Activity</h3>
+            <p>No downloads found in the last 6 months.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ✅ Universal controller in SSR mode - hydrates existing HTML -->
+<script type="module">
+    import { StatisticsSPA } from '{{ url_for("static", path="/js/statistics-spa.js") }}';
+    
+    // Initialize controller in SSR mode
+    const controller = new StatisticsSPA('ssr');
+    
+    // Mount/hydrate the existing HTML
+    controller.mount().catch(error => {
+        console.error('Error mounting statistics controller:', error);
+    });
+    
+    // Store controller globally for debugging
+    window.statisticsController = controller;
+</script>
+{% endblock %}

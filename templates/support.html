@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Support {% endblock %}
+
+{% block page_title %}Support{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/support.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- ✅ Bootstrap data for SSR hydration -->
+<script id="support-bootstrap-data" type="application/json">
+    {
+        "tiers": {{ tiers | tojson | safe }},
+        "user": {
+            "email": "{{ user.email if user and user.email else 'your-email@example.com' }}",
+            "is_guest_trial": {{ user.is_guest_trial | tojson | safe }},
+            "role": "{{ user.role.value if user.role else 'unknown' }}"
+        }
+    }
+</script>
+
+<div class="support-container">
+    <div class="support-header">
+        <h2>Support Web Audio</h2>
+        <p>Your support helps us maintain and improve Web Audio. Choose the option that works best for you!</p>
+    </div>
+    
+    <!-- Ko-fi Section (First) -->
+    <div class="support-section">
+        <div class="support-section-header">
+            <div class="support-section-icon kofi">
+                <i class="fas fa-mug-hot"></i>
+            </div>
+            <div class="support-section-title">
+                <h3>Support with Ko-fi</h3>
+            </div>
+            <p class="support-section-description">Support Web Audio with one-time donations or recurring monthly memberships. Perfect for flexible support options!</p>
+        </div>
+        
+        <!-- Ko-fi Benefits -->
+        <div class="benefits-container">
+            <div class="benefits-header">
+                <h4>Ko-fi Supporter Benefits</h4>
+            </div>
+            <div class="benefits-content">
+                <ul class="benefits-list">
+                    <li><i class="fas fa-download"></i> Monthly downloads quota</li>
+                    <li><i class="fas fa-book"></i> Book requests with chapter limits</li>
+                    <li><i class="fas fa-bolt"></i> Early access to features</li>
+                    <li><i class="fas fa-comment-alt"></i> Priority support</li>
+                    <li><i class="fas fa-desktop"></i> Multiple active sessions</li>
+                    <li><i class="fas fa-book-open"></i> Access to exclusive content</li>
+                    <li><i class="fas fa-comments"></i> Discord community access</li>
+                    <li><i class="fas fa-heart"></i> Help shape Web Audio's future</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Ko-fi Tiers -->
+        <div class="tiers-container">
+            <div class="tiers-header">
+                <h4>Ko-fi Membership Tiers</h4>
+                <p>Choose the tier that works best for you. All tiers include exclusive content and features.</p>
+            </div>
+            
+            <div class="tiers-grid">
+                {% for tier in tiers %}
+                {% if tier.is_active and tier.is_kofi and tier.title != "Team Members" and "development" not in tier.title|lower %}
+                <div class="tier-card">
+                    <div class="tier-card-header">
+                        <span class="tier-platform-badge kofi">Ko-fi</span>
+                        <h3 class="tier-card-title">{{ tier.title }}</h3>
+                        <p class="tier-card-price">${{ "%.2f"|format(tier.amount_cents/100) }}/month</p>
+                        <p class="tier-card-description">{{ tier.description|default('Premium Web Audio experience') }}</p>
+                    </div>
+                    <div class="tier-card-content">
+                        <ul class="tier-benefits-list">
+                            <li><i class="fas fa-download"></i> <span class="highlight">{{ tier.album_downloads_allowed }}</span>&nbsp;Album downloads per month</li>
+                            <li><i class="fas fa-music"></i> <span class="highlight">{{ tier.track_downloads_allowed }}</span>&nbsp;Track downloads per month</li>
+                            <li>
+                                <i class="fas fa-book"></i> 
+                                <span class="highlight">{{ tier.book_requests_allowed|default(0) }}</span>&nbsp;Book {{ 'request' if tier.book_requests_allowed|default(0) == 1 else 'requests' }} per month
+                                {% if tier.chapters_allowed_per_book_request is defined and tier.chapters_allowed_per_book_request > 0 %}
+                                    <span class="chapter-info">
+                                        {% if tier.chapters_allowed_per_book_request == 'inf' or tier.chapters_allowed_per_book_request >= 1000000 %}
+                                            (unlimited chapters)
+                                        {% else %}
+                                            ({{ tier.chapters_allowed_per_book_request }} chapters max)
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+                            </li>
+                            <li><i class="fas fa-desktop"></i> <span class="highlight">{{ tier.max_sessions|default(1) }}</span>&nbsp;Active {{ 'session' if tier.max_sessions|default(1) == 1 else 'sessions' }}</li>
+
+{% if tier.voice_access is defined and tier.voice_access|length > 0 %}
+<li><i class="fas fa-microphone"></i> <span class="highlight">{{ tier.voice_access|length }}</span>&nbsp;Voice{{ 's' if tier.voice_access|length > 1 else '' }} available</li>
+{% endif %}
+{% if tier.read_along_access %}
+<li><i class="fas fa-book-reader"></i> Read-along feature access</li>
+{% endif %}
+                            <li><i class="fas fa-book-open"></i> <span class="highlight">{{ tier.books_percentage }}</span>% of books unlocked</li>
+                            <li><i class="fas fa-heart"></i> Support toward development</li>
+                            <li><i class="fas fa-comments"></i> Access to exclusive Discord channels</li>
+                            {% if tier.amount_cents >= 1200 %}
+                            <li><i class="fas fa-crown"></i> Priority access to exclusive features</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    <div class="tier-card-footer">
+                        <button class="support-btn kofi kofi-link" data-url="https://ko-fi.com/webaudio">
+                            <i class="fas fa-mug-hot"></i> Join on Ko-fi
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Ko-fi Support Button -->
+        <div class="support-actions">
+            <button class="support-btn kofi kofi-link" data-url="https://ko-fi.com/webaudio">
+                <i class="fas fa-mug-hot"></i> Support on Ko-fi
+            </button>
+        </div>
+    </div>
+    
+    <!-- Patreon Section (Second) -->
+    <div class="support-section">
+        <div class="support-section-header">
+            <div class="support-section-icon patreon">
+                <i class="fab fa-patreon"></i>
+            </div>
+            <div class="support-section-title">
+                <h3>Support with Patreon <span class="coming-soon-tag">Coming Soon</span></h3>
+            </div>
+            <p class="support-section-description">Join our Patreon community for exclusive benefits and help us continue to create the best audio experience on the web.</p>
+        </div>
+        
+        <!-- Patreon Benefits -->
+        <div class="benefits-container">
+            <div class="benefits-header">
+                <h4>Patreon Supporter Benefits</h4>
+            </div>
+            <div class="benefits-content">
+                <ul class="benefits-list">
+                    <li><i class="fas fa-download"></i> Monthly downloads quota</li>
+                    <li><i class="fas fa-book"></i> Book requests with chapter limits</li>
+                    <li><i class="fas fa-bolt"></i> Early access to features</li>
+                    <li><i class="fas fa-comment-alt"></i> Priority support</li>
+                    <li><i class="fas fa-desktop"></i> Multiple active sessions</li>
+                    <li><i class="fas fa-book-open"></i> Access to exclusive content</li>
+                    <li><i class="fas fa-comments"></i> Discord community access</li>
+                    <li><i class="fas fa-heart"></i> Help shape Web Audio's future</li>
+                    <li><i class="fas fa-crown"></i> Exclusive Patreon perks</li>
+                    <li><i class="fas fa-star"></i> Behind-the-scenes updates</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Patreon Tiers -->
+        <div class="tiers-container">
+            <div class="tiers-header">
+                <h4>Patreon Membership Tiers</h4>
+                <p>Choose the tier that works best for you. All tiers include exclusive content and features.</p>
+            </div>
+            
+            <div class="tiers-grid">
+                {% for tier in tiers %}
+                {% if tier.is_active and not tier.is_kofi and tier.title != "Team Members" and "development" not in tier.title|lower %}
+                <div class="tier-card">
+                    <div class="tier-card-header">
+                        <span class="tier-platform-badge patreon">Patreon</span>
+                        <h3 class="tier-card-title">{{ tier.title }}</h3>
+                        <p class="tier-card-price">${{ "%.2f"|format(tier.amount_cents/100) }}/month</p>
+                        <p class="tier-card-description">{{ tier.description|default('Premium Web Audio experience') }}</p>
+                    </div>
+                    <div class="tier-card-content">
+                        <ul class="tier-benefits-list">
+                            <li><i class="fas fa-download"></i> <span class="highlight">{{ tier.album_downloads_allowed }}</span>&nbsp;Album downloads per month</li>
+                            <li><i class="fas fa-music"></i> <span class="highlight">{{ tier.track_downloads_allowed }}</span>&nbsp;Track downloads per month</li>
+                            <li>
+                                <i class="fas fa-book"></i> 
+                                <span class="highlight">{{ tier.book_requests_allowed|default(0) }}</span>&nbsp;Book {{ 'request' if tier.book_requests_allowed|default(0) == 1 else 'requests' }} per month
+                                {% if tier.chapters_allowed_per_book_request is defined and tier.chapters_allowed_per_book_request > 0 %}
+                                    <span class="chapter-info">
+                                        {% if tier.chapters_allowed_per_book_request == 'inf' or tier.chapters_allowed_per_book_request >= 1000 %}
+                                            (unlimited chapters)
+                                        {% else %}
+                                            ({{ tier.chapters_allowed_per_book_request }} chapters max)
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+                            </li>
+                            <li><i class="fas fa-desktop"></i> <span class="highlight">{{ tier.max_sessions|default(1) }}</span>&nbsp;Active {{ 'session' if tier.max_sessions|default(1) == 1 else 'sessions' }}</li>
+
+{% if tier.voice_access is defined and tier.voice_access|length > 0 %}
+<li><i class="fas fa-microphone"></i> <span class="highlight">{{ tier.voice_access|length }}</span>&nbsp;Voice{{ 's' if tier.voice_access|length > 1 else '' }} available</li>
+{% endif %}
+{% if tier.read_along_access %}
+<li><i class="fas fa-book-reader"></i> Read-along feature access</li>
+{% endif %}
+
+
+                            <li><i class="fas fa-book-open"></i> <span class="highlight">{{ tier.books_percentage }}</span>% of books unlocked</li>
+                            <li><i class="fas fa-heart"></i> Support toward development</li>
+                            <li><i class="fas fa-comments"></i> Access to exclusive Discord channels</li>
+                            {% if tier.amount_cents >= 1200 %}
+                            <li><i class="fas fa-crown"></i> Priority access to exclusive features</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    <div class="tier-card-footer">
+                        <button class="support-btn disabled patreon">
+                            <i class="fab fa-patreon"></i> Coming Soon
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Patreon Support Button -->
+        <div class="support-actions">
+            <button class="support-btn disabled patreon">
+                <i class="fab fa-patreon"></i> Coming Soon
+            </button>
+        </div>
+    </div>
+    
+    <!-- Thank You Message -->
+    <div class="thank-you-message">
+        <h3>Thank you for supporting Web Audio!</h3>
+        <p>Your support helps us continue to improve and maintain the service for everyone. We're grateful for every contribution, no matter how small.</p>
+    </div>
+</div>
+
+<!-- Ko-fi Email Confirmation Modal -->
+<div id="kofiModal" class="modal-overlay">
+    <div class="modal-content">
+        <button class="modal-close" onclick="window.supportController.closeKofiModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="modal-header">
+            <i class="fas fa-mug-hot modal-icon"></i>
+            <h3>Before You Support on Ko-fi</h3>
+            <p>Important information to ensure your benefits are properly activated</p>
+        </div>
+        
+        <div class="modal-body">
+            <div class="modal-warning">
+                <i class="fas fa-exclamation-triangle warning-icon"></i>
+                <h4>⚠️ CRITICAL: Use the Same Email Address!</h4>
+                <p>To receive your Ko-fi supporter benefits on Web Audio, you <strong>MUST</strong> use the exact same email address for both accounts.</p>
+            </div>
+            
+            <div class="email-emphasis">
+                <i class="fas fa-envelope email-icon"></i>
+                <h4>Your Web Audio Account Email:</h4>
+                <div class="user-email">{{ user.email if user and user.email else 'your-email@example.com' }}</div>
+                <p><strong>Use this EXACT email when signing up or logging into Ko-fi!</strong></p>
+            </div>
+            
+            <h4 style="color: var(--text-color); margin-bottom: 1rem;">How it works:</h4>
+            <ol class="step-list">
+                <li>
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <strong>Click "Continue to Ko-fi"</strong> below to go to Ko-fi
+                    </div>
+                </li>
+                <li>
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <strong>Sign up or log in to Ko-fi</strong> using your Web Audio email above
+                    </div>
+                </li>
+                <li>
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <strong>Choose your support tier</strong> on Ko-fi
+                    </div>
+                </li>
+                <li>
+                    <span class="step-number">4</span>
+                    <div class="step-content">
+                        <strong>Return to Web Audio</strong> - your benefits will be automatically activated
+                    </div>
+                </li>
+            </ol>
+            
+            <div style="background-color: var(--bg-alt-color); padding: 1rem; border-radius: 6px; margin-top: 1rem;">
+                <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
+                    <i class="fas fa-info-circle" style="color: var(--primary-color); margin-right: 0.5rem;"></i>
+                    This email matching system is how we automatically connect your Ko-fi support to your Web Audio account and unlock your premium features.
+                </p>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="modal-btn secondary" onclick="window.supportController.closeKofiModal()">
+                <i class="fas fa-arrow-left"></i> Go Back
+            </button>
+            <button class="modal-btn primary" onclick="window.supportController.proceedToKofi()">
+                <i class="fas fa-external-link-alt"></i> Continue to Ko-fi
+            </button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { SupportController } from '/static/js/support-shared-spa.js?v={{ APP_VERSION }}';
+
+// Initialize in SSR mode
+let supportController;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    supportController = new SupportController('ssr');
+    window.supportController = supportController;
+    
+    await supportController.mount();
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', () => {
+    if (supportController) {
+        supportController.destroy();
+    }
+});
+</script>
+{% endblock %}

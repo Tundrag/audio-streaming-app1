@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 test_transaction_behavior.py)",
+      "Bash(source venv/bin/activate:*)",
+      "Bash(uvicorn app:app:*)",
+      "Bash(python:*)",
+      "Bash(journalctl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

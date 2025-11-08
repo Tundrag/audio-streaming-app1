@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Collection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>My Collection</h1>
+            <button class="btn-primary" onclick="openModal()">Create Album</button>
+        </header>
+
+        <div class="albums-grid" id="albumsGrid"></div>
+
+        <div class="modal" id="createAlbumModal">
+            <div class="modal-content">
+                <h2>Create New Album</h2>
+                <form id="createAlbumForm">
+                    <div class="form-group">
+                        <label for="albumTitle">Album Title</label>
+                        <input type="text" id="albumTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="albumCover">Album Cover</label>
+                        <input type="file" id="albumCover" accept="image/*" required>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', path='/js/script.js') }}"></script>
+</body>
+</html>

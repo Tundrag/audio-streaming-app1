@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Audio - Premium Audio Content</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="../static/css/login.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <nav class="nav">
+        <div class="logo">Web Audio</div>
+        <div class="nav-links">
+          <button class="nav-link" onclick="document.getElementById('support').scrollIntoView({ behavior: 'smooth', block: 'start' });" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none; cursor: pointer; color: white; font-weight: 600; transition: all 0.3s; padding: 0.6rem 1.2rem; border-radius: 50px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); font-size: 0.9rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(59, 130, 246, 0.4)'" onmouseout="this.style.transform='translateY(0px)'; this.style.boxShadow='0 4px 15px rgba(59, 130, 246, 0.3)'">Support</button>
+          <button class="nav-link" onclick="openGuideModal()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; cursor: pointer; color: white; font-weight: 600; transition: all 0.3s; padding: 0.6rem 1.2rem; border-radius: 50px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); font-size: 0.9rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(16, 185, 129, 0.4)'" onmouseout="this.style.transform='translateY(0px)'; this.style.boxShadow='0 4px 15px rgba(16, 185, 129, 0.3)'">Guide</button>
+          <button class="sign-in-btn" onclick="openModal('signin')">
+            <i class="fas fa-sign-in-alt"></i>
+            Sign In
+          </button>
+          <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeToggle">
+            <i class="fas fa-moon"></i>
+          </button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="container">
+      <!-- Hero -->
+      <div class="hero">
+        <h1>Web Audio</h1>
+        <p>"Hacking High Prices, Coding Fair Access"</p>
+        <div class="cta-buttons">
+          <button class="btn-primary" onclick="openModal('register')">
+            <i class="fas fa-rocket"></i>
+            Start Free Trial
+          </button>
+          <button class="btn-secondary" onclick="openModal('signin')">
+            <i class="fas fa-sign-in-alt"></i>
+            Already Registered?
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Content Area -->
+  <div class="content-area">
+    <div class="container">
+      <!-- Membership Tiers (Hidden by default) -->
+      <section id="plansSection" class="section plans-section">
+        <h2>Membership Plans</h2>
+        <p>Choose the plan that fits your listening needs and unlock premium content</p>
+        
+        <div class="tiers-grid">
+          <div class="tier-card">
+            <div class="tier-name">Support Tier</div>
+            <div class="tier-price">$3.50<span style="font-size: 1rem; font-weight: normal; color: #64748b;">/month</span></div>
+            <ul class="tier-features">
+              <li>2 track downloads per month</li>
+              <li>27% of books unlocked</li>
+              <li>1 active session</li>
+              <li>Monthly content updates</li>
+            </ul>
+            <a href="#" class="tier-btn" onclick="alert('Please contact support for subscription details')">Choose Plan</a>
+          </div>
+
+          <div class="tier-card">
+            <div class="tier-name">The Great 1s</div>
+            <div class="tier-price">$6.50<span style="font-size: 1rem; font-weight: normal; color: #64748b;">/month</span></div>
+            <ul class="tier-features">
+              <li>5 track downloads per month</li>
+              <li>76% of books unlocked</li>
+              <li>1 active session</li>
+              <li>Weekly exclusive content</li>
+            </ul>
+            <a href="#" class="tier-btn" onclick="alert('Please contact support for subscription details')">Choose Plan</a>
+          </div>
+
+          <div class="tier-card">
+            <div class="tier-name">Kingly 1s</div>
+            <div class="tier-price">$12.00<span style="font-size: 1rem; font-weight: normal; color: #64748b;">/month</span></div>
+            <ul class="tier-features">
+              <li>15 track downloads per month</li>
+              <li>100% of books unlocked</li>
+              <li>1 book request (500 chapters max)</li>
+              <li>1 active session</li>
+            </ul>
+            <a href="#" class="tier-btn" onclick="alert('Please contact support for subscription details')">Choose Plan</a>
+          </div>
+
+          <div class="tier-card">
+            <div class="tier-name">Godly 1s</div>
+            <div class="tier-price">$20.00<span style="font-size: 1rem; font-weight: normal; color: #64748b;">/month</span></div>
+            <ul class="tier-features">
+              <li>30 track downloads per month</li>
+              <li>1 album download per month</li>
+              <li>2 book requests (1000 chapters each)</li>
+              <li>2 active sessions</li>
+            </ul>
+            <a href="#" class="tier-btn" onclick="alert('Please contact support for subscription details')">Choose Plan</a>
+          </div>
+
+          <div class="tier-card">
+            <div class="tier-name">The Architect's</div>
+            <div class="tier-price">$30.00<span style="font-size: 1rem; font-weight: normal; color: #64748b;">/month</span></div>
+            <ul class="tier-features">
+              <li>40 track downloads per month</li>
+              <li>3 album downloads per month</li>
+              <li>3 book requests (1500 chapters each)</li>
+              <li>3 active sessions</li>
+              <li>100% of books unlocked</li>
+            </ul>
+            <a href="#" class="tier-btn" onclick="alert('Please contact support for subscription details')">Choose Plan</a>
+          </div>
+
+          <div class="tier-card">
+            <div class="tier-name">The Monarchs</div>
+            <div class="tier-price">$50.00<span style="font-size: 1rem; font-weight: normal; color: #64748b;">/month</span></div>
+            <ul class="tier-features">
+              <li>50 track downloads per month</li>
+              <li>5 album downloads per month</li>
+              <li>5 book requests (3000 chapters each)</li>
+              <li>4 active sessions</li>
+              <li>100% of books unlocked</li>
+            </ul>
+            <a href="#" class="tier-btn" onclick="alert('Please contact support for subscription details')">Choose Plan</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Support -->
+      <section id="support" class="section">
+        <h2>Support & Community</h2>
+        <p>Try our free trial to get started</p>
+
+        <div class="support-grid">
+          <div class="support-card">
+            <div class="support-icon">
+              <i class="fab fa-discord"></i>
+            </div>
+            <h3>Discord Community</h3>
+            <p>Join our Discord for instant support and community discussions</p>
+            <a href="https://discord.gg/NHjG6mQdmN" target="_blank" class="support-btn">
+              <i class="fab fa-discord"></i>
+              Join Discord
+            </a>
+          </div>
+
+          <div class="support-card">
+            <div class="support-icon">
+              <i class="fas fa-book-open"></i>
+            </div>
+            <h3>Guide</h3>
+            <p>Step-by-step guide to getting started and accessing premium content</p>
+            <button class="support-btn" onclick="openGuideModal()">
+              <i class="fas fa-book-open"></i>
+              View Guide
+            </button>
+          </div>
+
+          <div class="support-card">
+            <div class="support-icon">
+              <i class="fas fa-envelope"></i>
+            </div>
+            <h3>Contact Us</h3>
+            <p>Need direct support? Send us an email and we'll get back to you</p>
+            <a href="mailto:webaudio.me@gmail.com" class="support-btn">
+              <i class="fas fa-envelope"></i>
+              Email Support
+            </a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2025 Web Audio. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Main Login/Register Modal -->
+  <div id="signInModal" class="modal-overlay">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      
+      <h2 id="modalTitle">Access Web Audio</h2>
+      
+      <div class="login-options">
+        <button class="login-tab register-tab" onclick="switchTab('register')">Register</button>
+        <button class="login-tab" onclick="switchTab('signin')">Sign In</button>
+        <button class="login-tab" onclick="switchTab('creator')">Creator</button>
+      </div>
+
+      <!-- Register Form (Guest Trial) -->
+      <form id="registerForm" style="display: none;">
+        <div class="device-security-notice">
+          <h4>🔒 Enhanced Device Security</h4>
+          <p>Trial access uses advanced device fingerprinting and secure passkeys for maximum security. You can only access your trial from this device.</p>
+        </div>
+
+        <div class="trial-info">
+          <h4>🎉 48-Hour Free Trial</h4>
+          <ul>
+            <li>Full access to premium content</li>
+            <li>High-quality streaming</li>
+            <li>No credit card required</li>
+            <li>One trial per device (protected by passkey)</li>
+          </ul>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-input" id="registerUsername" placeholder="Choose a username" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="registerEmail" placeholder="Enter your email" required>
+        </div>
+
+        <button type="submit" class="submit-btn register-btn" id="registerSubmit">
+          <i class="fas fa-rocket"></i>
+          Start Free Trial
+        </button>
+      </form>
+
+      <!-- General Sign In (Members & Trial Users) -->
+      <form id="kofiForm" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="kofiEmail" placeholder="Enter your email address" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">PIN</label>
+          <div class="password-field">
+            <input type="password" class="form-input" id="kofiPin" placeholder="Enter 6-digit PIN" maxlength="6" required>
+            <button type="button" class="password-toggle" onclick="togglePassword('kofiPin')">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+            <div class="guide-link">
+              <button type="button" onclick="openGuideModal()" style="color: white; text-decoration: none; font-size: 1rem; font-weight: 700; padding: 0.5rem 1rem; border: 2px solid transparent; border-radius: 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3); cursor: pointer;">Guide</button>
+            </div>
+            <div class="forgot-pin">
+              <a href="#" onclick="openGetPinModal()">Get PIN</a>
+            </div>
+          </div>
+        </div>
+
+        <div id="kofiError" class="error-message" style="display: none;"></div>
+        <div id="kofiSuccess" class="success-message"></div>
+
+        <button type="submit" class="submit-btn" id="kofiSubmit">
+          <i class="fas fa-sign-in-alt"></i>
+          Sign In
+        </button>
+      </form>
+
+      <!-- Creator Login -->
+      <form id="creatorForm" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="creatorEmail" placeholder="Enter your email" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="password-field">
+            <input type="password" class="form-input" id="creatorPassword" placeholder="Enter your password" required>
+            <button type="button" class="password-toggle" onclick="togglePassword('creatorPassword')">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="creatorError" class="error-message" style="display: none;"></div>
+
+        <button type="submit" class="submit-btn" id="creatorSubmit">
+          <i class="fas fa-sign-in-alt"></i>
+          Sign In as Creator
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- OTP Verification Modal -->
+  <div id="otpModal" class="modal-overlay">
+    <div class="otp-modal">
+      <button class="modal-close" onclick="closeOtpModal()">&times;</button>
+      
+      <h2>Verify Your Email</h2>
+      
+      <p style="color: #64748b; margin-bottom: 1.5rem;">
+        We've sent a 6-digit verification code to your email address.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Verification Code</label>
+        <input type="text" class="form-input otp-input" id="otpCode" placeholder="000000" maxlength="6" required>
+      </div>
+
+      <button type="button" class="submit-btn register-btn" id="verifyOTPBtn">
+        <i class="fas fa-check"></i>
+        Verify Code
+      </button>
+
+      <div class="resend-otp">
+        <span style="font-size: 0.875rem; color: #64748b;">Didn't receive the code? </span>
+        <button type="button" class="resend-link" id="resendOTPBtn">Resend Code</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal with Confetti -->
+  <div id="successModal" class="modal-overlay">
+    <div class="success-modal">
+      <div class="confetti-container" id="confettiContainer"></div>
+      
+      <div class="success-icon">
+        <i class="fas fa-check"></i>
+      </div>
+      
+      <h2 style="color: #15803d; margin-bottom: 1rem;">🎉 Welcome to Web Audio!</h2>
+      
+      <p style="color: #64748b; margin-bottom: 1.5rem;">
+        Your free trial has been activated successfully with enhanced security!
+      </p>
+
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
+        <h3 style="color: #15803d; margin-bottom: 1rem;">You can now sign in with:</h3>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem;">
+          <span style="color: #64748b; font-weight: 600;">Email:</span>
+          <span id="successEmail" style="color: #15803d; font-weight: 600;"></span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 1rem;">
+          <span style="color: #64748b; font-weight: 600;">PIN:</span>
+          <span id="successPin" style="color: #15803d; font-weight: 600; font-size: 1.2rem; letter-spacing: 0.1rem;"></span>
+        </div>
+        <div style="margin-top: 1rem; padding: 0.5rem; background: #e6fffa; border-radius: 6px; font-size: 0.85rem; color: #0d9488;">
+          <i class="fas fa-shield-alt"></i> This device is now protected by a secure passkey
+        </div>
+      </div>
+
+      <button class="submit-btn" onclick="closeSuccessAndLogin()">
+        <i class="fas fa-sign-in-alt"></i>
+        Sign In Now
+      </button>
+    </div>
+  </div>
+
+  <!-- Get PIN Modal -->
+  <div id="getPinModal" class="modal-overlay">
+    <div class="modal">
+      <button class="modal-close" onclick="closeGetPinModal()">&times;</button>
+      
+      <h2>Get Your PIN</h2>
+      
+      <form id="getPinForm">
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="getPinEmail" placeholder="Enter your registered email" required>
+        </div>
+
+        <div id="pinResult" style="display: none;">
+          <div class="pin-display">
+            <span id="retrievedPin"></span>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="getPinSubmit">
+          <i class="fas fa-key"></i>
+          Get My PIN
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Guide Modal -->
+  <div id="guideModal" class="modal-overlay">
+    <div class="modal" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+      <button class="modal-close" onclick="closeGuideModal()">&times;</button>
+      
+      <h2 style="text-align: center; margin-bottom: 2rem;">Getting Started Guide</h2>
+      
+      <div style="margin-bottom: 2rem;">
+        <p style="text-align: center; color: #64748b;">Follow these simple steps to get premium access to Web Audio's exclusive content</p>
+      </div>
+
+      <div style="margin-bottom: 2rem;">
+        <div style="background: #f8fafc; border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid #10b981;">
+          <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: 1rem;">1</div>
+            <h3 style="margin: 0; color: #1e293b;">Try Free Trial First</h3>
+          </div>
+          <p style="color: #64748b; margin-bottom: 1rem;">Start with our 48-hour free trial with enhanced security. Your device will be protected by a secure passkey.</p>
+          <button style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" onclick="closeGuideModal(); openModal('register');">
+            <i class="fas fa-rocket"></i> Start Free Trial
+          </button>
+        </div>
+
+        <div style="background: #f8fafc; border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid #1e40af;">
+          <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+            <div style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: 1rem;">2</div>
+            <h3 style="margin: 0; color: #1e293b;">Sign In</h3>
+          </div>
+          <p style="color: #64748b; margin-bottom: 1rem;">After your trial or if you're already a member, use your email to sign in and access premium content.</p>
+          <button style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" onclick="closeGuideModal(); openModal('signin');">
+            <i class="fas fa-sign-in-alt"></i> Sign In Here
+          </button>
+        </div>
+
+        <div style="background: #f8fafc; border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid #1e40af;">
+  <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+    <div style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: 1rem;">3</div>
+    <h3 style="margin: 0; color: #1e293b;">Get Your PIN</h3>
+  </div>
+  <p style="color: #64748b; margin-bottom: 1rem;">Need your PIN? Use the "Get PIN" feature. Enter your email and we'll provide your PIN instantly.</p>
+
+  <!-- Use openGetPinModal instead of openForgotPinModal for consistency -->
+  <button style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" onclick="closeGuideModal(); openGetPinModal();">
+    <i class="fas fa-key"></i> Get PIN
+  </button>
+</div>
+
+        <div style="background: #f8fafc; border-radius: 16px; padding: 1.5rem; border-left: 4px solid #1e40af;">
+          <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+            <div style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: 1rem;">4</div>
+            <h3 style="margin: 0; color: #1e293b;">Need Help?</h3>
+          </div>
+          <p style="color: #64748b; margin-bottom: 1rem;">Having trouble? Join our Discord community for instant support and help from other members.</p>
+          <a href="https://discord.gg/NHjG6mQdmN" target="_blank" style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+            <i class="fab fa-discord"></i> Join Discord
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forgot PIN Modal -->
+  <div id="forgotPinModal" class="modal-overlay">
+    <div class="modal">
+      <button class="modal-close" onclick="closeForgotPinModal()">&times;</button>
+      
+      <h2>Retrieve PIN</h2>
+      
+      <form id="forgotPinForm">
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="forgotPinEmail" placeholder="Enter your email address" required>
+        </div>
+
+        <div id="forgotPinResult" style="display: none;">
+          <div class="success-message" style="display: block;">
+            Your PIN: <strong id="forgotRetrievedPin"></strong>
+          </div>
+        </div>
+
+        <div id="forgotPinError" class="error-message" style="display: none;"></div>
+
+        <button type="submit" class="submit-btn" id="forgotPinSubmit">
+          <i class="fas fa-key"></i>
+          Get My PIN
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Load both abuse prevention systems -->
+  <script src="{{ url_for('static', path='/js/guest_abuse_prevention.js') }}"></script>
+  <script src="{{ url_for('static', path='/js/strict_guest_abuse_prevention.js') }}"></script>
+  <script src="{{ url_for('static', path='/js/login.js') }}"></script>
+
+  <!-- Theme Toggle Script -->
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const body = document.body;
+      const themeToggle = document.getElementById('themeToggle');
+      const icon = themeToggle.querySelector('i');
+
+      // Toggle dark class
+      html.classList.toggle('dark');
+      body.classList.toggle('dark');
+
+      // Update icon
+      if (html.classList.contains('dark')) {
+        icon.className = 'fas fa-sun';
+        localStorage.setItem('theme', 'dark');
+      } else {
+        icon.className = 'fas fa-moon';
+        localStorage.setItem('theme', 'light');
+      }
+    }
+
+    // Initialize theme on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      const savedTheme = localStorage.getItem('theme');
+      const html = document.documentElement;
+      const body = document.body;
+      const themeToggle = document.getElementById('themeToggle');
+      const icon = themeToggle?.querySelector('i');
+
+      // Default to light mode if no preference saved
+      if (savedTheme === 'dark') {
+        html.classList.add('dark');
+        body.classList.add('dark');
+        if (icon) icon.className = 'fas fa-sun';
+      } else {
+        html.classList.remove('dark');
+        body.classList.remove('dark');
+        if (icon) icon.className = 'fas fa-moon';
+      }
+    });
+  </script>
+</body>
+</html>

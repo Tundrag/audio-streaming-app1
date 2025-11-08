@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+
+{% block title %}Album Directory - Music Streaming App{% endblock %}
+
+{% block page_title %}Album Directory{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f9f9f9;
+        --surface: #ffffff;
+        --accent-color: #60a5fa;
+        --button-bg: transparent;
+        --button-hover-bg: #e0f2fe;
+        --button-active-bg: #bae6fd;
+        --border-color: #e0e0e0;
+        --text-primary: #333333;
+        --text-secondary: #666666;
+        --primary: #ffcc00;
+    }
+
+    .directory-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: var(--bg-primary);
+    }
+
+    .search-container {
+        position: relative;
+        margin-bottom: 2rem;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+        pointer-events: none;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.75rem 1.5rem;
+        padding-left: 2.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        color: var(--text-primary);
+        font-size: 1rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+    }
+
+    .alphabet-filter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+        position: sticky;
+        top: 0;
+        background: var(--bg-primary);
+        padding: 1rem 0;
+        z-index: 10;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .letter-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        background: var(--surface);
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 2.5rem;
+        text-align: center;
+    }
+
+    .letter-btn:hover {
+        background: var(--button-hover-bg);
+        color: var(--accent-color);
+    }
+
+    .letter-btn.active {
+        background: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+
+    .letter-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .letter-section {
+        margin-bottom: 2rem;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .letter-heading {
+        display: flex;
+        align-items: center;
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+        padding-bottom: 0.75rem;
+        margin-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .album-count {
+        margin-left: 0.75rem;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        background: var(--bg-secondary);
+        border-radius: 1rem;
+        color: var(--text-secondary);
+    }
+
+    .album-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .album-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        color: var(--accent-color);
+        text-decoration: none;
+        border-radius: 0.5rem;
+        transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        background: var(--surface);
+        border: 1px solid transparent;
+    }
+
+    .album-link:hover {
+        background: var(--bg-secondary);
+        color: var(--accent-color);
+        border-color: var(--accent-color);
+    }
+
+    .album-link.active {
+        background: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+
+    .album-link:active {
+        background: var(--button-active-bg);
+        color: white;
+        border-color: var(--accent-color);
+    }
+
+    .crown-icon {
+        color: var(--primary);
+        font-size: 0.875rem;
+        margin-left: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .directory-container {
+            padding: 1rem;
+        }
+
+        .alphabet-filter {
+            display: grid;
+            grid-template-columns: repeat(13, 1fr);
+            gap: 0.25rem;
+            padding: 0.5rem;
+        }
+
+        .letter-btn {
+            padding: 0.5rem 0.75rem;
+            min-width: 1.75rem;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .letter-btn[data-letter="all"] {
+            grid-column: span 2;
+        }
+        
+        .letter-btn[data-letter="#"] {
+            grid-column: span 1;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .alphabet-filter {
+            grid-template-columns: repeat(9, 1fr);
+            gap: 0.2rem;
+        }
+
+        .letter-btn {
+            padding: 0.4rem 0.5rem;
+            font-size: 0.85rem;
+        }
+        
+        .letter-btn[data-letter="all"] {
+            grid-column: span 2;
+        }
+        
+        .letter-btn[data-letter="#"] {
+            grid-column: span 1;
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .letter-section {
+            animation: none;
+        }
+        
+        .album-link,
+        .letter-btn {
+            transition: none;
+        }
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="directory-container">
+    <div class="search-container">
+        <i class="fas fa-search search-icon"></i>
+        <input type="text" 
+               class="search-input" 
+               placeholder="Search albums..." 
+               id="albumSearch"
+               aria-label="Search albums">
+    </div>
+
+    <div class="alphabet-filter" id="alphabetFilter">
+        <button class="letter-btn active" data-letter="all">All</button>
+        <button class="letter-btn" data-letter="#">#</button>
+        {% for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' %}
+            <button class="letter-btn" data-letter="{{ letter }}">{{ letter }}</button>
+        {% endfor %}
+    </div>
+
+    <div id="albumSections">
+        {% for letter, albums in albums_by_letter.items() %}
+            {% if albums %}
+                <div class="letter-section" data-letter="{{ letter }}">
+                    <h2 class="letter-heading">
+                        {{ letter }}
+                        <span class="album-count">({{ albums|length }})</span>
+                    </h2>
+                    <ul class="album-list">
+                        {% for album in albums %}
+                            <li>
+                                <a href="/album/{{ album.id }}" class="album-link" data-album-id="{{ album.id }}">
+                                    {{ album.title }}
+                                    {% if album.tier_restrictions and album.tier_restrictions.is_restricted %}
+                                        <i class="fas fa-crown crown-icon"></i>
+                                    {% endif %}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Make initializeDirectory globally available
+window.initializeDirectory = function() {
+    console.log('=== Initializing Catalog/Directory Page ===');
+    
+    const alphabetFilter = document.getElementById('alphabetFilter');
+    const albumSections = document.getElementById('albumSections');
+    const searchInput = document.getElementById('albumSearch');
+    const allAlbumLinks = document.querySelectorAll('.album-link');
+    
+    if (!alphabetFilter || !albumSections || !searchInput) {
+        console.warn('Directory elements not found');
+        return;
+    }
+
+    console.log('Found', allAlbumLinks.length, 'album links');
+    
+    // Clean up existing event listeners
+    if (window.catalogCleanup) {
+        window.catalogCleanup();
+    }
+    
+    const cleanupFunctions = [];
+    
+    // NOTE: We don't need to setup album link click handlers anymore
+    // The AJAX navigation system will handle them automatically since they now have proper hrefs
+    
+    // Clone and re-setup alphabet filter to remove old listeners
+    const newAlphabetFilter = alphabetFilter.cloneNode(true);
+    alphabetFilter.parentNode.replaceChild(newAlphabetFilter, alphabetFilter);
+    
+    // Filter by letter
+    const handleLetterClick = function(e) {
+        if (e.target.classList.contains('letter-btn')) {
+            // Update active state
+            document.querySelectorAll('.letter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            e.target.classList.add('active');
+
+            const selectedLetter = e.target.dataset.letter;
+            filterAlbums(selectedLetter, searchInput.value);
+        }
+    };
+    
+    newAlphabetFilter.addEventListener('click', handleLetterClick);
+    
+    cleanupFunctions.push(() => {
+        newAlphabetFilter.removeEventListener('click', handleLetterClick);
+    });
+
+    // Search functionality
+    let searchTimeout;
+    const handleSearch = function(e) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const searchQuery = e.target.value.toLowerCase();
+            const activeLetter = document.querySelector('.letter-btn.active')?.dataset.letter || 'all';
+            filterAlbums(activeLetter, searchQuery);
+        }, 200);
+    };
+    
+    // Clone search input to remove old listeners
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+    
+    newSearchInput.addEventListener('input', handleSearch);
+    
+    cleanupFunctions.push(() => {
+        newSearchInput.removeEventListener('input', handleSearch);
+        clearTimeout(searchTimeout);
+    });
+
+    function filterAlbums(letter, searchQuery) {
+        const sections = document.querySelectorAll('.letter-section');
+        
+        sections.forEach(section => {
+            const albumLinks = section.querySelectorAll('.album-link');
+            let hasVisibleAlbums = false;
+
+            albumLinks.forEach(album => {
+                const albumTitle = album.textContent.trim().toLowerCase();
+                const matchesSearch = albumTitle.includes(searchQuery);
+                const matchesLetter = letter === 'all' || section.dataset.letter === letter;
+
+                const listItem = album.parentElement;
+                if (matchesSearch && matchesLetter) {
+                    listItem.style.display = '';
+                    hasVisibleAlbums = true;
+                } else {
+                    listItem.style.display = 'none';
+                }
+            });
+
+            section.style.display = hasVisibleAlbums ? '' : 'none';
+        });
+
+        updateLetterButtonStates();
+    }
+
+    function updateLetterButtonStates() {
+        const letterBtns = document.querySelectorAll('.letter-btn');
+        const searchQuery = document.getElementById('albumSearch').value.toLowerCase();
+        const allLinks = document.querySelectorAll('.album-link');
+
+        letterBtns.forEach(btn => {
+            const letter = btn.dataset.letter;
+            if (letter === 'all') return;
+
+            let hasAlbums = false;
+            
+            if (letter === '#') {
+                // Check for albums starting with numbers or symbols
+                hasAlbums = Array.from(allLinks).some(album => {
+                    const albumTitle = album.textContent.trim().toLowerCase();
+                    const firstChar = albumTitle.charAt(0).toUpperCase();
+                    return !firstChar.match(/[A-Z]/) && albumTitle.includes(searchQuery);
+                });
+            } else {
+                // Check for albums starting with the specific letter
+                hasAlbums = Array.from(allLinks).some(album => {
+                    const albumTitle = album.textContent.trim().toLowerCase();
+                    return albumTitle.charAt(0).toUpperCase() === letter && albumTitle.includes(searchQuery);
+                });
+            }
+
+            btn.classList.toggle('disabled', !hasAlbums);
+        });
+    }
+    
+    // Store cleanup function globally
+    window.catalogCleanup = function() {
+        cleanupFunctions.forEach(fn => fn());
+    };
+    
+    console.log('=== Catalog initialization complete ===');
+}
+
+// Initialize on traditional page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.querySelector('.directory-container')) {
+        console.log('DOMContentLoaded - initializing catalog');
+        initializeDirectory();
+    }
+});
+
+// Initialize on AJAX navigation
+document.addEventListener('ajaxPageInit', function(event) {
+    if (event.detail && (event.detail.type === 'catalog' || event.detail.url.includes('/catalog'))) {
+        console.log('ajaxPageInit event - initializing catalog');
+        setTimeout(() => initializeDirectory(), 100);
+    }
+});
+
+document.addEventListener('ajaxPageLoaded', function(event) {
+    if (event.detail && (event.detail.type === 'catalog' || event.detail.url.includes('/catalog'))) {
+        console.log('ajaxPageLoaded event - initializing catalog');
+        setTimeout(() => initializeDirectory(), 200);
+    }
+});
+
+// Handle visibility changes
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && document.querySelector('.directory-container')) {
+        console.log('Page became visible - checking catalog initialization');
+        // Re-initialize if needed
+        const searchInput = document.getElementById('albumSearch');
+        if (searchInput && !searchInput.dataset.initialized) {
+            console.log('Re-initializing catalog');
+            initializeDirectory();
+        }
+    }
+});
+</script>
+{% endblock %}

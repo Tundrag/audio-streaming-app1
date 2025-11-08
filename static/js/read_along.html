@@ -1,0 +1,129 @@
+<!-- ============================================================================
+     read-along.html - Separate Read-Along SPA HTML Template
+     This file gets loaded dynamically into player.html to keep it lean
+     ============================================================================ -->
+
+<div class="read-along-header">
+    <div class="header-left">
+        <button class="header-btn back-btn" id="backToPlayerBtn" title="Back to Player">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back</span>
+        </button>
+    </div>
+    
+    <div class="header-center">
+        <h1 class="track-title" id="readAlongTrackTitle">Loading...</h1>
+        <p class="album-title" id="readAlongAlbumTitle">Loading...</p>
+    </div>
+    
+    <div class="header-right">
+        <button class="header-btn theme-toggle-btn" id="themeToggleBtn" title="Toggle Light/Dark Mode">
+            <i class="fas fa-sun" id="themeIcon"></i>
+        </button>
+        
+        <button class="header-btn highlight-toggle-btn" id="highlightToggleBtn" title="Toggle Sentence/Word Highlighting">
+            <i class="fas fa-text-height" id="highlightIcon"></i>
+            <span id="highlightMode">Sentence</span>
+        </button>
+    </div>
+</div>
+
+<div class="read-along-content" id="readAlongContent">
+    <div class="reading-area" id="readingArea">
+        <div class="loading-state" id="loadingState">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading text and timings...</p>
+        </div>
+        
+        <div class="error-state" id="errorState" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p id="errorMessage">Failed to load read-along content</p>
+            <button class="retry-btn" id="retryBtn">Retry</button>
+        </div>
+        
+        <div class="text-content" id="textContent" style="display: none;">
+            <!-- Text will be dynamically loaded here -->
+        </div>
+    </div>
+</div>
+
+<div class="read-along-player-controls" id="readAlongPlayerControls">
+    <div class="progress-section">
+        <div class="progress-container">
+            <div class="progress-bar" id="readAlongProgressBar">
+                <div class="progress-fill" id="readAlongProgress"></div>
+                <div class="progress-knob" id="readAlongProgressKnob"></div>
+            </div>
+            <div class="time-info">
+                <span id="readAlongCurrentTime">0:00:00</span>
+                <span id="readAlongDuration">0:00:00</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="controls-section">
+        <div class="playback-controls">
+            <button class="control-btn" id="readAlongRewind30" title="Rewind 30 seconds">
+                <i class="fas fa-rotate-left"></i>
+                <span class="time-label">30</span>
+            </button>
+            
+            <button class="control-btn" id="readAlongRewind15" title="Rewind 15 seconds">
+                <i class="fas fa-rotate-left"></i>
+                <span class="time-label">15</span>
+            </button>
+            
+            <button class="control-btn play-btn" id="readAlongPlayBtn">
+                <i class="fas fa-play" id="readAlongPlayIcon"></i>
+            </button>
+            
+            <button class="control-btn" id="readAlongForward15" title="Forward 15 seconds">
+                <i class="fas fa-rotate-right"></i>
+                <span class="time-label">15</span>
+            </button>
+            
+            <button class="control-btn" id="readAlongForward30" title="Forward 30 seconds">
+                <i class="fas fa-rotate-right"></i>
+                <span class="time-label">30</span>
+            </button>
+        </div>
+        
+        <div class="secondary-controls">
+            <button class="secondary-btn" id="readAlongSpeedBtn">
+                <i class="fas fa-gauge-high"></i>
+                <span id="readAlongSpeedDisplay">1x</span>
+            </button>
+            
+            <button class="secondary-btn voice-change-btn" id="readAlongVoiceBtn" style="display: none;">
+                <i class="fas fa-microphone-alt"></i>
+                <span id="readAlongVoiceDisplay">Voice</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Speed Menu -->
+    <div class="popup-menu" id="readAlongSpeedMenu" style="display: none;">
+        <div class="speed-options">
+            <button class="speed-option" data-speed="0.5">0.5x</button>
+            <button class="speed-option" data-speed="0.75">0.75x</button>
+            <button class="speed-option active" data-speed="1.0">1x</button>
+            <button class="speed-option" data-speed="1.25">1.25x</button>
+            <button class="speed-option" data-speed="1.5">1.5x</button>
+            <button class="speed-option" data-speed="1.75">1.75x</button>
+            <button class="speed-option" data-speed="2.0">2x</button>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Overlay for Voice Changes -->
+<div class="progress-overlay" id="readAlongProgressOverlay" style="display: none;">
+    <div class="progress-content">
+        <div class="progress-header">
+            <div class="progress-title" id="readAlongProgressTitle">Processing...</div>
+            <div class="progress-count" id="readAlongProgressCount">Please wait...</div>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-overlay" id="readAlongProgressBarOverlay" style="width: 0%;"></div>
+        </div>
+    </div>
+</div>

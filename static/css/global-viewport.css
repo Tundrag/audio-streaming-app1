@@ -1,0 +1,601 @@
+/**
+ * Enhanced Global Viewport Styles
+ * Complements global-viewport-manager.js for consistent viewport handling
+ * Place this in /static/css/global-viewport.css
+ */
+
+/* ===========================================
+   1. CSS VARIABLES (Set by JavaScript)
+   =========================================== */
+:root {
+    /* These will be dynamically set by GlobalViewportManager */
+    --nav-height: 60px;
+    --announcement-height: 0px;
+    --total-nav-height: 60px;
+    --viewport-height: 100vh;
+    --available-height: calc(100vh - 60px);
+    
+    /* Transition timings */
+    --viewport-transition: 0.3s ease;
+    --scroll-transition: 0.2s ease;
+}
+
+/* ===========================================
+   2. PREVENT DOCUMENT SCROLLING IN SPA MODE
+   =========================================== */
+html[data-spa-active="true"],
+body[data-spa-active="true"] {
+    overflow: hidden !important;
+    height: 100% !important;
+    position: fixed !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* But allow scroll in modals */
+body[data-spa-active="true"] .modal,
+body[data-spa-active="true"] .dropdown-menu,
+body[data-spa-active="true"] .tooltip,
+body[data-spa-active="true"] .popover {
+    position: fixed !important;
+}
+
+/* ===========================================
+   3. FIXED NAVIGATION STYLES
+   =========================================== */
+.main-header {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1000;
+    transition: top var(--viewport-transition);
+    box-sizing: border-box;
+}
+
+/* Navigation adjustment when announcements are visible */
+body:has(.announcement-banner[style*="display: flex"]) .main-header,
+body:has(.grace-period-message:not([style*="display: none"])) .main-header {
+    top: var(--announcement-height);
+}
+
+/* ===========================================
+   4. ANNOUNCEMENT BANNERS
+   =========================================== */
+.announcement-banner,
+.grace-period-message {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1001;
+    transition: transform var(--viewport-transition), opacity var(--viewport-transition);
+    box-sizing: border-box;
+}
+
+.announcement-banner[style*="display: none"],
+.grace-period-message[style*="display: none"] {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ===========================================
+   5. CONTAINER ADJUSTMENTS
+   =========================================== */
+.container {
+    padding-top: var(--total-nav-height) !important;
+    transition: padding-top var(--viewport-transition);
+    min-height: 100vh;
+    box-sizing: border-box;
+    width: 100%;
+    position: relative;
+    z-index: 0;
+}
+
+/* Don't apply padding to SPA containers */
+body[data-spa-active="true"] .container {
+    padding-top: 0 !important;
+}
+
+/* ===========================================
+   6. SPA CONTAINER FIXES
+   =========================================== */
+[data-viewport-fixed="true"] {
+    position: fixed !important;
+    top: var(--total-nav-height) !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: calc(100vh - var(--total-nav-height)) !important;
+    overflow: hidden !important;
+    z-index: 1;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    background: var(--bg-primary, #1a1a1a);
+}
+
+/* Common SPA containers */
+.forum-spa-container,
+#forumSPA,
+.app-spa-container,
+.player-container,
+.catalog-container,
+.modal-spa-container {
+    /* These will be automatically fixed by JavaScript */
+}
+
+/* ===========================================
+   7. SCROLLABLE AREAS
+   =========================================== */
+[data-scrollable-fixed="true"],
+[data-scrollable="true"],
+.thread-list,
+.discussion-messages,
+.album-list,
+.track-list,
+.scrollable-content,
+.message-list,
+.notification-list {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color, #404040) transparent;
+}
+
+/* Webkit scrollbar styling */
+[data-scrollable-fixed="true"]::-webkit-scrollbar,
+.thread-list::-webkit-scrollbar,
+.discussion-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+[data-scrollable-fixed="true"]::-webkit-scrollbar-track,
+.thread-list::-webkit-scrollbar-track,
+.discussion-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+[data-scrollable-fixed="true"]::-webkit-scrollbar-thumb,
+.thread-list::-webkit-scrollbar-thumb,
+.discussion-messages::-webkit-scrollbar-thumb {
+    background: var(--border-color, #404040);
+    border-radius: 3px;
+}
+
+[data-scrollable-fixed="true"]::-webkit-scrollbar-thumb:hover,
+.thread-list::-webkit-scrollbar-thumb:hover,
+.discussion-messages::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color, #4a90e2);
+}
+
+/* ===========================================
+   8. SPECIAL LAYOUT COMPONENTS
+   =========================================== */
+
+/* Messages wrapper in forum/chat */
+.messages-wrapper {
+    flex: 1 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+/* Thread list containers */
+.thread-list-container {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Fixed headers in SPA containers */
+.forum-header,
+.app-header,
+.catalog-header,
+.spa-header {
+    flex-shrink: 0 !important;
+    z-index: 10;
+    position: relative;
+    background: var(--surface, #2d2d2d);
+    border-bottom: 1px solid var(--border-color, #404040);
+}
+
+/* Navigation tabs */
+.forum-tabs,
+.app-tabs,
+.filter-tabs,
+.spa-tabs {
+    flex-shrink: 0 !important;
+    z-index: 10;
+    position: relative;
+    background: var(--surface, #2d2d2d);
+    border-bottom: 1px solid var(--border-color, #404040);
+}
+
+/* ===========================================
+   9. INPUT AREAS (FIXED AT BOTTOM)
+   =========================================== */
+.message-input-area,
+.comment-input-area,
+.search-input-area,
+.chat-input-area {
+    flex-shrink: 0 !important;
+    z-index: 10;
+    position: relative;
+    margin-top: auto;
+    background: var(--surface, #2d2d2d);
+    border-top: 1px solid var(--border-color, #404040);
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+/* ===========================================
+   10. SCROLL INDICATORS & BUTTONS
+   =========================================== */
+.scroll-to-bottom-btn,
+.inline-scroll-btn,
+.scroll-indicator {
+    position: fixed !important;
+    z-index: 100 !important;
+    transition: opacity var(--scroll-transition), transform var(--scroll-transition);
+}
+
+.scroll-to-bottom-btn.hidden,
+.inline-scroll-btn.hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(10px) !important;
+}
+
+/* ===========================================
+   11. CAROUSEL FIXES
+   =========================================== */
+.carousel-wrapper {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+.carousel-container {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+}
+
+.carousel-container::-webkit-scrollbar {
+    display: none;
+}
+
+.carousel-track {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 1rem;
+    width: max-content !important;
+}
+
+/* ===========================================
+   12. MODAL ADJUSTMENTS
+   =========================================== */
+.modal {
+    position: fixed !important;
+    z-index: 2000 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+}
+
+.modal-content {
+    max-height: calc(var(--viewport-height) - 2rem) !important;
+    overflow-y: auto !important;
+    margin: 1rem auto !important;
+}
+
+/* ===========================================
+   13. MOBILE RESPONSIVE
+   =========================================== */
+@media (max-width: 768px) {
+    :root {
+        --nav-height: 56px; /* Typical mobile nav height */
+    }
+    
+    .container {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    
+    [data-viewport-fixed="true"] {
+        padding: 0.5rem;
+    }
+    
+    .message-input-area,
+    .comment-input-area {
+        padding: 0.75rem;
+    }
+    
+    /* Handle mobile keyboard */
+    [data-viewport-fixed="true"] {
+        height: var(--available-height) !important;
+    }
+}
+
+/* Very small mobile screens */
+@media (max-width: 480px) {
+    .container {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+    
+    [data-viewport-fixed="true"] {
+        padding: 0.25rem;
+    }
+}
+
+/* Mobile landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+    .hide-landscape {
+        display: none !important;
+    }
+    
+    .forum-header,
+    .spa-header {
+        padding: 0.5rem;
+    }
+    
+    .message-input-area {
+        padding: 0.5rem;
+    }
+}
+
+/* ===========================================
+   14. LOADING STATES
+   =========================================== */
+.spa-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 50;
+    color: var(--text-secondary, #aaa);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.spa-loading i {
+    font-size: 2rem;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ===========================================
+   15. UTILITY CLASSES
+   =========================================== */
+
+/* Force no scroll on body */
+.no-body-scroll {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+}
+
+/* Force element to be scrollable */
+.force-scrollable {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+/* Flex layout helpers */
+.flex-column {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.flex-1 {
+    flex: 1 !important;
+}
+
+.flex-shrink-0 {
+    flex-shrink: 0 !important;
+}
+
+.min-h-0 {
+    min-height: 0 !important;
+}
+
+/* ===========================================
+   16. THEME SUPPORT
+   =========================================== */
+
+/* Dark theme (default) */
+[data-theme="dark"] .main-header {
+    background-color: var(--header-bg, #1a1a1a);
+    border-bottom: 1px solid var(--border-color, #404040);
+}
+
+[data-theme="dark"] [data-viewport-fixed="true"] {
+    background-color: var(--bg-primary, #1a1a1a);
+}
+
+[data-theme="dark"] .announcement-banner {
+    background-color: var(--warning-color, #f59e0b);
+    color: var(--text-primary, #000);
+}
+
+/* Light theme */
+[data-theme="light"] .main-header {
+    background-color: var(--header-bg, #ffffff);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] [data-viewport-fixed="true"] {
+    background-color: var(--bg-primary, #ffffff);
+}
+
+[data-theme="light"] .announcement-banner {
+    background-color: var(--warning-color, #fef08a);
+    color: var(--text-primary, #92400e);
+}
+
+/* ===========================================
+   17. HIGH CONTRAST & ACCESSIBILITY
+   =========================================== */
+@media (prefers-contrast: high) {
+    .main-header {
+        border-bottom-width: 2px !important;
+    }
+    
+    [data-viewport-fixed="true"] {
+        border: 1px solid var(--border-color) !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
+    
+    .carousel-container {
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ===========================================
+   18. PRINT STYLES
+   =========================================== */
+@media print {
+    .main-header,
+    .announcement-banner,
+    .grace-period-message {
+        position: static !important;
+        top: auto !important;
+    }
+    
+    .container {
+        padding-top: 0 !important;
+    }
+    
+    [data-viewport-fixed="true"] {
+        position: static !important;
+        height: auto !important;
+        top: auto !important;
+        bottom: auto !important;
+        overflow: visible !important;
+    }
+    
+    .message-input-area,
+    .scroll-to-bottom-btn,
+    .carousel-button {
+        display: none !important;
+    }
+}
+
+/* ===========================================
+   19. DEBUG STYLES (Remove in production)
+   =========================================== */
+[data-viewport-manager="ready"] {
+    /* Visual indicator that viewport manager is active */
+}
+
+[data-viewport-fixed="true"]::before {
+    /* Uncomment for debugging */
+    /* 
+    content: "FIXED";
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: red;
+    color: white;
+    padding: 2px 4px;
+    font-size: 10px;
+    z-index: 9999;
+    */
+}
+
+[data-scrollable-fixed="true"]::after {
+    /* Uncomment for debugging */
+    /*
+    content: "SCROLL";
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: blue;
+    color: white;
+    padding: 2px 4px;
+    font-size: 10px;
+    z-index: 9999;
+    */
+}
+
+/* ===========================================
+   20. TRANSITIONS & ANIMATIONS
+   =========================================== */
+
+/* Smooth transitions for viewport changes */
+.main-header,
+.container,
+[data-viewport-fixed="true"] {
+    transition: 
+        top var(--viewport-transition),
+        height var(--viewport-transition),
+        padding-top var(--viewport-transition),
+        transform var(--viewport-transition);
+}
+
+/* Smooth scroll behavior */
+[data-scrollable-fixed="true"] {
+    scroll-behavior: smooth;
+}
+
+/* Fade in animation for SPA containers */
+[data-viewport-fixed="true"] {
+    animation: fadeInViewport 0.3s ease-out;
+}
+
+@keyframes fadeInViewport {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Scale animation for modals */
+.modal.show .modal-content {
+    animation: scaleIn 0.2s ease-out;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}

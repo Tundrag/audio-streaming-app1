@@ -1,0 +1,1666 @@
+{% extends 'base.html' %}
+
+{% block title %}Collection - Music Streaming App{% endblock %}
+
+{% block page_title %}Collection{% endblock %}
+
+{% block extra_css %}
+    <style>
+        /* Deletion Report Styles */
+        .deletion-report {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0.5rem;
+        }
+
+        .deletion-report h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .deletion-report ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .deletion-report li {
+            margin: 0.25rem 0;
+        }
+
+        .deletion-report li.success {
+            color: #10B981;
+        }
+
+        .deletion-report li.warning {
+            color: #F59E0B;
+        }
+
+        .deletion-report li.error {
+            color: #EF4444;
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.95); }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* Tier Select Styles */
+        .tier-select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #4B5563;
+            border-radius: 0.375rem;
+            font-size: 0.95rem;
+            background-color: var(--background-secondary);
+            color: var(--text);
+        }
+
+        .tier-select option {
+            padding: 8px;
+            margin: 2px 0;
+            background-color: var(--background-secondary);
+            color: var(--text);
+        }
+
+        .tier-select option:first-child {
+            font-weight: 500;
+            border-bottom: 1px solid #4B5563;
+            margin-bottom: 8px;
+            padding: 12px 8px;
+        }
+
+        .tier-select option.included-tier {
+            background-color: #1E40AF;
+            color: #FFFFFF;
+            font-weight: 500;
+        }
+
+        .tier-select option.excluded-tier {
+            color: #9CA3AF;
+        }
+
+        .help-text {
+            margin-top: 0.5rem;
+            color: #9CA3AF;
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+
+        .help-text strong {
+            color: #3B82F6;
+            font-weight: 600;
+        }
+
+        /* Blue Text Class */
+        .blue-text {
+            color: #3B82F6;
+        }
+
+        /* Collection Header */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            margin-top: 2rem; /* Add space from top navigation */
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            margin: 0;
+            color: #3B82F6;
+        }
+
+        @media (max-width: 768px) {
+            .section-header {
+                flex-direction: column;
+                align-items: stretch;
+                margin-top: 1.5rem; /* Smaller margin on mobile */
+            }
+            
+            .section-header h2 {
+                font-size: 1.25rem;
+            }
+        }
+
+        /* Search Bar Styles */
+        .collection-search {
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 999px;
+            overflow: hidden;
+            background-color: var(--background-secondary);
+            border: 1px solid #CBD5E0;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.5rem 2.5rem 0.5rem 3rem;
+            border: none;
+            font-size: 1rem;
+            background-color: transparent;
+            color: var(--text);
+        }
+
+        .search-input:focus {
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: #A0AEC0;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            font-size: 1rem;
+            color: #A0AEC0;
+        }
+
+        .clear-search {
+            position: absolute;
+            right: 1rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #A0AEC0;
+            display: none;
+        }
+
+        .search-input:not(:placeholder-shown) + .search-icon + .clear-search {
+            display: block;
+        }
+
+        .search-status {
+            font-size: 0.875rem;
+            color: #6B7280;
+            margin-left: 1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Create Album Button */
+        .add-album-btn, .btn {
+            background-color: #3B82F6;
+            color: #FFFFFF;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            text-decoration: none;
+        }
+
+        .add-album-btn:hover, .btn:hover {
+            background-color: #2563EB;
+        }
+
+        .btn-secondary {
+            background-color: #6B7280;
+        }
+
+        .btn-secondary:hover {
+            background-color: #4B5563;
+        }
+
+        /* Albums Grid - Fixed for 6 cards on desktop */
+        .albums-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+            min-height: 400px;
+            align-items: start;
+            justify-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 768px) {
+            .albums-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 1.25rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .albums-grid {
+                grid-template-columns: repeat(6, 1fr);
+                gap: 1.5rem;
+                max-width: 1200px;
+            }
+        }
+
+        @media (min-width: 1400px) {
+            .albums-grid {
+                grid-template-columns: repeat(6, 1fr);
+                gap: 1.5rem;
+                max-width: 1400px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .albums-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+                max-width: none;
+            }
+            
+            .album-card {
+                max-width: none;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .albums-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+            }
+        }
+
+        /* Album Card Styles - Fixed sizing */
+        .album-card {
+            position: relative;
+            background-color: #FFFFFF;
+            color: #1A202C;
+            border: 1px solid #E2E8F0;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            width: 100%;
+            max-width: 280px; /* Prevent cards from getting too large */
+            margin: 0 auto;
+        }
+
+        .album-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Dark Theme Album Cards */
+        [data-theme="dark"] .album-card {
+            background-color: #1F2937;
+            border-color: #374151;
+            color: #F3F4F6;
+        }
+
+        [data-theme="dark"] .album-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border-color: #4B5563;
+        }
+
+        /* Album Card Button Container */
+        .album-buttons {
+            padding: 0.75rem;
+            border-bottom: 1px solid #E5E7EB;
+            background-color: #FFFFFF;
+            display: flex;
+            gap: 0.375rem;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        [data-theme="dark"] .album-buttons {
+            background-color: #1F2937;
+            border-bottom-color: #374151;
+        }
+
+        /* Individual Button Styling */
+        .btn-icon {
+            border-radius: 8px;
+            padding: 0.5rem;
+            transition: all 0.2s ease;
+            background-color: #F3F4F6;
+            color: #6B7280;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        [data-theme="dark"] .btn-icon {
+            background-color: #374151;
+            color: #E5E7EB;
+        }
+
+        /* Specific Icon Colors - Download */
+        .btn-icon.download {
+            color: #059669;
+        }
+
+        [data-theme="dark"] .btn-icon.download {
+            color: #10B981;
+        }
+
+        .btn-icon.download:hover {
+            background-color: rgba(5, 150, 105, 0.1);
+        }
+
+        [data-theme="dark"] .btn-icon.download:hover {
+            background-color: rgba(16, 185, 129, 0.2);
+        }
+
+        /* Specific Icon Colors - Favorite */
+        .btn-icon.favorite {
+            color: #9CA3AF;
+        }
+
+        .btn-icon.favorite.in-collection {
+            color: #DC2626;
+        }
+
+        [data-theme="dark"] .btn-icon.favorite.in-collection {
+            color: #EF4444;
+        }
+
+        .btn-icon.favorite:hover {
+            background-color: rgba(220, 38, 38, 0.1);
+        }
+
+        [data-theme="dark"] .btn-icon.favorite:hover {
+            background-color: rgba(239, 68, 68, 0.2);
+        }
+
+        /* Specific Icon Colors - Edit */
+        .btn-icon.edit {
+            color: #2563EB;
+        }
+
+        [data-theme="dark"] .btn-icon.edit {
+            color: #60A5FA;
+        }
+
+        .btn-icon.edit:hover {
+            background-color: rgba(37, 99, 235, 0.1);
+        }
+
+        [data-theme="dark"] .btn-icon.edit:hover {
+            background-color: rgba(96, 165, 250, 0.2);
+        }
+
+        /* Specific Icon Colors - Delete */
+        .btn-icon.delete {
+            color: #DC2626;
+        }
+
+        [data-theme="dark"] .btn-icon.delete {
+            color: #EF4444;
+        }
+
+        .btn-icon.delete:hover {
+            background-color: rgba(220, 38, 38, 0.1);
+        }
+
+        [data-theme="dark"] .btn-icon.delete:hover {
+            background-color: rgba(239, 68, 68, 0.2);
+        }
+
+        /* Hover Effects */
+        .btn-icon:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .btn-icon:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Active/Pressed State */
+        .btn-icon:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* Disabled State */
+        .btn-icon:disabled {
+            background-color: #E5E7EB;
+            color: #9CA3AF;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        [data-theme="dark"] .btn-icon:disabled {
+            background-color: #4B5563;
+            color: #9CA3AF;
+        }
+
+        /* Cover Container - Fixed aspect ratio like original */
+        .cover-container {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 100%; /* This creates a 1:1 aspect ratio (square) */
+            overflow: hidden;
+            background-color: #374151;
+        }
+
+        .album-cover {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            transition: transform 0.3s ease;
+            display: block;
+        }
+
+        .album-cover:hover {
+            transform: scale(1.05);
+        }
+
+        .album-cover-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #374151;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #F3F4F6;
+        }
+
+        [data-theme="dark"] .album-cover-placeholder {
+            background-color: #374151;
+            color: #F3F4F6;
+        }
+
+        .album-initial {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #60A5FA;
+        }
+
+        .album-cover-placeholder {
+            width: 100%;
+            height: 100%;
+            background-color: #374151;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #F3F4F6;
+        }
+
+        [data-theme="dark"] .album-cover-placeholder {
+            background-color: #374151;
+            color: #F3F4F6;
+        }
+
+        .album-initial {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #60A5FA;
+        }
+
+        /* Album Info - CRITICAL: This is where the title truncation happens */
+        .album-info {
+            padding: 0.75rem;
+            background-color: #FFFFFF;
+        }
+
+        [data-theme="dark"] .album-info {
+            background-color: #1F2937;
+        }
+
+        .album-info h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1F2937;
+            line-height: 1.2;
+            /* CRITICAL: Title truncation styles */
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-wrap: break-word;
+            word-break: break-word;
+            max-height: 2.4em; /* Fallback for browsers that don't support -webkit-line-clamp */
+        }
+
+        [data-theme="dark"] .album-info h3 {
+            color: #F3F4F6;
+        }
+
+        .album-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+            font-size: 0.8rem;
+            color: #6B7280;
+        }
+
+        [data-theme="dark"] .album-meta {
+            color: #D1D5DB;
+        }
+
+        /* Ensure specific elements maintain their intended colors */
+        [data-theme="dark"] .album-meta .track-count {
+            color: #D1D5DB;
+        }
+
+        [data-theme="dark"] .album-meta .download-info {
+            color: #9CA3AF;
+        }
+
+        .track-count {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* Access level badge styles - FIXED COLORS */
+        .access-level {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            padding: 0.125rem 0.375rem;
+            border-radius: 9999px;
+            background-color: rgba(59, 130, 246, 0.1);
+            color: rgb(59, 130, 246) !important;
+            width: fit-content;
+        }
+
+        .access-level.restricted {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: rgb(59, 130, 246) !important;
+            font-weight: 500;
+        }
+
+        .access-level i {
+            color: rgb(59, 130, 246) !important;
+            font-size: 0.75rem;
+        }
+
+        /* Override any theme-specific styles for access level */
+        [data-theme="dark"] .access-level,
+        [data-theme="dark"] .access-level.restricted {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: rgb(59, 130, 246) !important;
+        }
+
+        [data-theme="dark"] .access-level i {
+            color: rgb(59, 130, 246) !important;
+        }
+
+        /* Ensure album meta doesn't override access level colors */
+        .album-meta .access-level {
+            color: rgb(59, 130, 246) !important;
+        }
+
+        .album-meta .access-level i {
+            color: rgb(59, 130, 246) !important;
+        }
+
+        .download-info {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: #9CA3AF;
+            font-size: 0.75rem;
+        }
+
+        [data-theme="dark"] .download-info {
+            color: #9CA3AF;
+        }
+
+        /* Loading States */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #E5E7EB;
+            border-top: 4px solid #3B82F6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .load-more-container {
+            display: flex;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .load-more-btn {
+            background-color: #3B82F6;
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .load-more-btn:hover {
+            background-color: #2563EB;
+            transform: translateY(-1px);
+        }
+
+        .load-more-btn:disabled {
+            background-color: #9CA3AF;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .no-albums {
+            text-align: center;
+            padding: 3rem;
+            color: #6B7280;
+            font-size: 1.1rem;
+        }
+
+        /* Dark Mode Search Styles */
+        [data-theme="dark"] .search-wrapper {
+            background-color: #2D3748;
+            border: 1px solid #4A5568;
+        }
+
+        [data-theme="dark"] .search-input {
+            background-color: transparent;
+            color: #F7FAFC;
+            border: none;
+        }
+
+        [data-theme="dark"] .search-input::placeholder {
+            color: #A0AEC0;
+        }
+
+        [data-theme="dark"] .search-icon,
+        [data-theme="dark"] .clear-search i {
+            color: #A0AEC0;
+        }
+
+        [data-theme="dark"] .add-album-btn {
+            background-color: #3B82F6;
+            color: #FFFFFF;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+        }
+
+        [data-theme="dark"] .add-album-btn:hover {
+            background-color: #2563EB;
+        }
+
+        /* Toast Notifications - Moved to top */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background-color: #10B981;
+        }
+
+        .toast.error {
+            background-color: #EF4444;
+        }
+
+        .toast i {
+            font-size: 12px;
+            margin-right: 4px;
+        }
+
+        /* Success Message Styles */
+        .success-message {
+            position: absolute;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(16, 185, 129, 0.9);
+            color: #FFFFFF;
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            min-width: fit-content;
+        }
+
+        /* Notifications */
+        .success-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10B981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: slideIn 0.3s ease, slideOut 0.3s ease 2.7s forwards;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .error-message {
+            color: #EF4444;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            padding: 25px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Modal Styles - Dark Mode */
+        [data-theme="dark"] .modal {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        [data-theme="dark"] .modal-content {
+            background-color: #2D3748;
+            color: #F7FAFC;
+            border: 1px solid #4A5568;
+        }
+
+        [data-theme="dark"] .form-group label {
+            color: #CBD5E0;
+        }
+
+        [data-theme="dark"] .form-group input,
+        [data-theme="dark"] .form-group select {
+            background-color: #4A5568;
+            color: #F7FAFC;
+            border: 1px solid #718096;
+        }
+
+        [data-theme="dark"] .btn-cancel {
+            background-color: #718096;
+            color: #F7FAFC;
+        }
+
+        [data-theme="dark"] .btn-primary {
+            background-color: #3B82F6;
+            color: #FFFFFF;
+        }
+
+        [data-theme="dark"] .btn-delete {
+            background-color: #EF4444;
+            color: #FFFFFF;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #D1D5DB;
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            background-color: var(--background-secondary);
+            color: var(--text);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 1.5rem;
+        }
+
+        .btn-primary, .btn-cancel {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+
+        .btn-cancel {
+            background-color: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .album-selection-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 1rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            padding: 0.5rem;
+        }
+
+        .album-select-item {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .album-select-item:last-child {
+            border-bottom: none;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .current-tier {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-left: auto;
+        }
+
+        /* Download Progress Overlay Styles */
+        .download-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem;
+            background: rgba(17, 24, 39, 0.95);
+            border-radius: 0.5rem 0.5rem 0 0;
+            z-index: 20;
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+        }
+
+        .progress-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .progress-circle {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.75rem;
+            color: #FFFFFF;
+            font-weight: 500;
+        }
+
+        .progress-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .progress-stage {
+            color: #60A5FA;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: color 0.3s ease;
+        }
+
+        .progress-status {
+            color: #FFFFFF;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: opacity 0.15s ease;
+        }
+
+        .progress-substatus {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.75rem;
+            transition: opacity 0.15s ease;
+        }
+
+        .progress-ring-circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 3;
+        }
+
+        .progress-ring-circle {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+            transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+        }
+
+        /* Dark mode adjustments */
+        [data-theme="dark"] .download-progress {
+            background: rgba(17, 24, 39, 0.98);
+        }
+
+        /* Responsive Design Fixes */
+        @media (max-width: 768px) {
+            .collection-search {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-wrapper {
+                max-width: none;
+            }
+
+            .header-actions {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+        }
+
+
+/* Enhanced Bulk Edit Modal Styles */
+.album-selection-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 1rem 0;
+    border: 1px solid var(--border-color, #E2E8F0);
+    border-radius: 0.5rem;
+    padding: 0;
+    background-color: var(--background-secondary, #FFFFFF);
+}
+
+[data-theme="dark"] .album-selection-list {
+    border-color: #374151;
+    background-color: #1F2937;
+}
+
+/* Individual Album Items */
+.bulk-album-item {
+    padding: 0;
+    border-bottom: 1px solid var(--border-color, #E2E8F0);
+    transition: background-color 0.2s ease;
+}
+
+[data-theme="dark"] .bulk-album-item {
+    border-bottom-color: #374151;
+}
+
+.bulk-album-item:last-child {
+    border-bottom: none;
+}
+
+.bulk-album-item:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+[data-theme="dark"] .bulk-album-item:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* Album Label */
+.bulk-album-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    width: 100%;
+    margin: 0;
+    font-weight: normal;
+}
+
+.bulk-album-label:hover {
+    background-color: transparent;
+}
+
+/* Checkbox Styling */
+.bulk-album-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: #3B82F6;
+    cursor: pointer;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+/* Album Info Container */
+.bulk-album-info {
+    flex: 1;
+    min-width: 0; /* Allows text truncation */
+}
+
+.bulk-album-title {
+    font-weight: 500;
+    color: var(--text, #1F2937);
+    font-size: 0.95rem;
+    line-height: 1.4;
+    margin-bottom: 0.25rem;
+    /* Truncate long titles */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .bulk-album-title {
+    color: #F3F4F6;
+}
+
+/* Album Meta Information */
+.bulk-album-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary, #6B7280);
+}
+
+[data-theme="dark"] .bulk-album-meta {
+    color: #9CA3AF;
+}
+
+.bulk-album-meta .track-count {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.bulk-album-meta .track-count::before {
+    content: "♪";
+    font-size: 0.75rem;
+}
+
+/* Current Tier Badge */
+.current-tier-badge {
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.current-tier-badge[data-tier="Public"] {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #059669;
+}
+
+[data-theme="dark"] .current-tier-badge[data-tier="Public"] {
+    background-color: rgba(34, 197, 94, 0.2);
+    color: #10B981;
+}
+
+.current-tier-badge:not([data-tier="Public"]) {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3B82F6;
+}
+
+[data-theme="dark"] .current-tier-badge:not([data-tier="Public"]) {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60A5FA;
+}
+
+/* Select All Section */
+.bulk-select-all {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background-color: rgba(59, 130, 246, 0.05);
+    border-radius: 0.375rem;
+    border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+[data-theme="dark"] .bulk-select-all {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.bulk-select-all label {
+    margin: 0;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text, #1F2937);
+}
+
+[data-theme="dark"] .bulk-select-all label {
+    color: #F3F4F6;
+}
+
+#selectAllAlbums {
+    width: 18px;
+    height: 18px;
+    accent-color: #3B82F6;
+    cursor: pointer;
+}
+
+/* Empty and Error States */
+.empty-state,
+.error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--text-secondary, #6B7280);
+}
+
+[data-theme="dark"] .empty-state,
+[data-theme="dark"] .error-state {
+    color: #9CA3AF;
+}
+
+.empty-state i,
+.error-state i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+}
+
+.retry-btn {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #3B82F6;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover {
+    background-color: #2563EB;
+}
+
+/* Enhanced Modal Styling */
+#bulkEditModal .modal-content {
+    max-width: 600px;
+    width: 95%;
+}
+
+#bulkEditModal .form-group:first-of-type {
+    margin-bottom: 1.5rem;
+}
+
+/* Submit Button Enhancement */
+#bulkEditForm button[type="submit"]:disabled {
+    background-color: #9CA3AF;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+[data-theme="dark"] #bulkEditForm button[type="submit"]:disabled {
+    background-color: #6B7280;
+}
+
+/* Loading Animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Scrollbar Styling for Album List */
+.album-selection-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.album-selection-list::-webkit-scrollbar-track {
+    background: var(--background-secondary, #F3F4F6);
+    border-radius: 4px;
+}
+
+[data-theme="dark"] .album-selection-list::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+.album-selection-list::-webkit-scrollbar-thumb {
+    background: #CBD5E0;
+    border-radius: 4px;
+}
+
+[data-theme="dark"] .album-selection-list::-webkit-scrollbar-thumb {
+    background: #6B7280;
+}
+
+.album-selection-list::-webkit-scrollbar-thumb:hover {
+    background: #A0AEC0;
+}
+
+[data-theme="dark"] .album-selection-list::-webkit-scrollbar-thumb:hover {
+    background: #9CA3AF;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .album-selection-list {
+        max-height: 300px;
+    }
+
+    .bulk-album-label {
+        padding: 0.5rem 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .bulk-album-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .current-tier-badge {
+        align-self: flex-start;
+    }
+
+    #bulkEditModal .modal-content {
+        width: 98%;
+        padding: 1rem;
+    }
+}
+
+
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- Collection Header -->
+    <div class="section-header">
+        <h2 class="blue-text">Available Albums</h2>
+        
+        <!-- Search Bar -->
+        <div class="collection-search">
+            <div class="search-wrapper">
+                <input type="text" 
+                       id="albumSearch" 
+                       class="search-input" 
+                       placeholder="Search albums...">
+                <i class="fas fa-search search-icon"></i>
+                <button id="clearSearch" class="clear-search" style="display: none;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="searchStatus" class="search-status"></div>
+        </div>
+
+        <div class="header-actions">
+            {% if permissions.can_rename %}
+            <button onclick="openBulkEditModal()" class="btn btn-secondary">
+                <i class="fas fa-edit"></i> Bulk Edit Tiers
+            </button>
+            {% endif %}
+            
+            {% if permissions.can_create %}
+            <button onclick="openModal()" class="add-album-btn">
+                <i class="fas fa-plus"></i> Create Album
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Albums Grid -->
+    <div id="albumsGrid" class="albums-grid">
+        <!-- Albums will be loaded here dynamically -->
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="loading-container" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>Loading albums...</p>
+    </div>
+
+    <!-- Load More Button -->
+    <div id="loadMoreContainer" class="load-more-container" style="display: none;">
+        <button id="loadMoreBtn" class="load-more-btn">
+            <i class="fas fa-plus"></i>
+            Load More Albums
+        </button>
+    </div>
+
+    <!-- No Albums Message -->
+    <div id="noAlbumsMessage" class="no-albums" style="display: none;">
+        {% if permissions.can_create %}
+        No albums found. Create one to get started!
+        {% else %}
+        No albums available.
+        {% endif %}
+    </div>
+
+    <!-- Create Album Modal -->
+    {% if permissions.can_create %}
+    <div id="createAlbumModal" class="modal">
+        <div class="modal-content">
+            <h2>Create New Album</h2>
+            <form id="createAlbumForm">
+                <div class="form-group">
+                    <label for="albumTitle">Album Title</label>
+                    <input type="text" id="albumTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="albumCover">Album Cover</label>
+                    <input type="file" id="albumCover" accept="image/*" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="createAlbumTiers">Tier Access</label>
+                    <select id="createAlbumTiers" class="tier-select">
+                        <option value="">Public Access (No Restrictions)</option>
+                        {% for tier in available_tiers %}
+                        <option value="{{ tier.title }}" data-amount="{{ tier.amount_cents }}">
+                            {{ tier.title }} - ${{ "%.2f"|format(tier.amount_cents/100) }}/month
+                            ({{ tier.patron_count }} patrons)
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">
+                        Select tier requirement for this album
+                    </div>
+                </div>
+                
+                <div class="modal-buttons">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Album</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Edit Album Modal -->
+    {% if permissions.can_rename %}
+    <div id="editAlbumModal" class="modal">
+        <div class="modal-content">
+            <h2>Edit Album</h2>
+            <form id="editAlbumForm">
+                <div class="form-group">
+                    <label for="editAlbumTitle">Album Title</label>
+                    <input type="text" id="editAlbumTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="editAlbumCover">New Album Cover</label>
+                    <input type="file" id="editAlbumCover" accept="image/*">
+                    <div class="help-text">Leave empty to keep current cover</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editAlbumTiers">Tier Access</label>
+                    <select id="editAlbumTiers" class="tier-select">
+                        <option value="">Public Access (No Restrictions)</option>
+                        {% for tier in available_tiers %}
+                        <option value="{{ tier.title }}" data-amount="{{ tier.amount_cents }}">
+                            {{ tier.title }} - ${{ "%.2f"|format(tier.amount_cents/100) }}/month
+                            ({{ tier.patron_count }} patrons)
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">
+                        Select tier requirement for this album
+                    </div>
+                </div>
+                
+                <div class="modal-buttons">
+                    <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Delete Album Modal -->
+    {% if permissions.can_delete %}
+    <div id="deleteAlbumModal" class="modal">
+        <div class="modal-content">
+            <h2>Delete Album</h2>
+            <p>Are you sure you want to delete "<span id="deleteAlbumTitle"></span>"?</p>
+            <p style="color: #EF4444; margin-top: 1rem;">
+                <i class="fas fa-exclamation-triangle"></i>
+                This action cannot be undone and will delete all tracks in this album.
+            </p>
+            <div class="modal-buttons">
+                <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn-primary" style="background-color: #EF4444;" onclick="confirmDeleteAlbum()">Delete Album</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Bulk Edit Modal -->
+    {% if permissions.can_rename %}
+<div id="bulkEditModal" class="modal">
+    <div class="modal-content">
+        <h2>Bulk Edit Tier Access</h2>
+        <form id="bulkEditForm">
+            <div class="form-group">
+                <div class="bulk-select-all">
+                    <input type="checkbox" id="selectAllAlbums">
+                    <label for="selectAllAlbums">Select All Albums</label>
+                </div>
+                <div id="albumSelectionList" class="album-selection-list">
+                    <!-- Will be populated dynamically -->
+                </div>
+            </div>            
+            
+            <div class="form-group">
+                <label for="bulkTierSelect">New Tier Access</label>
+                <select id="bulkTierSelect" class="tier-select">
+                    <option value="">Public Access (No Restrictions)</option>
+                    {% for tier in available_tiers %}
+                    <option value="{{ tier.title }}" data-amount="{{ tier.amount_cents }}">
+                        {{ tier.title }} - ${{ "%.2f"|format(tier.amount_cents/100) }}/month
+                        ({{ tier.patron_count }} patrons)
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="help-text">
+                    Select new tier access level for selected albums
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button type="button" class="btn-cancel" onclick="closeBulkEditModal()">Cancel</button>
+                <button type="submit" class="btn-primary" disabled>Update Selected Albums</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        // Pass server data to JavaScript
+        window.collectionConfig = {
+            permissions: {
+                can_view: true,
+                can_create: {{ 'true' if permissions.can_create else 'false' }},
+                can_rename: {{ 'true' if permissions.can_rename else 'false' }},
+                can_delete: {{ 'true' if permissions.can_delete else 'false' }},
+                can_download: {{ 'true' if permissions.can_download else 'false' }},
+                downloads_blocked: {{ 'true' if permissions.downloads_blocked else 'false' }},
+                is_creator: {{ 'true' if permissions.is_creator else 'false' }}
+            },
+            available_tiers: {{ available_tiers | tojson if available_tiers else '[]' }},
+            user: {
+                download_info: {{ user.download_info | tojson if user.download_info else 'null' }}
+            }
+        };
+
+        // Navigation function for album access
+        async function navigateToAlbum(albumId) {
+            if (!albumId) {
+                window.collectionManager?.showToast('Invalid album ID', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/albums/${encodeURIComponent(albumId)}/check-access`);
+                
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    console.error('JSON parse error:', jsonError);
+                }
+                
+                if (response.status === 403) {
+                    const message = data.error?.message || 'This content requires a higher tier subscription';
+                    if (window.showUpgradeModal) {
+                        showUpgradeModal(message);
+                    } else {
+                        window.collectionManager?.showToast(message, 'error');
+                    }
+                    return;
+                }
+                
+                if (!response.ok) {
+                    window.collectionManager?.showToast(data.error?.message || 'Error accessing album', 'error');
+                    return;
+                }
+                
+                location.href = `/album/${encodeURIComponent(albumId)}`;
+                
+            } catch (error) {
+                console.error('Error checking album access:', error);
+                window.collectionManager?.showToast('Error accessing album', 'error');
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', path='/js/collection.js') }}"></script>
+{% endblock %}

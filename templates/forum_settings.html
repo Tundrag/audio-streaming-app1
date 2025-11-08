@@ -1,0 +1,710 @@
+<!-- templates/forum_settings.html -->
+{% extends "base.html" %}
+
+{% block title %}Forum Settings{% endblock %}
+{% block page_title %}Forum Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    
+    .settings-section {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .settings-section h3 {
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .settings-section h3 i {
+        color: var(--button-primary);
+    }
+    
+    .setting-item {
+        margin-bottom: 1.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .setting-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    
+    .setting-label {
+        display: block;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+    
+    .setting-description {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.75rem;
+    }
+    
+    .setting-input {
+        width: 100%;
+        max-width: 300px;
+        padding: 0.75rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+    
+    .setting-input:focus {
+        outline: none;
+        border-color: var(--button-primary);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+    
+    .setting-select {
+        width: 100%;
+        max-width: 200px;
+        padding: 0.75rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+    
+    .setting-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        width: 50px;
+        height: 24px;
+        background: var(--border-color);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .toggle-switch.active {
+        background: var(--button-primary);
+    }
+    
+    .toggle-switch::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .toggle-switch.active::after {
+        transform: translateX(26px);
+    }
+    
+    .toggle-label {
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+    
+    .alias-input-container {
+        position: relative;
+    }
+    
+    .alias-check {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.8rem;
+    }
+    
+    .alias-check.available {
+        color: #10b981;
+    }
+    
+    .alias-check.unavailable {
+        color: #ef4444;
+    }
+    
+    .alias-check.checking {
+        color: var(--text-secondary);
+    }
+    
+    .range-container {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .range-input {
+        flex: 1;
+        max-width: 200px;
+    }
+    
+    .range-value {
+        font-weight: 500;
+        color: var(--button-primary);
+        min-width: 50px;
+    }
+    
+    .save-button {
+        background: var(--button-primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .save-button:hover {
+        background: var(--button-hover);
+        transform: translateY(-1px);
+    }
+    
+    .save-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .reset-button {
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-left: 1rem;
+    }
+    
+    .reset-button:hover {
+        background: var(--hover-bg);
+        color: var(--text-primary);
+    }
+    
+    .success-message {
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #10b981;
+        padding: 0.75rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        display: none;
+    }
+    
+    .preview-notification {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 0.75rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        position: relative;
+        animation: slideInDemo 0.3s ease-out;
+    }
+    
+    @keyframes slideInDemo {
+        from {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .notification-sender {
+        font-weight: 500;
+        color: var(--button-primary);
+        font-size: 0.9rem;
+    }
+    
+    .notification-time {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+    
+    .notification-content {
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .quick-reply-input {
+        width: 100%;
+        padding: 0.5rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        resize: none;
+    }
+    
+    .notification-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    .notification-btn {
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-primary-small {
+        background: var(--button-primary);
+        color: white;
+        border: none;
+    }
+    
+    .btn-secondary-small {
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="success-message" id="successMessage">
+        <i class="fas fa-check-circle"></i> Settings saved successfully!
+    </div>
+    
+    <!-- Display Settings -->
+    <div class="settings-section">
+        <h3><i class="fas fa-user"></i> Display Settings</h3>
+        
+        <div class="setting-item">
+            <label class="setting-label">Display Name</label>
+            <div class="setting-description">
+                Choose how your name appears in the forum. You can use an alias instead of your username.
+            </div>
+            <div class="setting-toggle">
+                <div class="toggle-switch" id="useAliasToggle">
+                    <input type="checkbox" id="useAlias" style="display: none;">
+                </div>
+                <span class="toggle-label">Use custom alias</span>
+            </div>
+        </div>
+        
+        <div class="setting-item" id="aliasInputSection" style="display: none;">
+            <label class="setting-label" for="displayAlias">Custom Alias</label>
+            <div class="setting-description">
+                Choose a unique display name (2-50 characters). This will replace your username in the forum.
+            </div>
+            <div class="alias-input-container">
+                <input type="text" id="displayAlias" class="setting-input" placeholder="Enter your alias..." maxlength="50">
+                <span class="alias-check" id="aliasCheck"></span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification Settings -->
+    <div class="settings-section">
+        <h3><i class="fas fa-bell"></i> Quick Reply Notifications</h3>
+        
+        <div class="setting-item">
+            <label class="setting-label">Enable Quick Reply Notifications</label>
+            <div class="setting-description">
+                Show popup notifications that allow you to reply without navigating to the forum.
+            </div>
+            <div class="setting-toggle">
+                <div class="toggle-switch" id="enableQuickReplyToggle">
+                    <input type="checkbox" id="enableQuickReply" style="display: none;">
+                </div>
+                <span class="toggle-label">Enable quick reply notifications</span>
+            </div>
+        </div>
+        
+        <div id="quickReplySettings" style="display: none;">
+            <div class="setting-item">
+                <label class="setting-label">Notification Types</label>
+                <div class="setting-description">
+                    Choose which types of messages trigger quick reply notifications.
+                </div>
+                
+                <div style="margin-bottom: 0.75rem;">
+                    <div class="setting-toggle">
+                        <div class="toggle-switch" id="quickReplyMentionsToggle">
+                            <input type="checkbox" id="quickReplyMentions" style="display: none;">
+                        </div>
+                        <span class="toggle-label">When someone mentions me</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="setting-toggle">
+                        <div class="toggle-switch" id="quickReplyRepliesToggle">
+                            <input type="checkbox" id="quickReplyReplies" style="display: none;">
+                        </div>
+                        <span class="toggle-label">When someone replies to my messages</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="setting-item">
+                <label class="setting-label">Auto-Dismiss Timer</label>
+                <div class="setting-description">
+                    How long notifications stay visible before automatically disappearing.
+                </div>
+                <div class="range-container">
+                    <input type="range" id="autoDismissRange" class="range-input" min="5" max="60" value="10">
+                    <span class="range-value"><span id="autoDismissValue">10</span> seconds</span>
+                </div>
+            </div>
+            
+            <div class="setting-item">
+                <label class="setting-label">Notification Position</label>
+                <div class="setting-description">
+                    Where notifications appear on your screen.
+                </div>
+                <select id="notificationPosition" class="setting-select">
+                    <option value="top-right">Top Right</option>
+                    <option value="top-left">Top Left</option>
+                    <option value="bottom-right">Bottom Right</option>
+                    <option value="bottom-left">Bottom Left</option>
+                </select>
+            </div>
+            
+            <div class="setting-item">
+                <label class="setting-label">Notification Sound</label>
+                <div class="setting-description">
+                    Play a sound when receiving quick reply notifications.
+                </div>
+                <div class="setting-toggle">
+                    <div class="toggle-switch" id="notificationSoundToggle">
+                        <input type="checkbox" id="notificationSound" style="display: none;">
+                    </div>
+                    <span class="toggle-label">Enable notification sound</span>
+                </div>
+            </div>
+            
+            <!-- Preview Notification -->
+            <div class="setting-item">
+                <label class="setting-label">Preview</label>
+                <div class="setting-description">
+                    See how your notifications will look.
+                </div>
+                <button type="button" class="save-button" onclick="showPreviewNotification()" style="background: var(--text-secondary);">
+                    <i class="fas fa-eye"></i> Preview Notification
+                </button>
+                
+                <div class="preview-notification" id="previewNotification" style="display: none;">
+                    <div class="notification-header">
+                        <span class="notification-sender">SampleUser mentioned you</span>
+                        <span class="notification-time">just now</span>
+                    </div>
+                    <div class="notification-content">
+                        "Hey <span id="previewUsername">@{{ user.username }}</span>, what do you think about this idea?"
+                    </div>
+                    <textarea class="quick-reply-input" placeholder="Type your reply..." rows="2"></textarea>
+                    <div class="notification-actions">
+                        <button class="notification-btn btn-primary-small">Send</button>
+                        <button class="notification-btn btn-secondary-small">View Thread</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Privacy Settings -->
+    <div class="settings-section">
+        <h3><i class="fas fa-shield-alt"></i> Privacy Settings</h3>
+        
+        <div class="setting-item">
+            <label class="setting-label">Online Status</label>
+            <div class="setting-description">
+                Show when you're online in the forum.
+            </div>
+            <div class="setting-toggle">
+                <div class="toggle-switch" id="showOnlineStatusToggle">
+                    <input type="checkbox" id="showOnlineStatus" style="display: none;">
+                </div>
+                <span class="toggle-label">Show my online status</span>
+            </div>
+        </div>
+        
+        <div class="setting-item">
+            <label class="setting-label">Direct Mentions</label>
+            <div class="setting-description">
+                Allow other users to mention you in their messages.
+            </div>
+            <div class="setting-toggle">
+                <div class="toggle-switch" id="allowDirectMentionsToggle">
+                    <input type="checkbox" id="allowDirectMentions" style="display: none;">
+                </div>
+                <span class="toggle-label">Allow direct mentions</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Save/Reset Buttons -->
+    <div style="display: flex; align-items: center; padding: 1rem 0;">
+        <button type="button" class="save-button" id="saveButton" onclick="saveSettings()">
+            <i class="fas fa-save"></i> Save Settings
+        </button>
+        <button type="button" class="reset-button" onclick="resetSettings()">
+            <i class="fas fa-undo"></i> Reset to Defaults
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let aliasCheckTimeout;
+let currentSettings = {};
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadSettings();
+    initializeEventListeners();
+});
+
+async function loadSettings() {
+    try {
+        const response = await fetch('/api/forum/settings');
+        if (!response.ok) throw new Error('Failed to load settings');
+        
+        currentSettings = await response.json();
+        populateForm(currentSettings);
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        showToast('Failed to load settings', 'error');
+    }
+}
+
+function populateForm(settings) {
+    // Display settings
+    document.getElementById('useAlias').checked = settings.use_alias;
+    toggleSwitch('useAliasToggle', settings.use_alias);
+    document.getElementById('displayAlias').value = settings.display_alias || '';
+    toggleAliasSection(settings.use_alias);
+    
+    // Notification settings
+    document.getElementById('enableQuickReply').checked = settings.enable_quick_reply_notifications;
+    toggleSwitch('enableQuickReplyToggle', settings.enable_quick_reply_notifications);
+    document.getElementById('quickReplyMentions').checked = settings.quick_reply_for_mentions;
+    toggleSwitch('quickReplyMentionsToggle', settings.quick_reply_for_mentions);
+    document.getElementById('quickReplyReplies').checked = settings.quick_reply_for_replies;
+    toggleSwitch('quickReplyRepliesToggle', settings.quick_reply_for_replies);
+    document.getElementById('autoDismissRange').value = settings.quick_reply_auto_dismiss_seconds;
+    document.getElementById('autoDismissValue').textContent = settings.quick_reply_auto_dismiss_seconds;
+    document.getElementById('notificationPosition').value = settings.notification_position;
+    document.getElementById('notificationSound').checked = settings.enable_notification_sound;
+    toggleSwitch('notificationSoundToggle', settings.enable_notification_sound);
+    toggleQuickReplySettings(settings.enable_quick_reply_notifications);
+    
+    // Privacy settings
+    document.getElementById('showOnlineStatus').checked = settings.show_online_status;
+    toggleSwitch('showOnlineStatusToggle', settings.show_online_status);
+    document.getElementById('allowDirectMentions').checked = settings.allow_direct_mentions;
+    toggleSwitch('allowDirectMentionsToggle', settings.allow_direct_mentions);
+    
+    // Update preview username
+    if (settings.use_alias && settings.display_alias) {
+        document.getElementById('previewUsername').textContent = '@' + settings.display_alias;
+    }
+}
+
+function initializeEventListeners() {
+    // Toggle switches
+    setupToggle('useAliasToggle', 'useAlias', toggleAliasSection);
+    setupToggle('enableQuickReplyToggle', 'enableQuickReply', toggleQuickReplySettings);
+    setupToggle('quickReplyMentionsToggle', 'quickReplyMentions');
+    setupToggle('quickReplyRepliesToggle', 'quickReplyReplies');
+    setupToggle('notificationSoundToggle', 'notificationSound');
+    setupToggle('showOnlineStatusToggle', 'showOnlineStatus');
+    setupToggle('allowDirectMentionsToggle', 'allowDirectMentions');
+    
+    // Alias input with debounced checking
+    document.getElementById('displayAlias').addEventListener('input', (e) => {
+        clearTimeout(aliasCheckTimeout);
+        const value = e.target.value.trim();
+        
+        if (value.length >= 2) {
+            aliasCheckTimeout = setTimeout(() => checkAliasAvailability(value), 500);
+        } else {
+            document.getElementById('aliasCheck').textContent = '';
+        }
+    });
+    
+    // Auto-dismiss range
+    document.getElementById('autoDismissRange').addEventListener('input', (e) => {
+        document.getElementById('autoDismissValue').textContent = e.target.value;
+    });
+}
+
+function setupToggle(toggleId, checkboxId, callback = null) {
+    const toggle = document.getElementById(toggleId);
+    const checkbox = document.getElementById(checkboxId);
+    
+    toggle.addEventListener('click', () => {
+        const newValue = !checkbox.checked;
+        checkbox.checked = newValue;
+        toggleSwitch(toggleId, newValue);
+        
+        if (callback) callback(newValue);
+    });
+}
+
+function toggleSwitch(toggleId, active) {
+    const toggle = document.getElementById(toggleId);
+    toggle.classList.toggle('active', active);
+}
+
+function toggleAliasSection(show) {
+    document.getElementById('aliasInputSection').style.display = show ? 'block' : 'none';
+}
+
+function toggleQuickReplySettings(show) {
+    document.getElementById('quickReplySettings').style.display = show ? 'block' : 'none';
+}
+
+async function checkAliasAvailability(alias) {
+    const checkElement = document.getElementById('aliasCheck');
+    checkElement.textContent = 'Checking...';
+    checkElement.className = 'alias-check checking';
+    
+    try {
+        const response = await fetch(`/api/forum/settings/alias/check?alias=${encodeURIComponent(alias)}`);
+        const result = await response.json();
+        
+        if (result.available) {
+            checkElement.innerHTML = '<i class="fas fa-check"></i> Available';
+            checkElement.className = 'alias-check available';
+        } else {
+            checkElement.innerHTML = '<i class="fas fa-times"></i> ' + result.message;
+            checkElement.className = 'alias-check unavailable';
+        }
+    } catch (error) {
+        checkElement.textContent = '';
+        console.error('Error checking alias:', error);
+    }
+}
+
+async function saveSettings() {
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    
+    try {
+        const formData = {
+            display_alias: document.getElementById('displayAlias').value.trim() || null,
+            use_alias: document.getElementById('useAlias').checked,
+            enable_quick_reply_notifications: document.getElementById('enableQuickReply').checked,
+            quick_reply_for_mentions: document.getElementById('quickReplyMentions').checked,
+            quick_reply_for_replies: document.getElementById('quickReplyReplies').checked,
+            quick_reply_auto_dismiss_seconds: parseInt(document.getElementById('autoDismissRange').value),
+            notification_position: document.getElementById('notificationPosition').value,
+            enable_notification_sound: document.getElementById('notificationSound').checked,
+            show_online_status: document.getElementById('showOnlineStatus').checked,
+            allow_direct_mentions: document.getElementById('allowDirectMentions').checked
+        };
+        
+        const response = await fetch('/api/forum/settings', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to save settings');
+        }
+        
+        currentSettings = await response.json();
+        showSuccessMessage();
+        showToast('Settings saved successfully!');
+        
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showToast(error.message, 'error');
+    } finally {
+        saveButton.disabled = false;
+        saveButton.innerHTML = '<i class="fas fa-save"></i> Save Settings';
+    }
+}
+
+async function resetSettings() {
+    if (!confirm('Are you sure you want to reset all forum settings to defaults?')) return;
+    
+    try {
+        const response = await fetch('/api/forum/settings/reset', { method: 'POST' });
+        if (!response.ok) throw new Error('Failed to reset settings');
+        
+        await loadSettings();
+        showToast('Settings reset to defaults');
+    } catch (error) {
+        console.error('Error resetting settings:', error);
+        showToast('Failed to reset settings', 'error');
+    }
+}
+
+function showSuccessMessage() {
+    const message = document.getElementById('successMessage');
+    message.style.display = 'block';
+    setTimeout(() => {
+        message.style.display = 'none';
+    }, 3000);
+}
+
+function showPreviewNotification() {
+    const preview = document.getElementById('previewNotification');
+    preview.style.display = 'block';
+    
+    setTimeout(() => {
+        preview.style.display = 'none';
+    }, 5000);
+}
+
+function showToast(message, type = 'info') {
+    if (window.showToast) {
+        window.showToast(message, type);
+    } else {
+        alert(message);
+    }
+}
+</script>
+{% endblock %}

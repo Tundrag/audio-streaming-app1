@@ -1,0 +1,755 @@
+{% extends "base.html" %}
+
+{% block title %}My Book Requests{% endblock %}
+
+{% block page_title %}My Book Requests{% endblock %}
+
+{% block extra_css %}
+<style>
+
+
+/* Request Section Styling */
+.request-section {
+    margin-bottom: 2rem;
+}
+
+/* Card Elements - Base Styling */
+.card {
+    background-color: var(--bg-primary);
+    color: var(--text-color);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: var(--bg-secondary);
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    padding: 0.75rem 1rem;
+}
+
+.card-header h2,
+.card-header h3 {
+    color: var(--text-color);
+    margin: 0;
+}
+
+.card-body {
+    padding: 1rem;
+    color: var(--text-color);
+}
+
+.card-body p,
+.card-body ul li {
+    color: var(--text-color);
+}
+
+/* Request Card Styling */
+.request-card {
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 0.75rem; /* More compact */
+    margin-bottom: 0.75rem; /* More compact */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.request-card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+    font-size: 1.2rem; /* More compact */
+}
+
+.request-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+}
+
+.request-description {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    white-space: pre-line;
+    color: var(--text-color);
+    font-size: 0.9rem; /* More compact */
+    line-height: 1.4;
+}
+
+/* Request Status Badges */
+.request-status {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.status-pending {
+    background-color: #856404;
+    color: #fff3cd;
+}
+
+.status-approved {
+    background-color: #155724;
+    color: #d4edda;
+}
+
+.status-rejected {
+    background-color: #721c24;
+    color: #f8d7da;
+}
+
+.status-fulfilled {
+    background-color: #004085;
+    color: #cce5ff;
+}
+
+/* Response Box */
+.response-box {
+    background-color: var(--bg-primary);
+    border-left: 3px solid var(--primary-color);
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+    color: var(--text-color);
+}
+
+.response-box p {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.response-box .text-muted {
+    color: var(--text-light) !important;
+}
+
+/* NEW: User Reply Styling */
+.user-reply-box {
+    background-color: var(--bg-primary);
+    border-left: 3px solid #28a745;
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    color: var(--text-color);
+}
+
+.user-reply-box p {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.user-reply-box .text-muted {
+    color: var(--text-light) !important;
+}
+
+.user-reply-form {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.user-reply-form .form-label {
+    color: var(--text-color);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.user-reply-form .form-control {
+    background-color: var(--bg-secondary);
+    color: var(--text-color);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    margin-bottom: 0.75rem;
+}
+
+.user-reply-form .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+}
+
+.user-reply-form .form-text {
+    color: var(--text-light);
+    font-size: 0.8rem;
+}
+
+.user-reply-form .btn-group {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.user-reply-form .btn-reply {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.user-reply-form .btn-reply:hover {
+    background-color: #218838;
+}
+
+.user-reply-form .btn-reply:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.user-reply-form .btn-cancel {
+    background-color: var(--bg-secondary);
+    color: var(--text-color);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+    padding: 0.375rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.user-reply-form .btn-cancel:hover {
+    background-color: var(--bg-hover);
+}
+
+.reply-toggle-btn {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.reply-toggle-btn:hover {
+    background-color: #138496;
+}
+
+/* Link Styling */
+.request-link {
+    color: var(--link-color);
+    word-break: break-all;
+    font-size: 0.85rem; /* More compact */
+}
+
+/* Quota Progress Bar */
+.quota-progress {
+    height: 8px;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    background-color: var(--bg-secondary);
+}
+
+.progress-bar {
+    background-color: var(--primary-color);
+}
+
+.text-muted {
+    color: var(--text-light) !important;
+}
+
+/* Month Header and Requests */
+.month-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.6rem 0.75rem; /* More compact */
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.month-header:hover {
+    background-color: var(--bg-hover);
+}
+
+.month-header h3 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 1.1rem;
+}
+
+.month-requests {
+    margin-bottom: 1.5rem;
+    display: none;
+}
+
+.month-header.active + .month-requests {
+    display: block;
+}
+
+/* Form Elements */
+.form-label {
+    color: var(--text-color);
+}
+
+.form-control {
+    background-color: var(--bg-secondary);
+    color: var(--text-color);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.form-control:focus {
+    background-color: var(--bg-secondary);
+    color: var(--text-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+}
+
+.form-text {
+    color: var(--text-light);
+}
+
+/* Badge Styling */
+.badge {
+    font-weight: 600;
+}
+
+.badge.bg-secondary {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-color);
+}
+
+.badge.bg-warning {
+    background-color: #856404 !important;
+    color: white !important;
+}
+
+.badge.bg-success {
+    background-color: #1e7e34 !important;
+}
+
+.badge.bg-danger {
+    background-color: #bd2130 !important;
+}
+
+.badge.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+/* Alert styling */
+.alert {
+    border: 1px solid transparent;
+}
+
+.alert-success {
+    background-color: rgba(40, 167, 69, 0.15);
+    border-color: rgba(40, 167, 69, 0.4);
+    color: #d4edda;
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.15);
+    border-color: rgba(220, 53, 69, 0.4);
+    color: #f8d7da;
+}
+
+.alert-warning {
+    background-color: rgba(255, 193, 7, 0.15);
+    border-color: rgba(255, 193, 7, 0.4);
+    color: #fff3cd;
+}
+
+.alert-info {
+    background-color: rgba(23, 162, 184, 0.15);
+    border-color: rgba(23, 162, 184, 0.4);
+    color: #d1ecf1;
+}
+
+/* Button Styling - FIXED BLUE BUTTON ISSUE */
+.btn-primary, 
+button.btn-primary,
+input[type="submit"].btn-primary {
+    background-color: var(--primary-color, #007bff) !important;
+    border-color: var(--primary-color, #007bff) !important;
+    color: #ffffff !important;
+}
+
+.btn-primary:hover,
+button.btn-primary:hover,
+input[type="submit"].btn-primary:hover {
+    background-color: var(--primary-color-hover, #0069d9) !important;
+    border-color: var(--primary-color-hover, #0069d9) !important;
+}
+
+.btn-primary:disabled,
+button.btn-primary:disabled,
+input[type="submit"].btn-primary:disabled {
+    background-color: rgba(0, 123, 255, 0.5) !important;
+    border-color: rgba(0, 123, 255, 0.5) !important;
+}
+
+/* Light Theme Overrides */
+[data-theme="light"] .card {
+    background-color: #ffffff;
+    border-color: rgba(0, 0, 0, 0.125);
+}
+
+[data-theme="light"] .card-header {
+    background-color: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.125);
+}
+
+[data-theme="light"] .request-card {
+    background-color: #f8f9fa;
+}
+
+[data-theme="light"] .month-header {
+    background-color: #f8f9fa;
+}
+
+[data-theme="light"] .month-header:hover {
+    background-color: #e9ecef;
+}
+
+[data-theme="light"] .response-box {
+    background-color: #f8f9fa;
+}
+
+[data-theme="light"] .user-reply-box {
+    background-color: #e8f5e8;
+}
+
+[data-theme="light"] .user-reply-form {
+    background-color: #f8f9fa;
+    border-color: rgba(0, 0, 0, 0.125);
+}
+
+[data-theme="light"] .user-reply-form .form-control {
+    background-color: #ffffff;
+    border-color: #ced4da;
+    color: #212529;
+}
+
+[data-theme="light"] .user-reply-form .form-control:focus {
+    background-color: #ffffff;
+    color: #212529;
+}
+
+[data-theme="light"] .user-reply-form .btn-cancel {
+    background-color: #e9ecef;
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #212529;
+}
+
+[data-theme="light"] .user-reply-form .btn-cancel:hover {
+    background-color: #dee2e6;
+}
+
+[data-theme="light"] .status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+[data-theme="light"] .status-approved {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+[data-theme="light"] .status-rejected {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+[data-theme="light"] .status-fulfilled {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+[data-theme="light"] .badge.bg-secondary {
+    background-color: #6c757d !important;
+    color: #ffffff;
+}
+
+[data-theme="light"] .badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+[data-theme="light"] .form-control {
+    background-color: #ffffff;
+    border-color: #ced4da;
+    color: #212529;
+}
+
+[data-theme="light"] .form-control:focus {
+    background-color: #ffffff;
+    color: #212529;
+}
+
+[data-theme="light"] .quota-progress {
+    background-color: #e9ecef;
+}
+
+[data-theme="light"] .alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+[data-theme="light"] .alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+[data-theme="light"] .alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    color: #856404;
+}
+
+[data-theme="light"] .alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+/* Specific fixes for book-requests.html */
+h2 {
+    color: var(--text-color);
+}
+
+.btn-close {
+    color: var(--text-color);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- ✅ Bootstrap data for SSR hydration -->
+    <script id="book-requests-bootstrap-data" type="application/json">
+        {
+            "quota": {{ quota | tojson | safe }},
+            "requests": {{ (requests_by_month.values() | list | sum(start=[])) | tojson | safe }}
+        }
+    </script>
+
+<div class="container">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="request-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Submit a New Book Request</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <p>You have <span class="fw-bold">{{ quota.requests_remaining }}</span> book requests remaining for this month ({{ quota.current_month }}).</p>
+                            <div class="progress quota-progress">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ (quota.requests_used / quota.requests_allowed * 100) if quota.requests_allowed > 0 else 0 }}%" 
+                                     aria-valuenow="{{ quota.requests_used }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ quota.requests_allowed }}"></div>
+                            </div>
+                            <p class="small text-muted">
+                                {{ quota.requests_used }} used of {{ quota.requests_allowed }} allowed
+                                • Quota resets at the beginning of each month
+                            </p>
+                        </div>
+                        
+                        {% if quota.requests_remaining > 0 %}
+<form id="bookRequestForm" method="POST" action="/api/book-requests/" onsubmit="return false;">
+    <div class="mb-3">
+        <label for="bookTitle" class="form-label">Book Title *</label>
+        <input type="text" class="form-control" id="bookTitle" name="title" required>
+    </div>
+    <div class="mb-3">
+        <label for="bookAuthor" class="form-label">Author *</label>
+        <input type="text" class="form-control" id="bookAuthor" name="author" required>
+    </div>
+    <div class="mb-3">
+        <label for="bookLink" class="form-label">Link (optional)</label>
+        <input type="url" class="form-control" id="bookLink" name="link" placeholder="https://...">
+        <div class="form-text">Link is optional</div>
+    </div>
+    <div class="mb-3">
+        <label for="bookDescription" class="form-label">Description/Notes (optional)</label>
+        <textarea class="form-control" id="bookDescription" name="description" rows="3" placeholder="Why you'd like this book, additional details, etc."></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary" id="submitBtn">Submit Request</button>
+    <div id="requestStatus" class="alert mt-3" style="display: none;"></div>
+</form>
+{% else %}
+<div class="alert alert-warning">
+    <div class="d-flex flex-column">
+        <div class="mb-3">
+            <i class="fas fa-exclamation-triangle"></i> You've used all your book requests for this month. Quota will reset at the beginning of next month.
+        </div>
+        <div class="d-flex justify-content-center">
+            <a href="/support" class="btn btn-primary">
+                <i class="fas fa-arrow-circle-up"></i> Upgrade Your Membership
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="request-section">
+                <h2>My Book Requests ({{ status_counts.total }})</h2>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <span class="badge bg-warning text-dark me-2">{{ status_counts.pending }} Pending</span>
+                                <span class="badge bg-success me-2">{{ status_counts.approved }} Approved</span>
+                                <span class="badge bg-danger me-2">{{ status_counts.rejected }} Rejected</span>
+                                <span class="badge bg-primary">{{ status_counts.fulfilled }} Fulfilled</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if sorted_months %}
+                    {% for month in sorted_months %}
+                    <div class="month-container">
+                        <div class="month-header {% if loop.first %}active{% endif %}">
+                            <h3>{{ month }}</h3>
+                            <span class="badge bg-secondary">{{ requests_by_month[month]|length }}</span>
+                        </div>
+                        <div class="month-requests">
+                            {% for request in requests_by_month[month] %}
+                            <div class="request-card" id="request-{{ request.id }}">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h3>{{ request.title }}</h3>
+                                    <span class="request-status status-{{ request.status }}">{{ request.status|capitalize }}</span>
+                                </div>
+                                <div class="request-meta">
+                                    <span>Author: {{ request.author }}</span>
+                                    <span>Requested: {{ request.created_at|replace("T", " ")|truncate(16, True, "") }}</span>
+                                </div>
+                                {% if request.link %}
+                                <div>
+                                    <a href="{{ request.link }}" target="_blank" class="request-link" rel="noopener noreferrer">
+                                        <i class="fas fa-external-link-alt"></i> {{ request.link }}
+                                    </a>
+                                </div>
+                                {% endif %}
+                                {% if request.description %}
+                                <div class="request-description">{{ request.description }}</div>
+                                {% endif %}
+                                
+                                {% if request.response_message %}
+<div class="response-box">
+    <p class="mb-2"><strong>Response:</strong></p>
+    <p>{{ request.response_message }}</p>
+    <p class="mt-2 text-muted">
+        <small>Responded on {{ request.response_date|replace("T", " ")|truncate(16, True, "") }}</small>
+    </p>
+</div>
+
+<!-- NEW: Enhanced Reply Logic -->
+{% if request.user_reply %}
+    <!-- Show existing user reply -->
+    <div class="user-reply-box">
+        <p class="mb-2"><strong>Your Reply:</strong></p>
+        <p>{{ request.user_reply }}</p>
+        <p class="mt-2 text-muted">
+            <small><i class="fas fa-clock"></i> Waiting for admin response...</small>
+        </p>
+    </div>
+{% elif request.status == 'rejected' %}
+    <!-- No reply allowed for rejected requests -->
+    <div class="alert alert-info mt-3">
+        <i class="fas fa-info-circle"></i> Replies are not allowed for rejected requests.
+    </div>
+{% else %}
+    <!-- Show reply form if no user reply exists and not rejected -->
+    <button class="reply-toggle-btn" data-request-id="{{ request.id }}">
+        <i class="fas fa-reply"></i> Reply to Response
+    </button>
+    
+    <div class="user-reply-form" id="replyForm{{ request.id }}" style="display: none;">
+        <form class="reply-form" data-request-id="{{ request.id }}">
+            <div class="mb-3">
+                <label for="userReply{{ request.id }}" class="form-label">Your Reply:</label>
+                <textarea 
+                    class="form-control" 
+                    id="userReply{{ request.id }}" 
+                    name="user_reply" 
+                    rows="3" 
+                    placeholder="Add your reply to the admin response..."
+                    required
+                ></textarea>
+                <div class="form-text">
+                    <i class="fas fa-info-circle"></i> You can reply to continue the conversation. 
+                    After you reply, wait for the admin to respond before you can reply again.
+                </div>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn-cancel" data-request-id="{{ request.id }}">Cancel</button>
+                <button type="submit" class="btn-reply">
+                    <i class="fas fa-paper-plane"></i> Send Reply
+                </button>
+            </div>
+            <div class="alert mt-3" id="replyStatus{{ request.id }}" style="display: none;"></div>
+        </form>
+    </div>
+{% endif %}
+{% endif %}
+
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> You haven't made any book requests yet.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3>About Book Requests</h3>
+                </div>
+                <div class="card-body">
+                    <p>As a valued patron, you can request books you'd like to see added to the catalog.</p>
+                    <ul>
+                        <li>You get <strong>{{ quota.requests_allowed }}</strong> requests per month based on your patron tier</li>
+                        <li>Your requests will be reviewed by the creator</li>
+                        <li>Approved requests will be added to the acquisition list</li>
+                        <li>Unused requests don't carry over to the next month</li>
+                        <li>Request quota resets at the beginning of each month</li>
+                        <li><strong>You can reply to admin responses to provide additional information</strong></li>
+                    </ul>
+                    <p class="mb-0">Have more books you'd like to request? Consider upgrading your patron tier for additional benefits.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+import { MyBookRequestsController } from '/static/js/my-book-requests-shared-spa.js?v={{ APP_VERSION }}';
+
+// Initialize in SSR mode
+let myBookRequestsController;
+
+document.addEventListener('DOMContentLoaded', async function() {
+    myBookRequestsController = new MyBookRequestsController('ssr');
+    window.myBookRequestsController = myBookRequestsController;
+    window.currentUserId = {{ user.id }};
+
+    await myBookRequestsController.mount();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+
+{% block title %}{{ album.title }} - Album{% endblock %}
+
+{% block page_title %}{{ album.title[:20] ~ '...' if album.title|length > 20 else album.title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/album-detail.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Album Detail Section -->
+<div class="album-detail">
+    <!-- Blurred Background -->
+    <div class="album-header">
+        <a href="/collection" class="back-to-collection-btn" title="Back to Collection" onclick="event.preventDefault(); if (window.spaRouter) { window.spaRouter.navigate('/collection'); } else if (window.navigateTo) { window.navigateTo('/collection'); } else { window.location.href = '/collection'; }">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Collection</span>
+        </a>
+        <img src="{{ album.cover_path }}" alt="{{ album.title }}" class="album-cover-large"
+             onerror="this.src='/static/images/default-album.jpg'">
+        <div class="album-header-info">
+            <h2 class="album-title">{{ album.title }}</h2>
+            <p class="album-meta">
+                {{ album.tracks|length }} track{{ album.tracks|length != 1 and 's' or '' }}
+                | <span class="album-listens" data-full-count="{{ album.total_plays|default(0) }}" title="{{ '{:,}'.format(album.total_plays|default(0)) }} total listens"></span>
+            </p>
+            {% if permissions.can_create %}
+            <div class="album-actions">
+                <button class="add-track-btn" onclick="openAddTrackModal()">
+                    <i class="fas fa-plus"></i> Add Track
+                </button>
+                <button class="create-tts-btn" onclick="openTTSModal()">
+                    <i class="fas fa-microphone"></i> Create TTS
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="tracks-section">
+        {% if permissions.can_delete %}
+        <div class="bulk-delete-container">
+            <input type="checkbox" id="selectAllTracks">
+            <label for="selectAllTracks">Select All</label>
+            <button id="bulkDeleteBtn" class="bulk-delete-btn" style="display: none;">
+                <i class="fas fa-trash"></i> Delete Selected
+            </button>
+        </div>
+        {% endif %}
+
+        <div class="tracks-list" id="tracksList">
+            {% if not album.tracks %}
+            <div class="empty-tracks">
+                <p>No tracks available.</p>
+                {% if permissions.can_create %}
+                <p>Click "Add Track" to upload some tracks or "Create TTS" to generate audio from text.</p>
+                {% endif %}
+            </div>
+            {% else %}
+                {% for track in album.tracks %}
+                <div class="track-item" data-track-id="{{ track.id }}" data-track-type="{{ track.track_type or 'audio' }}">
+    {% if permissions.can_create %}
+    <div class="drag-handle" title="Drag to reorder">
+        <i class="fas fa-grip-vertical"></i>
+    </div>
+    {% endif %}
+
+    {% if permissions.can_delete %}
+    <input type="checkbox" class="track-checkbox"
+           data-album-id="{{ album.id }}"
+           data-track-id="{{ track.id }}">
+    {% endif %}
+
+                    <div class="track-content"
+                         onclick="window.albumDetail.playTrack(
+                             '{{ track.id }}',
+                             '{{ track.title }}',
+                             '{{ album.title }}',
+                             '{{ track.cover_path|replace('/static/', '/media/') }}',
+                             '{{ track.file_path|replace('/static/', '/media/') }}'
+                         )">
+                        <div class="track-info">
+                            <h3 class="track-title">{{ track.title }}</h3>
+                            {% if track.visibility_status and track.visibility_status != 'visible' %}
+                            <span class="track-visibility-badge {{ track.visibility_status }}"
+                                  title="{% if track.visibility_status == 'hidden_from_all' %}Hidden from All{% else %}Hidden from Users{% endif %}"
+                                  onclick="event.preventDefault(); event.stopPropagation();">
+                                <i class="fas fa-eye-slash"></i>
+                                <span class="badge-text">{% if track.visibility_status == 'hidden_from_all' %}Hidden from All{% else %}Hidden from Users{% endif %}</span>
+                            </span>
+                            {% endif %}
+
+                            <!-- Schedule countdown indicator (will be populated if schedule exists) -->
+                            <span class="track-schedule-indicator" id="track-schedule-{{ track.id }}" style="display: none;" data-tooltip="">
+                                <span class="schedule-countdown-compact"></span>
+                                <span class="schedule-full-text">
+                                    <i class="fas fa-clock"></i>
+                                    Scheduled: <strong class="schedule-target"></strong> in <strong class="schedule-countdown"></strong>
+                                </span>
+                            </span>
+
+                            <span class="track-duration" data-duration="{{ track.duration|default('0:00:00') }}">
+                                {{ track.duration|default('0:00:00') }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Track badges for TTS tracks -->
+
+<div class="track-actions">
+    {% if permissions.can_rename %}
+    <button class="btn-icon rename-track" title="Rename Track"
+            data-track-id="{{ track.id }}">
+        <i class="fas fa-edit"></i>
+    </button>
+    {% endif %}
+
+    {% if permissions.can_delete %}
+    <button class="btn-icon delete-track" title="Delete Track"
+            data-track-id="{{ track.id }}">
+        <i class="fas fa-trash"></i>
+    </button>
+    {% endif %}
+
+    {% if permissions.can_download %}
+        {% if not permissions.downloads_blocked or permissions.is_creator %}
+        <!-- Enabled Download Button -->
+        <button class="btn-icon download-track"
+                title="Download Track"
+                data-track-id="{{ track.id }}"
+                data-track-title="{{ track.title }}"
+                data-track-downloads-remaining="{{ track.downloads_remaining }}">
+            <i class="fas fa-download"></i>
+        </button>
+        {% else %}
+        <!-- Blocked Download Button -->
+        <button class="btn-icon download-track blocked"
+                disabled
+                title="Downloads are currently disabled">
+            <i class="fas fa-lock"></i>
+        </button>
+        {% endif %}
+    {% endif %}
+</div>
+
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Track Modal - Only show for users with create permission -->
+{% if permissions.can_create %}
+<div id="addTrackModal" class="modal">
+    <div class="modal-content">
+        <h2>Add Tracks</h2>
+        <form id="addTrackForm">
+            <div class="form-group">
+                <label for="trackFiles">Select MP3 Files</label>
+                <input type="file" id="trackFiles" accept=".mp3" multiple required>
+                <small class="help-text">You can select multiple MP3 files at once.</small>
+            </div>
+            <div class="form-group">
+                <label for="trackVisibility">Visibility</label>
+                <select id="trackVisibility" class="visibility-select">
+                    <option value="visible" selected>Visible to all authorized users</option>
+                    <option value="hidden_from_users">Hidden from users (Team can see)</option>
+                    {% if permissions.is_creator %}<option value="hidden_from_all">Hidden from everyone including Team</option>{% endif %}
+                </select>
+                <small class="help-text">Control who can see this track{% if permissions.is_team and not permissions.is_creator %} (Team members cannot hide from team){% endif %}</small>
+            </div>
+            <div id="uploadStatus" class="upload-status"></div>
+            <div class="form-buttons">
+                <button type="button" class="btn-secondary" onclick="closeAddTrackModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Add Tracks</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- TTS Creation Modal -->
+<div id="ttsModal" class="modal">
+    <div class="modal-content">
+        <h2>Create Text-to-Speech Track</h2>
+        <form id="ttsForm">
+            <div class="form-group">
+    <label for="ttsTitle">Track Title</label>
+    <input type="text" id="ttsTitle" name="title" required maxlength="80"
+           placeholder="Enter track title...">
+    <div class="char-counter-wrapper">
+        <span class="char-counter" id="ttsTitleCounter">
+            <span class="current-count">0</span> / 80 characters
+        </span>
+    </div>
+    <small class="help-text">Enter a descriptive title for your audio track.</small>
+</div>
+
+
+<div class="form-group">
+    <label for="ttsText">Text Content</label>
+    <textarea id="ttsText" name="text" required minlength="10"
+              placeholder="Enter the text you want to convert to speech..."></textarea>
+    <div class="char-counter-wrapper">
+        <span class="char-counter" id="ttsCharCounter">
+            <span class="current-count">0</span> / <span class="limit-count">Loading...</span> characters
+        </span>
+    </div>
+    <small class="help-text">Minimum characters required.</small>
+</div>
+
+            <div class="form-group">
+                <label for="ttsVoice">Voice</label>
+                <select id="ttsVoice" name="voice">
+                    <option value="en-US-AvaNeural">Ava (Female, Professional)</option>
+                    <option value="en-US-AriaNeural">Aria (Female, Conversational)</option>
+                    <option value="en-US-GuyNeural">Guy (Male, Clear)</option>
+                    <option value="en-US-JennyNeural">Jenny (Female, Warm)</option>
+                    <option value="en-US-ChristopherNeural">Christopher (Male, Professional)</option>
+                    <option value="en-US-EricNeural">Eric (Male, Young)</option>
+                    <option value="en-US-MichelleNeural">Michelle (Female, Friendly)</option>
+                    <option value="en-US-RogerNeural">Roger (Male, Mature)</option>
+                    <option value="en-US-SteffanNeural">Steffan (Male, Business)</option>
+                </select>
+                <small class="help-text">Choose the voice that best fits your content.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="ttsVisibility">Visibility</label>
+                <select id="ttsVisibility" class="visibility-select">
+                    <option value="visible" selected>Visible to all authorized users</option>
+                    <option value="hidden_from_users">Hidden from users (Team can see)</option>
+                    {% if permissions.is_creator %}<option value="hidden_from_all">Hidden from everyone including Team</option>{% endif %}
+                </select>
+                <small class="help-text">Control who can see this track{% if permissions.is_team and not permissions.is_creator %} (Team members cannot hide from team){% endif %}</small>
+            </div>
+
+            <!-- TTS Progress Indicator -->
+            <div id="ttsProgress" class="tts-progress">
+                <div class="progress-container">
+                    <div class="progress-bar-bg">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="progress-text">Preparing...</div>
+            </div>
+
+            <div class="form-buttons">
+                <button type="button" class="btn-secondary" onclick="closeTTSModal()">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-microphone"></i> Create TTS Track
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Bulk Delete Confirmation Modal - Only show for users with delete permission -->
+{% if permissions.can_delete %}
+<div id="confirmBulkDeleteModal" class="modal">
+    <div class="modal-content">
+        <h2>Confirm Bulk Deletion</h2>
+        <p>Are you sure you want to delete the selected track{{ selected_tracks|length != 1 and 's' or '' }}? This action cannot be undone.</p>
+        <div class="form-buttons">
+            <button type="button" class="btn-cancel" onclick="closeConfirmBulkDeleteModal()">Cancel</button>
+            <button type="button" class="btn-primary" id="confirmBulkDeleteBtn">Delete</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<!-- Bootstrap data for SSR hydration -->
+<script id="album-detail-bootstrap-data" type="application/json">
+{
+    "album": {{ album|tojson }},
+    "permissions": {
+        "can_view": {{ permissions.can_view|tojson }},
+        "can_create": {{ permissions.can_create|tojson }},
+        "can_rename": {{ permissions.can_rename|tojson }},
+        "can_delete": {{ permissions.can_delete|tojson }}
+    }
+}
+</script>
+
+<script>
+window.albumId = "{{ album.id }}";  // Ensure it's passed as a string
+window.albumTracks = {{ album.tracks|tojson|safe }};
+window.userPermissions = {
+    can_view: {{ permissions.can_view|tojson }},
+    can_create: {{ permissions.can_create|tojson }},
+    can_rename: {{ permissions.can_rename|tojson }},
+    can_delete: {{ permissions.can_delete|tojson }},
+    is_creator: {{ permissions.is_creator|tojson }},
+    is_team: {{ permissions.is_team|tojson }}
+};
+
+// Debug: Log visibility status from server-side data
+console.log('[Template] window.albumTracks loaded, count:', window.albumTracks ? window.albumTracks.length : 0);
+if (window.albumTracks) {
+    window.albumTracks.forEach((track, idx) => {
+        console.log(`[Template] Track ${idx + 1}: "${track.title}" - visibility_status:`, track.visibility_status);
+    });
+}
+
+// Album Listens Counter - Dynamic updates
+window.AlbumListensManager = (function() {
+    const listensElement = document.querySelector('.album-listens');
+
+    if (!listensElement) {
+        // console.error('❌ Album listens element not found');
+        return null;
+    }
+
+    // Abbreviate number function
+    function abbreviateNumber(num) {
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+        }
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+        }
+        return num.toString();
+    }
+
+    // Update display with new count
+    function updateDisplay(count) {
+        const fullCount = parseInt(count) || 0;
+        listensElement.setAttribute('data-full-count', fullCount);
+        listensElement.setAttribute('title', fullCount.toLocaleString() + ' total listens');
+        listensElement.textContent = abbreviateNumber(fullCount) + ' listens';
+        console.log('🔄 Updated album listens to:', fullCount);
+    }
+
+    // Fetch fresh count from server
+    async function refreshCount() {
+        try {
+            const response = await fetch(`/api/albums/${window.albumId}/plays-count`);
+            if (response.ok) {
+                const data = await response.json();
+                updateDisplay(data.total_plays);
+                return data.total_plays;
+            }
+        } catch (error) {
+            console.error('❌ Failed to refresh listen count:', error);
+        }
+    }
+
+    // Initial display
+    const initialCount = parseInt(listensElement.getAttribute('data-full-count')) || 0;
+    console.log('📊 Album total plays (initial):', initialCount);
+    updateDisplay(initialCount);
+
+    // Return public API
+    return {
+        refreshCount,
+        updateDisplay,
+        getCurrentCount: () => parseInt(listensElement.getAttribute('data-full-count')) || 0
+    };
+})();
+
+// Debug: Check DOM for visibility badges before AlbumDetails.js loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[Template DOM Ready] Checking for visibility badges in DOM...');
+    const badges = document.querySelectorAll('.track-visibility-badge');
+    console.log('[Template DOM Ready] Found', badges.length, 'visibility badges');
+    badges.forEach((badge, idx) => {
+        console.log(`[Template DOM Ready] Badge ${idx + 1}:`, badge.className, 'title:', badge.title, 'parent:', badge.parentElement?.className);
+    });
+
+    const trackItems = document.querySelectorAll('.track-item');
+    console.log('[Template DOM Ready] Total track items:', trackItems.length);
+});
+</script>
+<script src="{{ url_for('static', path='/js/AlbumDetails.js') }}"></script>
+<script src="{{ url_for('static', path='/js/AudioUpload.js') }}"></script>
+<script src="{{ url_for('static', path='/js/TTSManager.js') }}"></script>
+<script src="{{ url_for('static', path='/js/DocumentExtractionManager.js') }}"></script>
+
+
+{% endblock %}

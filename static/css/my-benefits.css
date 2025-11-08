@@ -1,0 +1,377 @@
+/* Dark theme custom properties to match original colors */
+:root[data-theme="dark"] {
+    --custom-bg-primary: #121212;
+    --custom-bg-secondary: #1a1a1a;
+    --custom-bg-tertiary: #2d2d2d;
+    --custom-text-primary: #ffffff;
+    --custom-text-secondary: #b3b3b3;
+    --custom-text-bright: #f5f5f5;
+    --custom-blue: #4a90e2;
+    --custom-green: #28a745;
+    --custom-border: rgba(255, 255, 255, 0.1);
+    --patreon-color: #f96854;
+    --kofi-color: #29abe0;
+    --trial-color: #9b59b6;
+    --warning-color: #ff9900;
+    --danger-color: #ff3b30;
+    --chapters-color: #9c59b6;
+}
+
+/* Light theme uses theme variables from themes.css */
+:root[data-theme="light"] {
+    --custom-bg-primary: var(--bg-primary);
+    --custom-bg-secondary: var(--bg-secondary);
+    --custom-bg-tertiary: var(--card-bg);
+    --custom-text-primary: var(--text-primary);
+    --custom-text-secondary: var(--text-secondary);
+    --custom-text-bright: var(--text-primary);
+    --custom-blue: var(--primary-color);
+    --custom-green: #28a745;
+    --custom-border: var(--border-color);
+    --patreon-color: #f96854;
+    --kofi-color: #29abe0;
+    --trial-color: #9b59b6;
+    --warning-color: #ff9900;
+    --danger-color: #ff3b30;
+    --chapters-color: #9c59b6;
+}
+
+.rounded-lg {
+    border-radius: 0.5rem;
+}
+
+.rounded-xl {
+    border-radius: 0.75rem;
+}
+
+.shadow-md {
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Use our custom theme variables */
+body {
+    background-color: var(--custom-bg-primary);
+    color: var(--custom-text-primary);
+}
+
+.benefit-card {
+    background-color: var(--custom-bg-secondary);
+    color: var(--custom-text-bright);
+}
+
+.benefit-section {
+    background-color: var(--custom-bg-tertiary);
+}
+
+.benefit-title {
+    color: var(--custom-blue);
+}
+
+.benefit-subtitle {
+    color: var(--custom-text-secondary);
+}
+
+.benefit-active {
+    color: var(--custom-green);
+}
+
+.border-theme {
+    border-color: var(--custom-border);
+}
+
+.stat-value-primary {
+    color: var(--custom-blue);
+}
+
+.stat-value-success {
+    color: var(--custom-green);
+}
+
+.stat-value-chapters {
+    color: var(--chapters-color);
+}
+
+/* Service badge styles */
+.service-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    color: white;
+    margin-left: 0.75rem;
+}
+
+.service-badge.patreon {
+    background-color: var(--patreon-color);
+}
+
+.service-badge.kofi,
+.service-badge.ko-fi {
+    background-color: var(--kofi-color);
+}
+
+.service-badge.guest.trial,
+.service-badge.guesttrial {
+    background-color: var(--trial-color);
+}
+
+/* Grid layout for 4 columns for stats (2x2 on mobile) */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+
+/* Chapters info styling */
+.chapters-info {
+    font-size: 0.75rem;
+    color: var(--custom-text-secondary);
+    margin-top: 0.5rem;
+    background-color: rgba(156, 89, 182, 0.2);
+    padding: 0.4rem 0.6rem;
+    border-radius: 12px;
+    border: 1px solid rgba(156, 89, 182, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.chapters-info i {
+    font-size: 0.7rem;
+    color: var(--chapters-color);
+}
+
+/* Light theme adjustments for chapters info */
+[data-theme="light"] .chapters-info {
+    background-color: rgba(156, 89, 182, 0.1);
+    color: #8e44ad;
+    border-color: rgba(156, 89, 182, 0.2);
+}
+
+[data-theme="light"] .chapters-info i {
+    color: #8e44ad;
+}
+
+/* Grace period styles */
+.grace-period-banner {
+    margin: -6px -24px 16px -24px;
+    padding: 12px 24px;
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.grace-period-active {
+    background: linear-gradient(90deg, rgba(255, 153, 0, 0.15), rgba(255, 153, 0, 0.05));
+    border-bottom: 1px solid rgba(255, 153, 0, 0.3);
+}
+
+.grace-period-expired {
+    background: linear-gradient(90deg, rgba(255, 59, 48, 0.15), rgba(255, 59, 48, 0.05));
+    border-bottom: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.grace-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.grace-period-active .grace-icon {
+    color: var(--warning-color);
+}
+
+.grace-period-expired .grace-icon {
+    color: var(--danger-color);
+}
+
+.grace-content {
+    flex-grow: 1;
+}
+
+.grace-title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.grace-message {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.grace-action {
+    white-space: nowrap;
+    padding: 8px 16px;
+    border-radius: 99px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.grace-period-active .grace-action {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.grace-period-active .grace-action:hover {
+    background-color: #e68a00;
+    transform: translateY(-1px);
+}
+
+.grace-period-expired .grace-action {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.grace-period-expired .grace-action:hover {
+    background-color: #e62e28;
+    transform: translateY(-1px);
+}
+
+/* Status indicator styles */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-grace {
+    background-color: rgba(255, 153, 0, 0.2);
+    color: var(--warning-color);
+}
+
+.status-expired {
+    background-color: rgba(255, 59, 48, 0.2);
+    color: var(--danger-color);
+}
+
+.status-active {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: var(--custom-green);
+}
+
+.status-trial {
+    background-color: rgba(155, 89, 182, 0.2);
+    color: var(--trial-color);
+}
+
+/* Trial period specific styles */
+.trial-info {
+    background: linear-gradient(135deg, rgba(155, 89, 182, 0.1), rgba(155, 89, 182, 0.05));
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.trial-time-remaining {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.trial-urgent {
+    background: linear-gradient(135deg, rgba(255, 59, 48, 0.1), rgba(255, 59, 48, 0.05));
+    border-color: rgba(255, 59, 48, 0.3);
+}
+
+.trial-warning {
+    background: linear-gradient(135deg, rgba(255, 153, 0, 0.1), rgba(255, 153, 0, 0.05));
+    border-color: rgba(255, 153, 0, 0.3);
+}
+
+/* ✅ Utility classes matching Tailwind style - COMPLETE SET */
+/* Layout */
+.flex { display: flex; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.grid { display: grid; }
+.grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+.overflow-hidden { overflow: hidden; }
+
+/* Margin */
+.mx-auto { margin-left: auto; margin-right: auto; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-4 { margin-top: 1rem; }
+.mt-6 { margin-top: 1.5rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mr-2 { margin-right: 0.5rem; }
+
+/* Padding */
+.p-2 { padding: 0.5rem; }
+.p-6 { padding: 1.5rem; }
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+.pt-4 { padding-top: 1rem; }
+.pb-4 { padding-bottom: 1rem; }
+
+/* Typography */
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-xl { font-size: 1.25rem; }
+.text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.capitalize { text-transform: capitalize; }
+
+/* Display */
+.inline-block { display: inline-block; }
+.inline-flex { display: inline-flex; }
+
+/* Border Radius */
+.rounded-lg { border-radius: 0.5rem; }
+.rounded-full { border-radius: 9999px; }
+
+/* Colors */
+.text-white { color: white; }
+.text-red-500 { color: #ef4444; }
+.text-yellow-500 { color: #eab308; }
+.text-purple-500 { color: #a855f7; }
+.bg-purple-600 { background-color: #9333ea; }
+.bg-purple-600:hover { background-color: #7e22ce; }
+.bg-blue-600 { background-color: #2563eb; }
+.bg-blue-600:hover { background-color: #1d4ed8; }
+
+/* Effects */
+.transition-colors { transition: color 0.2s, background-color 0.2s; }
+.opacity-75 { opacity: 0.75; }
+
+/* Borders */
+.border-t { border-top-width: 1px; }
+.border-b { border-bottom-width: 1px; }
+
+/* ✅ Responsive utilities (Tailwind-style breakpoints) */
+@media (min-width: 640px) {
+    .sm\:px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+    .lg\:px-8 { padding-left: 2rem; padding-right: 2rem; }
+}

@@ -1,0 +1,1 @@
+{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:fbc58a30b0cf67c9ab065dfac874dc0f90725b950438c835d269a111767e4ca0","size":1626,"annotations":{"io.containerd.image.name":"docker.io/tundragoon/audio-streaming-app1:latest","org.opencontainers.image.ref.name":"latest"}}]}

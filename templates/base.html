@@ -1,0 +1,2954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Album Catalog{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', path='/images/favicon.ico') }}" id="favicon">
+    
+    <!-- External CSS -->
+    {% block core_css %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    {% endblock %}
+    
+    {% block page_css %}
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/themes.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/mini-player.css') }}">
+    {% endblock %}
+
+    <style>
+        {% block inline_css %}
+/* COMPLETE FIXED CSS - NO CONFLICTS */
+:root{
+    --banner-height: 0px;                    /* =0 when no banner */
+}
+
+.main-header{
+    position: fixed;
+    top: var(--banner-height);               /* <── use the variable */
+    left: 0; right: 0;
+}
+
+/* Same idea for the page padding */
+.container{
+    padding-top: calc(60px + var(--banner-height));
+    transition: padding-top .3s ease;
+}
+.announcement-banner-message span{
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow-wrap: anywhere;       /* or: word-break: break-all */
+}
+
+/* ===== BANNERS & MESSAGES - FIXED LAYOUT ===== */
+.announcement-banner, .grace-period-message {
+    padding: 10px 16px;
+    display: flex;
+    align-items: flex-start;
+    font-size: 0.95rem;
+    border-bottom: 2px solid;
+    min-height: 44px;
+    box-sizing: border-box;
+    gap: 16px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all !important;
+    overflow: hidden;
+}
+
+/* Banner positioning - fixed at top */
+.announcement-banner, #broadcastBanner {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1001 !important;
+    min-height: 50px !important;
+    height: auto !important;
+    box-sizing: border-box !important;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease !important;
+}
+
+/* Show banner when display: flex */
+.announcement-banner[style*="display: flex"],
+#broadcastBanner[style*="display: flex"] {
+    transform: translateY(0) !important;
+}
+
+/* Default banner colors */
+.announcement-banner {
+    background-color: #fef08a;
+    color: #92400e;
+    border-color: #facc15;
+}
+
+/* Message container - prevents text overflow */
+.announcement-banner-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    word-break: break-all !important;
+    overflow-wrap: break-word !important;
+}
+
+.announcement-banner-message i {
+    flex-shrink: 0;
+    margin-top: 2px;
+    font-size: 1rem;
+    width: 16px;
+    text-align: center;
+}
+
+.announcement-banner-message span {
+    flex: 1;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: break-all !important;
+    white-space: normal !important;
+    hyphens: auto;
+    line-height: 1.4;
+    margin: 0;
+    overflow: hidden;
+    display: block !important;
+}
+
+
+/* Button - never gets covered by text */
+.announcement-dismiss-btn {
+    background-color: #f59e0b;
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+    flex-grow: 0;
+    min-width: 80px;
+    max-width: 120px;
+    height: fit-content;
+    align-self: flex-start;
+    position: relative;
+    z-index: 10;
+}
+
+.announcement-dismiss-btn:hover {
+    background-color: #d97706;
+    transform: translateY(-1px);
+}
+
+/* Grace period specific styles */
+.grace-period-message {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-left: 4px solid #ef4444;
+    border-radius: 4px;
+    color: #ef4444;
+    font-weight: 500;
+    margin-bottom: 20px;
+}
+
+.grace-period-container {
+    animation: gracePulsate 2s infinite;
+}
+
+@keyframes gracePulsate {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+}
+
+/* Banner variants */
+.announcement-banner.warning {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-color: #f59e0b;
+}
+
+.announcement-banner.warning .announcement-dismiss-btn {
+    background-color: #f59e0b;
+}
+
+.announcement-banner.alert {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border-color: #ef4444;
+}
+
+.announcement-banner.alert .announcement-dismiss-btn {
+    background-color: #ef4444;
+}
+
+.announcement-banner.alert .announcement-dismiss-btn:hover {
+    background-color: #dc2626;
+}
+
+.announcement-banner.info {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border-color: #3b82f6;
+}
+
+.announcement-banner.info .announcement-dismiss-btn {
+    background-color: #3b82f6;
+}
+
+.announcement-banner.info .announcement-dismiss-btn:hover {
+    background-color: #2563eb;
+}
+
+/* ===== HEADER POSITIONING - ADJUSTED FOR BANNERS ===== */
+.main-header {
+    position: fixed !important;
+    left: 0;
+    right: 0;
+    background-color: #1a202c;
+    z-index: 1000 !important;
+    padding: 8px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: top 0.3s ease !important;
+}
+
+/* When banner is visible, push nav down */
+body:has(.announcement-banner[style*="display: flex"]) .main-header,
+body:has(#broadcastBanner[style*="display: flex"]) .main-header {
+    top: 50px !important;
+}
+
+[data-theme="light"] .main-header {
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Container padding adjustments */
+.container {
+    padding-top: 60px !important;
+    transition: padding-top 0.3s ease !important;
+}
+
+body:has(.announcement-banner[style*="display: flex"]) .container,
+body:has(#broadcastBanner[style*="display: flex"]) .container {
+    padding-top: 110px !important;
+}
+
+/* ===== RESPONSIVE BANNER STYLES ===== */
+@media (max-width: 768px) {
+    .announcement-banner, .grace-period-message {
+        padding: 8px 12px;
+        gap: 12px;
+    }
+    
+    .announcement-banner-message {
+        gap: 6px;
+    }
+    
+    .announcement-dismiss-btn {
+        min-width: 70px;
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+    
+    .container {
+        padding-top: 56px !important;
+    }
+    
+    body:has(.announcement-banner[style*="display: flex"]) .container,
+    body:has(#broadcastBanner[style*="display: flex"]) .container {
+        padding-top: 106px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .announcement-banner, .grace-period-message {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 10px;
+    }
+    
+    .announcement-banner-message {
+        max-width: calc(100% - 80px);
+    }
+    
+    .announcement-dismiss-btn {
+        min-width: 65px;
+        max-width: 75px;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .announcement-banner, .grace-period-message {
+        padding: 12px 20px;
+    }
+    
+    .announcement-banner-message {
+        max-width: calc(100% - 140px);
+    }
+    
+    .announcement-dismiss-btn {
+        min-width: 120px;
+        padding: 8px 16px;
+    }
+}
+
+/* ===== THEME SUPPORT ===== */
+[data-theme="light"] .announcement-banner {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-color: #f59e0b;
+}
+
+[data-theme="light"] .announcement-dismiss-btn {
+    background-color: #f59e0b;
+}
+
+[data-theme="light"] .announcement-dismiss-btn:hover {
+    background-color: #d97706;
+}
+
+[data-theme="dark"] .announcement-banner {
+    background-color: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    border-color: #f59e0b;
+}
+
+[data-theme="dark"] .announcement-dismiss-btn {
+    background-color: #f59e0b;
+    color: #1a1a1a;
+}
+
+[data-theme="dark"] .announcement-dismiss-btn:hover {
+    background-color: #d97706;
+}
+
+/* ===== ACCESSIBILITY & SPECIAL FEATURES ===== */
+.announcement-banner:focus-within {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.announcement-dismiss-btn:focus {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+@media print {
+    .announcement-banner, .grace-period-message {
+        display: none !important;
+    }
+}
+
+@media (prefers-contrast: high) {
+    .announcement-banner {
+        border-width: 3px;
+    }
+    
+    .announcement-dismiss-btn {
+        border: 2px solid currentColor;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .announcement-dismiss-btn {
+        transition: none;
+    }
+    
+    .announcement-dismiss-btn:hover {
+        transform: none;
+    }
+    
+    .grace-period-container {
+        animation: none;
+    }
+}
+
+/* ===== QUICK REPLY NOTIFICATION ===== */
+.quick-reply-notification {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 260px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(24px);
+    border-radius: 12px;
+    box-shadow: 
+        0 4px 24px rgba(0, 0, 0, 0.08),
+        0 1px 3px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transform: translateX(calc(100% + 20px));
+    transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 1050;
+    overflow: hidden;
+    display: none;
+}
+
+.quick-reply-notification.show {
+    display: block;
+    transform: translateX(0);
+}
+
+.quick-reply-notification.animating-in {
+    animation: slideInCompact 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.quick-reply-notification.animating-out {
+    animation: slideOutCompact 0.25s ease-in;
+}
+
+@keyframes slideInCompact {
+    from {
+        opacity: 0;
+        transform: translateX(calc(100% + 20px)) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes slideOutCompact {
+    from {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(calc(100% + 20px)) scale(0.95);
+    }
+}
+
+[data-theme="dark"] .quick-reply-notification {
+    background: rgba(26, 32, 44, 0.98);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.quick-reply-notification .notification-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(74, 144, 226, 0.06), rgba(53, 122, 189, 0.04));
+    border-bottom: 1px solid rgba(74, 144, 226, 0.08);
+}
+
+[data-theme="dark"] .quick-reply-notification .notification-header {
+    background: linear-gradient(135deg, rgba(74, 144, 226, 0.12), rgba(53, 122, 189, 0.08));
+    border-bottom-color: rgba(74, 144, 226, 0.15);
+}
+
+.quick-reply-notification .notification-sender-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.quick-reply-notification .notification-avatar {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4a90e2, #357abd);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(0.8); }
+}
+
+.quick-reply-notification .notification-sender {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4a90e2;
+    letter-spacing: 0.3px;
+    margin: 0;
+    line-height: 1.1;
+}
+
+[data-theme="dark"] .quick-reply-notification .notification-sender {
+    color: #60a5fa;
+}
+
+.quick-reply-notification .notification-type {
+    font-size: 9px;
+    color: #666;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+    line-height: 1.1;
+}
+
+[data-theme="dark"] .quick-reply-notification .notification-type {
+    color: #a0aec0;
+}
+
+.quick-reply-notification .notification-close {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.04);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #999;
+    font-size: 10px;
+}
+
+.quick-reply-notification .notification-close:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #666;
+    transform: scale(1.1);
+}
+
+[data-theme="dark"] .quick-reply-notification .notification-close {
+    background: rgba(255, 255, 255, 0.06);
+    color: #a0aec0;
+}
+
+[data-theme="dark"] .quick-reply-notification .notification-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+}
+
+.quick-reply-notification .notification-content {
+    padding: 8px 12px;
+    background: rgba(248, 250, 252, 0.6);
+}
+
+[data-theme="dark"] .quick-reply-notification .notification-content {
+    background: rgba(45, 55, 72, 0.4);
+}
+
+.quick-reply-notification .notification-thread-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(74, 144, 226, 0.1);
+    color: #4a90e2;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    letter-spacing: 0.2px;
+}
+
+.quick-reply-notification .notification-thread-title i {
+    width: 8px;
+    height: 8px;
+    background: currentColor;
+    border-radius: 2px;
+    opacity: 0.8;
+    font-size: 6px;
+}
+
+.quick-reply-notification .notification-message {
+    font-size: 11px;
+    color: #2d3748;
+    line-height: 1.3;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-weight: 500;
+}
+
+[data-theme="dark"] .quick-reply-notification .notification-message {
+    color: #e2e8f0;
+}
+
+.quick-reply-notification .quick-reply-area {
+    padding: 6px 8px 8px;
+    background: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .quick-reply-notification .quick-reply-area {
+    background: rgba(26, 32, 44, 0.6);
+}
+
+.quick-reply-notification .input-wrapper {
+    position: relative;
+    margin-bottom: 6px;
+}
+
+.quick-reply-notification .quick-reply-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(74, 144, 226, 0.15);
+    border-radius: 8px;
+    padding: 6px 28px 6px 8px;
+    font-size: 11px;
+    color: #2d3748;
+    font-family: inherit;
+    resize: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    min-height: 28px;
+    max-height: 44px;
+    line-height: 1.3;
+}
+
+.quick-reply-notification .quick-reply-input:focus {
+    outline: none;
+    border-color: #4a90e2;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
+}
+
+.quick-reply-notification .quick-reply-input::placeholder {
+    color: #a0aec0;
+    font-size: 10px;
+}
+
+[data-theme="dark"] .quick-reply-notification .quick-reply-input {
+    background: rgba(45, 55, 72, 0.8);
+    border-color: rgba(74, 144, 226, 0.2);
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .quick-reply-notification .quick-reply-input:focus {
+    background: rgba(45, 55, 72, 1);
+}
+
+.quick-reply-notification .quick-reply-send {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4a90e2, #357abd);
+    border: none;
+    color: white;
+    font-size: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    opacity: 0.7;
+}
+
+.quick-reply-notification .quick-reply-send:hover {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.quick-reply-notification .quick-reply-send:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: translateY(-50%);
+}
+
+.quick-reply-notification .quick-reply-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.quick-reply-notification .quick-reply-view {
+    flex: 1;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: none;
+    font-size: 9px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+    background: rgba(0, 0, 0, 0.04);
+    color: #666;
+}
+
+.quick-reply-notification .quick-reply-view:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #4a90e2;
+    transform: translateY(-1px);
+}
+
+[data-theme="dark"] .quick-reply-notification .quick-reply-view {
+    background: rgba(255, 255, 255, 0.06);
+    color: #a0aec0;
+}
+
+[data-theme="dark"] .quick-reply-notification .quick-reply-view:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #60a5fa;
+}
+
+.quick-reply-notification .notification-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 1px;
+    background: linear-gradient(90deg, #4a90e2, #667eea);
+    transition: width linear;
+    opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+    .quick-reply-notification {
+        top: 12px;
+        right: 12px;
+        width: 280px;
+        max-width: calc(100vw - 24px);
+    }
+}
+
+/* ===== NAVIGATION ===== */
+.nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 5px 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    position: relative;
+}
+
+.nav-link:hover, .nav-link:focus {
+    color: #60a5fa;
+    background-color: rgba(96, 165, 250, 0.15);
+    text-decoration: none;
+}
+
+.nav-link.active {
+    color: #2563eb !important;
+    background-color: rgba(37, 99, 235, 0.2) !important;
+    font-weight: 600;
+}
+
+.nav-link i { margin-right: 5px; }
+
+.mobile-nav-icon {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 1rem;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.mobile-nav-icon.active {
+    color: var(--primary-color) !important;
+}
+
+.mobile-nav-icon i { font-size: 1.3rem; }
+
+/* Discord Link */
+.discord-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    border: 1px solid rgba(88, 101, 242, 0.2);
+    background-color: rgba(88, 101, 242, 0.1);
+    color: #5865F2;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin-left: 10px;
+}
+
+.discord-link:hover {
+    background-color: rgba(88, 101, 242, 0.2);
+    transform: translateY(-1px);
+    color: #fff;
+}
+
+.discord-link.attention {
+    animation: pulseDiscord 2s infinite;
+}
+
+@keyframes pulseDiscord {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(88, 101, 242, 0.6); }
+    70% { box-shadow: 0 0 0 14px rgba(88, 101, 242, 0); }
+}
+
+/* Dropdowns */
+.dropdown-menu {
+    background-color: var(--dropdown-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    min-width: 240px;
+    border-radius: 6px;
+    transform: translateY(10px);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.dropdown-menu.show, .dropdown:hover .dropdown-menu {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+}
+
+.dropdown-toggle {
+    position: relative !important;
+}
+
+.dropdown .nav-link.dropdown-toggle {
+    position: relative !important;
+    display: inline-flex !important;
+}
+
+.dropdown-toggle.active {
+    color: var(--primary-color) !important;
+    background-color: var(--primary-color-alpha) !important;
+    font-weight: 600;
+}
+
+.dropdown-item {
+    color: var(--text-secondary);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid var(--border-color);
+    text-decoration: none;
+    position: relative;
+}
+
+.dropdown-item:last-child { border-bottom: none; }
+
+.dropdown-item:hover, .dropdown-item:focus {
+    background-color: var(--hover-color);
+    color: var(--primary-light);
+    text-decoration: none;
+}
+
+.dropdown-item.active {
+    background-color: var(--primary-color-alpha);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.dropdown-item i {
+    width: 24px;
+    text-align: center;
+    margin-right: 12px;
+}
+
+.dropdown-item.disabled, .side-nav-item.disabled {
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+/* ===== MOBILE NAVIGATION ===== */
+.mobile-menu-toggle {
+    display: none;
+    font-size: 1.5rem;
+    color: var(--text-color);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+}
+
+.side-nav {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100%;
+    background-color: var(--card-bg);
+    z-index: 1000;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+    box-shadow: 3px 0 10px var(--shadow);
+}
+
+.side-nav.open { left: 0; }
+
+.side-nav-header {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-secondary);
+}
+
+.side-nav-title {
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.close-side-nav {
+    color: var(--text-primary);
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.side-nav-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.side-nav-item.active {
+    border-left-color: var(--primary-color);
+    background-color: var(--hover-bg);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.side-nav-item:hover {
+    background-color: var(--hover-bg);
+    color: var(--primary-color);
+}
+
+.side-nav-item i {
+    margin-right: 10px;
+    min-width: 20px;
+    text-align: center;
+}
+
+.side-nav-section {
+    margin: 10px 0;
+    border-top: 1px solid var(--border-color);
+}
+
+.side-nav-section-header {
+    padding: 12px 20px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.side-nav-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+    margin-top: auto;
+}
+
+.side-nav-user-info {
+    display: flex;
+    align-items: center;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.side-nav-user-info i {
+    margin-right: 10px;
+}
+
+.side-nav-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    display: none;
+}
+
+.mobile-quick-nav {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    position: absolute;
+    left: 52%;
+    transform: translateX(-50%);
+}
+
+.mobile-nav-icon.discord-mobile-icon { 
+    color: #5865F2; 
+}
+
+.mobile-nav-icon.discord-mobile-icon:hover {
+    color: #7289DA;
+}
+
+/* ===== BADGES & NOTIFICATIONS ===== */
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #ef4444;
+    color: white;
+    font-size: 0.6rem;
+    font-weight: bold;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1050;
+}
+
+.nav-link .notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -6px;
+    z-index: 1051;
+}
+
+.dropdown-toggle .notification-badge {
+    position: absolute !important;
+    top: -2px !important;
+    right: -6px !important;
+    z-index: 1051 !important;
+    background-color: #ef4444 !important;
+    display: flex !important;
+}
+
+.dropdown-item .notification-badge {
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+}
+
+.mobile-nav-icon .notification-badge {
+    top: -5px;
+    right: -5px;
+}
+
+.mobile-nav-icon.manage-requests-icon .notification-badge {
+    top: -8px;
+    right: -8px;
+}
+
+.desktop-nav-icon-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.mobile-nav-icon-wrapper {
+    position: relative;
+}
+
+.fa-layers .notification-badge {
+    top: -12px !important;
+    right: -12px !important;
+    width: 18px !important;
+    height: 18px !important;
+    z-index: 1050 !important;
+}
+
+.side-nav-item .notification-badge {
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+}
+
+.feature-badge, .mini-feature-badge {
+    background-color: #10b981;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mini-feature-badge {
+    position: absolute;
+    top: -4px;
+    right: -16px;
+    font-size: 0.55rem;
+    padding: 1px 4px;
+}
+
+.feature-badge { margin-left: 6px; }
+
+/* Notification Panel */
+.notification-panel {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    width: 350px;
+    max-height: 500px;
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    z-index: 1100;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.notification-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: white;
+}
+
+.notification-list {
+    overflow-y: auto;
+    max-height: 450px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.notification-item {
+    display: flex;
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    position: relative;
+}
+
+.notification-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.notification-item.unread {
+    background-color: rgba(74, 144, 226, 0.08);
+}
+
+.notification-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: #4A90E2;
+}
+
+/* ===== MODALS ===== */
+.modal, .coming-soon-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1100;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.active, .coming-soon-modal.active {
+    display: flex;
+}
+
+.modal-content, .coming-soon-modal-content {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border-radius: 8px;
+    padding: 25px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-header, .coming-soon-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2, .coming-soon-modal-title {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.modal-header i {
+    font-size: 1.8rem;
+    color: #f59e0b;
+}
+
+.modal-buttons, .coming-soon-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    text-align: center;
+}
+
+.btn-primary, .btn-cancel, .coming-soon-modal-close {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-primary, .coming-soon-modal-close {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover, .coming-soon-modal-close:hover {
+    background-color: #2563eb;
+    transform: translateY(-1px);
+}
+
+.btn-cancel {
+    background-color: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+/* ===== RESPONSIVE STYLES ===== */
+@media (max-width: 768px) {
+    .mobile-menu-toggle { display: block; }
+    .header-nav { display: none; }
+    .mobile-quick-nav { display: flex; }
+    .main-header h1 {
+        font-size: 1.2rem;
+        max-width: 40%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .notification-panel {
+        top: 56px;
+        right: 10px;
+        left: 10px;
+        width: calc(100% - 20px);
+        max-height: 80vh;
+    }
+}
+
+@media (min-width: 768px) {
+    .dropdown:hover .dropdown-menu {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+}
+
+/* ===== UTILITY CLASSES ===== */
+.main-header {
+    padding: 8px 0;
+}
+
+.main-header h1 {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.header-left {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+
+.nav-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.user-section {
+    font-size: 0.85rem;
+    padding-left: 10px;
+}
+
+.logout-btn {
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    margin-left: 8px;
+    background-color: #dc2626 !important;
+    color: white !important;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.logout-btn:hover {
+    background-color: #b91c1c !important;
+    color: white !important;
+    transform: translateY(-1px);
+    text-decoration: none;
+}
+
+html {
+    font-size: 14px;
+}
+
+.main-header {
+    padding: 6px 0;
+}
+
+.main-header h1 {
+    font-size: 1rem;
+}
+
+.nav-link {
+    font-size: 0.75rem;
+    padding: 4px 6px;
+}
+
+.mobile-nav-icon i {
+    font-size: 1.1rem;
+}
+
+.user-section {
+    font-size: 0.75rem;
+}
+
+.logout-btn {
+    font-size: 0.7rem;
+    padding: 3px 6px;
+}
+
+.notification-badge {
+    font-size: 0.5rem;
+    width: 14px;
+    height: 14px;
+}
+
+.dropdown-item {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .main-header h1 {
+        font-size: 1rem;
+    }
+}
+        {% endblock %}
+    </style>
+    {% block extra_css %}{% endblock %}
+    
+    {% if user and user.grace_period_ends_at and user.patreon_tier_data and user.patreon_tier_data.get('patron_status') != 'active_patron' %}
+    <meta name="grace-period-status" content="active">
+    <meta name="grace-period-ends" content="{{ user.grace_period_ends_at.strftime('%B %d, %Y %I:%M %p') if user.grace_period_ends_at else '' }}">
+    {% endif %}
+</head>
+<body{% if self.is_player_page() %} class="player-page"{% endif %}>
+    <!-- Banners -->
+    <div id="announcementBanner" class="announcement-banner" style="display: none;">
+    <div class="announcement-banner-message">
+        <i class="fas fa-bullhorn" aria-hidden="true"></i>
+        <span style="word-break: break-all !important; overflow-wrap: break-word !important; word-wrap: break-word !important; white-space: normal !important; max-width: 100% !important; width: 100% !important;">Have you joined the new Discord yet? If not, please click the icon near the Logout!</span>
+    </div>
+    <button id="announcementDismissBtn" class="announcement-dismiss-btn" type="button" aria-label="Dismiss announcement">
+        Yes
+    </button>
+</div>
+
+<div id="broadcastBanner" class="announcement-banner" style="display: none;">
+    <div class="announcement-banner-message">
+        <i class="fas fa-bullhorn" aria-hidden="true"></i>
+        <span id="broadcastContent" style="word-break: break-all !important; overflow-wrap: break-word !important; word-wrap: break-word !important; white-space: normal !important; max-width: 100% !important; width: 100% !important;"></span>
+    </div>
+    <button id="broadcastDismissBtn" class="announcement-dismiss-btn" type="button" aria-label="Acknowledge broadcast">
+        Acknowledge
+    </button>
+</div>
+
+    <!-- Modals -->
+    <div id="upgradeAccessModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-crown"></i>
+                <h2>Premium Content</h2>
+            </div>
+            <div class="modal-body">
+                <p id="upgradeMessage">This content requires a higher tier subscription.</p>
+                <p>Would you like to upgrade your subscription to access this content?</p>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="btn-cancel" onclick="closeUpgradeModal()">No, Thanks</button>
+                <button type="button" class="btn-primary" onclick="redirectToSupport()">Yes, Upgrade</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forum Welcome Modal -->
+    <div id="forumWelcomeModal" class="modal forum-welcome-modal">
+        <div class="modal-content forum-welcome-content">
+            <div class="forum-welcome-header">
+                <div class="welcome-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <h2>Welcome to the Forum!</h2>
+                <p class="welcome-subtitle">Join the community discussion</p>
+            </div>
+            
+            <div class="forum-welcome-body">
+                <div class="welcome-feature">
+                    <div class="feature-icon">
+                        <i class="fas fa-user-edit"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Create Your Forum Identity</h3>
+                        <p>We recommend setting up a custom alias for the forum. This lets you choose how your name appears in discussions while keeping your account username private.</p>
+                    </div>
+                </div>
+                
+                <div class="welcome-feature">
+                    <div class="feature-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Smart Notifications</h3>
+                        <p>Get quick reply notifications and customize how you're notified about mentions, replies, and new messages.</p>
+                    </div>
+                </div>
+                
+                <div class="welcome-feature">
+                    <div class="feature-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Rich Discussions</h3>
+                        <p>Participate in main discussions, create sub-threads, mention other users, and build meaningful conversations.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="forum-welcome-footer">
+                <button type="button" class="btn-secondary" onclick="dismissForumWelcome()">
+                    Skip for Now
+                </button>
+                <button type="button" class="btn-primary" onclick="goToForumSettings()">
+                    <i class="fas fa-cog"></i> Set Up Forum Profile
+                </button>
+            </div>
+            
+            <div class="welcome-tip">
+                <i class="fas fa-lightbulb"></i>
+                <span>Tip: You can always access forum settings from any forum page</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Mobile Navigation -->
+    <div id="sideNavOverlay" class="side-nav-overlay"></div>
+    <div id="sideNav" class="side-nav">
+        <div class="side-nav-header">
+            <div class="side-nav-title">Navigation</div>
+            <button id="closeSideNav" class="close-side-nav">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="side-nav-content">
+            <a href="/home" class="side-nav-item {% if request.path == '/home' %}active{% endif %}" data-spa-link>
+                <i class="fas fa-home"></i> Home
+            </a>
+            <a href="/catalog" class="side-nav-item {% if request.path == '/catalog' %}active{% endif %}" data-spa-link>
+                <i class="fas fa-book"></i> Catalog
+            </a>
+            <a href="/collection" class="side-nav-item {% if request.path == '/collection' %}active{% endif %}" data-spa-link>
+                <i class="fas fa-layer-group"></i> Collection
+            </a>
+            <a href="/forum" class="side-nav-item {% if request.path == '/forum' or request.path.startswith('/api/forum') %}active{% endif %}" data-spa-link>
+                <i class="fas fa-comments"></i> Forum <span class="feature-badge">New</span>
+            </a>
+
+            <a href="#" class="side-nav-item notifications-link">
+                <i class="fas fa-bell"></i> Notifications <span class="feature-badge">New</span>
+            </a>
+                
+            <!-- Benefits Section -->
+            <div class="side-nav-section">
+                <div class="side-nav-section-header">
+                    <i class="fas fa-gift"></i> Benefits
+                </div>
+                <a href="/my-benefits" data-spa-link class="side-nav-item {% if request.path == '/my-benefits' %}active{% endif %}">
+                    <i class="fas fa-star"></i> My Benefits
+                </a>
+                <a href="/my-downloads" data-spa-link class="side-nav-item {% if request.path == '/my-downloads' %}active{% endif %}">
+                    <i class="fas fa-download"></i> My Downloads
+                </a>
+                <a href="/my-albums" data-spa-link class="side-nav-item {% if request.path == '/my-albums' %}active{% endif %}">
+                    <i class="fas fa-compact-disc"></i> My Albums
+                </a>
+                <a href="/my-book-requests" class="side-nav-item {% if request.path == '/my-book-requests' %}active{% endif %}" data-spa-link>
+                    <i class="fas fa-book"></i> Book Requests
+                </a>
+            </div>
+            
+<!-- Support Section -->
+{% if not (user.is_guest_trial and user.role.value == 'GUEST') %}
+<div class="side-nav-section">
+    <div class="side-nav-section-header">
+        <i class="fas fa-heart"></i> Support
+    </div>
+    <a href="/support" class="side-nav-item {% if request.path == '/support' %}active{% endif %}" data-spa-link>
+        <i class="fas fa-hand-holding-heart"></i> Support Options
+    </a>
+</div>
+{% endif %}            
+            <!-- Admin Section -->
+            {% if user.is_creator or user.is_team %}
+            <div class="side-nav-section">
+                <div class="side-nav-section-header">
+                    <i class="fas fa-shield-alt"></i> Admin
+                </div>
+                <a href="/admin/book-requests" 
+                   class="side-nav-item {% if request.path == '/admin/book-requests' %}active{% endif %}" 
+                   style="position: relative;" 
+                   data-spa-link>
+                    <i class="fas fa-book-reader"></i> Manage Book Requests
+                    {% if request.state.pending_book_requests and request.state.pending_book_requests > 0 %}
+                    <span class="notification-badge">{{ request.state.pending_book_requests }}</span>
+                    {% endif %}
+                </a>
+                {% if user.is_creator %}
+                <a href="/creator/benefits" class="side-nav-item {% if request.path == '/creator/benefits' %}active{% endif %}" data-spa-link>
+                    <i class="fas fa-star"></i> Manage Benefits
+                </a>
+                <a href="/statistics" class="side-nav-item {% if request.path == '/statistics' %}active{% endif %}" data-spa-link>
+                    <i class="fas fa-chart-bar"></i> Statistics
+                </a>
+                <a href="/creator/team" class="side-nav-item {% if request.path == '/creator/team' %}active{% endif %}" data-spa-link>
+                    <i class="fas fa-users"></i> Manage Team
+                </a>
+                <a href="/api/creator/pin/manage" class="side-nav-item" data-spa-link>
+                    <i class="fas fa-key"></i> Creator Management
+                </a>
+                {% endif %}
+                <a href="/activity-logs" data-spa-link class="side-nav-item {% if request.path == '/activity-logs' %}active{% endif %}" style="position: relative;">
+                    <i class="fas fa-history"></i> Activity Logs
+                    {% if request.state.unread_activity_logs and request.state.unread_activity_logs > 0 %}
+                    <span class="notification-badge" id="activityLogsBadgeMobile">{{ request.state.unread_activity_logs }}</span>
+                    {% endif %}
+                </a>
+            </div>
+            {% endif %}
+            
+            <a href="#" id="mobileThemeToggle" class="side-nav-item">
+                <i class="fas fa-sun"></i> Toggle Theme
+            </a>
+        </div>
+        
+        <!-- Side Nav User Footer -->
+        <div class="side-nav-footer">
+            <div class="side-nav-user-info">
+                <i class="fas fa-user"></i>
+                <span>
+                    {{ user.username }}
+                    {% if user.is_creator %}(Creator)
+                    {% elif user.is_team %}(Team)
+                    {% elif user.is_patreon and user.patreon_tier_data %}({{ user.patreon_tier_data.get('title', 'Patron') }})
+                    {% endif %}
+                </span>
+            </div>
+            <a href="https://discord.gg/Vz8SzfNPqe" class="discord-link attention side-nav-item" target="_blank" style="margin-bottom: 10px;">
+                <i class="fab fa-discord"></i> Discord
+            </a>
+            <a href="/logout" class="side-nav-item" data-spa-link>
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Notification Panel -->
+    <div id="notificationPanel" class="notification-panel">
+        <div class="notification-header">
+            <h3><i class="fas fa-bell"></i> Notifications</h3>
+            <div class="notification-actions">
+                <button id="markAllReadBtn" style="background: none; border: none; color: #4A90E2; font-size: 0.8rem; cursor: pointer;">Mark all as read</button>
+                <button id="closeNotificationsBtn" style="background: none; border: none; color: rgba(255, 255, 255, 0.7); cursor: pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div id="notificationList" class="notification-list">
+            <div class="notification-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; color: rgba(255, 255, 255, 0.7);">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                <p>Loading notifications...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <header class="main-header">
+            <div class="header-left">
+                <h1>{% block page_title %}Album Catalog{% endblock %}</h1>
+                
+                <!-- Mobile Quick Nav -->
+                <div class="mobile-quick-nav">
+                    <a href="/home" class="mobile-nav-icon {% if request.path == '/home' %}active{% endif %}" data-spa-link>
+                        <i class="fas fa-home"></i>
+                    </a>
+                    <a href="/forum" class="mobile-nav-icon {% if request.path == '/forum' or request.path.startswith('/api/forum') %}active{% endif %}" data-spa-link>
+                        <i class="fas fa-comments"></i>
+                    </a>
+{% if not (user.is_guest_trial and user.role.value == 'GUEST') %}
+<a href="/support" class="mobile-nav-icon {% if request.path == '/support' %}active{% endif %}" data-spa-link>
+    <i class="fas fa-heart"></i>
+</a>
+{% endif %}
+                    <a href="/my-book-requests"
+                       class="mobile-nav-icon {% if request.path == '/my-book-requests' %}active{% endif %}"
+                       data-spa-link>
+                        <i class="fas fa-book"></i>
+                    </a>
+                    <div class="mobile-nav-icon-wrapper">
+                        <a href="#" class="mobile-nav-icon notifications-link">
+                            <i class="fas fa-bell"></i>
+                        </a>
+                    </div>
+                    <a href="https://discord.gg/Vz8SzfNPqe" class="mobile-nav-icon discord-mobile-icon" target="_blank">
+                        <i class="fab fa-discord"></i>
+                    </a>
+                    {% if user.is_creator or user.is_team %}
+                    <div class="mobile-nav-icon-wrapper">
+                        <a href="/admin/book-requests"
+                           class="mobile-nav-icon manage-requests-icon {% if request.path == '/admin/book-requests' %}active{% endif %}"
+                           style="position: relative;"
+                           data-spa-link>
+                            <span class="fa-layers fa-fw">
+                                <i class="fas fa-book-reader"></i>
+                                {% if request.state.pending_book_requests and request.state.pending_book_requests > 0 %}
+                                <span class="notification-badge">{{ request.state.pending_book_requests }}</span>
+                                {% endif %}
+                            </span>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <button id="openSideNav" class="mobile-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                
+                <!-- Desktop Navigation -->
+                <nav class="header-nav">
+                    <div class="nav-group">
+                        <a href="/home" class="nav-link {% if request.path == '/home' %}active{% endif %}" data-spa-link>Home</a>
+                        <a href="/catalog" class="nav-link {% if request.path == '/catalog' %}active{% endif %}" data-spa-link>Catalog</a>
+                        <a href="/collection" class="nav-link {% if request.path == '/collection' %}active{% endif %}" data-spa-link>Collection</a>
+                        <a href="/forum" class="nav-link {% if request.path == '/forum' or request.path.startswith('/api/forum') %}active{% endif %}" data-spa-link>
+                            <i class="fas fa-comments"></i> Forum <span class="feature-badge">New</span>
+                        </a>
+                        <div class="desktop-nav-icon-wrapper">
+                            <a href="#" class="nav-link notifications-link">
+                                <i class="fas fa-bell"></i> Notifications
+                            </a>
+                        </div>
+                        
+                        <!-- Benefits Dropdown -->
+                        <div class="dropdown">
+                            <a class="nav-link dropdown-toggle {% if request.path in ['/my-benefits','/my-downloads','/my-book-requests','/my-albums'] %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-gift"></i> Benefits
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item {% if request.path == '/my-benefits' %}active{% endif %}" 
+                                       href="/my-benefits" 
+                                       data-spa-link>
+                                        <i class="fas fa-star"></i> My Benefits
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if request.path == '/my-downloads' %}active{% endif %}" 
+                                       href="/my-downloads" 
+                                       data-spa-link>
+                                        <i class="fas fa-download"></i> My Downloads
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if request.path == '/my-albums' %}active{% endif %}" href="/my-albums" data-spa-link>
+                                        <i class="fas fa-compact-disc"></i> My Albums
+                                    </a>
+                                </li>
+                                <!-- Book Requests for Users -->
+                                <li>
+                                    <a class="dropdown-item {% if request.path == '/my-book-requests' %}active{% endif %}"
+                                       href="/my-book-requests"
+                                       data-spa-link>
+                                        <i class="fas fa-book"></i> Book Requests
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        
+{% if not (user.is_guest_trial and user.role.value == 'GUEST') %}
+<a href="/support" class="nav-link {% if request.path == '/support' %}active{% endif %}" data-spa-link>
+    <i class="fas fa-heart"></i> Support
+</a>
+{% endif %}                        
+                        <!-- Admin Dropdown -->
+                        {% if user.is_creator or user.is_team %}
+                        <div class="dropdown">
+                            <a class="nav-link dropdown-toggle {% if request.path.startswith('/admin') or request.path.startswith('/creator') or request.path == '/statistics' %}active{% endif %}"
+                               href="#"
+                               id="adminDropdown"
+                               role="button"
+                               data-bs-toggle="dropdown"
+                               aria-expanded="false"
+                               style="position: relative;">
+                                <i class="fas fa-shield-alt"></i> Admin
+                                {% set total_admin_count = (request.state.pending_book_requests|default(0)) + (request.state.unread_activity_logs|default(0)) %}
+                                {% if total_admin_count > 0 %}
+                                <span class="notification-badge" id="adminDropdownBadge">{{ total_admin_count }}</span>
+                                {% endif %}
+                            </a>
+                            <ul class="dropdown-menu">
+                                <!-- ADD THIS NEW ITEM FIRST -->
+                                <li>
+                                    <a class="dropdown-item {% if request.path == '/activity-logs' %}active{% endif %}"
+                                       href="/activity-logs" data-spa-link
+                                       style="position: relative;">
+                                        <i class="fas fa-history"></i> Activity Logs
+                                        {% if request.state.unread_activity_logs and request.state.unread_activity_logs > 0 %}
+                                        <span class="notification-badge" id="activityLogsBadgeDesktop">{{ request.state.unread_activity_logs }}</span>
+                                        {% endif %}
+                                    </a>
+                                </li>
+                                <!-- Manage Book Requests for Admin/Team -->
+                                <li>
+                                    <a class="dropdown-item {% if request.path == '/admin/book-requests' %}active{% endif %}" 
+                                       href="/admin/book-requests" 
+                                       data-spa-link 
+                                       style="position: relative;">
+                                        <i class="fas fa-book-reader"></i> Manage Book Requests
+                                        {% if request.state.pending_book_requests and request.state.pending_book_requests > 0 %}
+                                        <span class="notification-badge">{{ request.state.pending_book_requests }}</span>
+                                        {% endif %}
+                                    </a>
+                                </li>
+                                {% if user.is_creator %}
+                                <li>
+                                    <a class="dropdown-item {% if request.path == '/creator/benefits' %}active{% endif %}" href="/creator/benefits" data-spa-link>
+                                        <i class="fas fa-star"></i> Manage Benefits
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if request.path == '/statistics' %}active{% endif %}" href="/statistics" data-spa-link>
+                                        <i class="fas fa-chart-bar"></i> Statistics
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if request.path == '/creator/team' %}active{% endif %}" href="/creator/team" data-spa-link>
+                                        <i class="fas fa-users"></i> Manage Team
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="/api/creator/pin/manage" data-spa-link>
+                                        <i class="fas fa-key"></i> Creator Management
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
+                        <button id="themeToggle" class="theme-toggle" style="background: none; border: none; color: var(--text-color); cursor: pointer; padding: 5px;">
+                            <i class="fas fa-sun"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- User Section -->
+                    <div class="user-section">
+                        <span class="user-info">
+                            <i class="fas fa-user"></i>
+                            {{ user.username }}
+                            {% if user.is_creator %}(Creator)
+                            {% elif user.is_team %}(Team)
+                            {% elif user.is_patreon and user.patreon_tier_data %}({{ user.patreon_tier_data.get('title', 'Patron') }})
+                            {% endif %}
+                        </span>
+                        <a href="https://discord.gg/Vz8SzfNPqe" class="discord-link attention" target="_blank">
+                            <i class="fab fa-discord"></i> Discord
+                        </a>
+                        <a href="/logout" class="logout-btn" data-spa-link>
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </div>
+                </nav>
+            </div>
+        </header>
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Quick Reply Notification -->
+    {% block quick_reply_section %}
+    {% if not self.is_player_page() %}
+    <div id="quickReplyNotification" class="quick-reply-notification">
+        <div class="notification-header">
+            <div class="notification-sender-info">
+                <div class="notification-avatar"></div>
+                <div class="notification-sender"></div>
+                <div class="notification-type"></div>
+            </div>
+            <button class="notification-close" onclick="QuickReplyManager.dismissNotification()">×</button>
+        </div>
+        
+        <div class="notification-content">
+            <div class="notification-thread-title">
+                <i class="fas fa-comments"></i>
+                <span></span>
+            </div>
+            <div class="notification-message"></div>
+        </div>
+        
+        <div class="quick-reply-area">
+            <div class="input-wrapper">
+                <textarea id="quickReplyInput" class="quick-reply-input" placeholder="Quick reply..." rows="1"></textarea>
+                <button class="quick-reply-send" onclick="QuickReplyManager.sendReply()">➤</button>
+            </div>
+            
+            <div class="quick-reply-actions">
+                <button class="quick-reply-view" onclick="QuickReplyManager.viewThread()">👁 View</button>
+            </div>
+        </div>
+        
+        <div class="notification-progress" style="width: 100%;"></div>
+    </div>
+    {% endif %}
+    {% endblock %}
+
+    <!-- Mini Player -->
+    {% block mini_player_section %}
+    <div id="miniPlayer" class="mini-player"{% if self.is_player_page() %} style="display: none;"{% endif %}>
+        <div class="mini-player-content">
+            <img id="miniPlayerCover" class="mini-player-cover"
+                 src="/static/images/default-album.jpg" alt="Album Cover">
+
+            <!-- collapse / expand tab - UPDATED CHEVRON -->
+            <div id="miniPlayerCollapseTab">
+                <i id="miniPlayerCollapseIcon" class="fas fa-chevron-right"></i>
+            </div>
+
+            <!-- track info -->
+            <div class="mini-player-info">
+                <div id="miniPlayerTitle" class="mini-player-title">Track Title</div>
+                <div id="miniPlayerAlbum" class="mini-player-album">Album Title</div>
+            </div>
+
+            <!-- controls -->
+            <div class="mini-player-controls">
+                <button id="miniPlayerRewind" class="mini-control-btn" title="Skip -15s">
+                    <i class="fas fa-rotate-left"></i>
+                </button>
+                <button id="miniPlayerPlayPause" class="mini-control-btn mini-play-btn" title="Play/Pause">
+                    <i class="fas fa-play" id="miniPlayerPlayIcon"></i>
+                </button>
+                <button id="miniPlayerForward" class="mini-control-btn" title="Skip +15s">
+                    <i class="fas fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- progress -->
+            <div class="mini-player-progress">
+                <div id="miniPlayerProgressBar" class="mini-progress-bar">
+                    <div id="miniPlayerProgress" class="mini-progress"></div>
+                </div>
+                <div class="mini-time-info">
+                    <span id="miniPlayerCurrentTime">0:00:00</span>
+                    <span id="miniPlayerDuration">0:00:00</span>
+                </div>
+            </div>
+
+            <!-- expand / close buttons -->
+            <button id="expandPlayer" class="mini-control-btn" title="Expand Player">
+                <i class="fas fa-expand"></i>
+            </button>
+
+        </div>
+    </div>
+    {% endblock %}
+
+    <!-- Segment Progress -->
+    <div id="segmentProgress" class="segment-progress" style="display: none;">
+        <div class="segment-progress-content">
+            <div class="segment-header">
+                <span class="segment-title">Preparing Audio Stream</span>
+                <span id="segmentCount" class="segment-count"></span>
+            </div>
+            <div class="segment-bar-container">
+                <div id="progressBar" class="segment-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <!-- ✅ ALWAYS load persistent-player and voice-extension (needed for both mini-player AND player page) -->
+    <script src="{{ url_for('static', path='/js/tts-status-channel.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/persistent-player.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/voice-extension.js') }}"></script>
+
+    {% if not self.is_player_page() %}
+    <script src="{{ url_for('static', path='/js/quick-reply-manager.js') }}"></script>
+    {% endif %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', path='/js/notification-badges.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/book-request-websocket.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/forum-notification-manager.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/broadcast-websocket-manager.js') }}"></script>
+
+    <!-- Activity Logs Notification Badge Handler -->
+    {% if user and (user.is_creator or user.is_team) %}
+    <script>
+        (function() {
+            // Note: WebSocket connection is handled by notification-badges.js
+            // This script only defines the badge update function
+
+            function updateActivityLogsBadge(count) {
+                const mobileBadge = document.getElementById('activityLogsBadgeMobile');
+                const desktopBadge = document.getElementById('activityLogsBadgeDesktop');
+
+                if (count > 0) {
+                    // Update or create badge
+                    if (mobileBadge) {
+                        mobileBadge.textContent = count;
+                    } else {
+                        // Create badge if it doesn't exist
+                        const mobileLink = document.querySelector('a[href="/activity-logs"].side-nav-item');
+                        if (mobileLink) {
+                            const badge = document.createElement('span');
+                            badge.id = 'activityLogsBadgeMobile';
+                            badge.className = 'notification-badge';
+                            badge.textContent = count;
+                            mobileLink.appendChild(badge);
+                        }
+                    }
+
+                    if (desktopBadge) {
+                        desktopBadge.textContent = count;
+                    } else {
+                        // Create badge if it doesn't exist
+                        const desktopLink = document.querySelector('a.dropdown-item[href="/activity-logs"]');
+                        if (desktopLink) {
+                            const badge = document.createElement('span');
+                            badge.id = 'activityLogsBadgeDesktop';
+                            badge.className = 'notification-badge';
+                            badge.textContent = count;
+                            desktopLink.appendChild(badge);
+                        }
+                    }
+                } else {
+                    // Remove badges if count is 0
+                    if (mobileBadge) mobileBadge.remove();
+                    if (desktopBadge) desktopBadge.remove();
+                }
+
+                // Update combined Admin dropdown badge
+                updateAdminDropdownBadge();
+
+                console.log(`📊 Activity logs badge updated: ${count}`);
+            }
+
+            function updateAdminDropdownBadge() {
+                // Get current counts from the actual badge elements
+                const activityLogsCount = parseInt(document.getElementById('activityLogsBadgeDesktop')?.textContent || '0');
+
+                // Get book requests count from the dropdown menu item badge
+                const bookRequestsBadge = document.querySelector('.dropdown-item[href="/admin/book-requests"] .notification-badge');
+                const bookRequestsCount = parseInt(bookRequestsBadge?.textContent || '0');
+
+                const totalCount = activityLogsCount + bookRequestsCount;
+
+                const adminBadge = document.getElementById('adminDropdownBadge');
+
+                if (totalCount > 0) {
+                    if (adminBadge) {
+                        adminBadge.textContent = totalCount;
+                        adminBadge.style.display = 'flex';
+                    } else {
+                        // Create badge if it doesn't exist
+                        const adminLink = document.getElementById('adminDropdown');
+                        if (adminLink) {
+                            const badge = document.createElement('span');
+                            badge.id = 'adminDropdownBadge';
+                            badge.className = 'notification-badge';
+                            badge.textContent = totalCount;
+                            badge.style.display = 'flex';
+                            adminLink.appendChild(badge);
+                        }
+                    }
+                } else {
+                    // Hide badge if count is 0
+                    if (adminBadge) {
+                        adminBadge.style.display = 'none';
+                    }
+                }
+
+                // console.log(`🎯 Admin dropdown badge updated: ${totalCount} (activity logs: ${activityLogsCount}, book requests: ${bookRequestsCount})`);
+            }
+
+            // Expose functions globally
+            window.updateActivityLogsBadge = updateActivityLogsBadge;
+            window.updateAdminDropdownBadge = updateAdminDropdownBadge;
+
+            // Initialize admin dropdown badge on page load
+            setTimeout(() => {
+                updateAdminDropdownBadge();
+            }, 500);
+
+            // console.log('✅ Activity logs badge handler initialized');
+        })();
+    </script>
+    {% endif %}
+
+    <script type="module" src="{{ url_for('static', path='/js/spa-router.js') }}"></script>
+
+    <script>
+        window.isPlayerPage = {% block is_player_page %}false{% endblock %};
+        window.isCreator = {% if user and user.is_creator %}true{% else %}false{% endif %};
+        window.isTeam = {% if user and user.is_team %}true{% else %}false{% endif %};
+        window.currentPendingRequests = {{ request.state.pending_book_requests|default(0) }};
+        window.currentUserId = {{ user.id if user else 'null' }};
+
+        function showToast(message, type = 'info') {
+            if (window.persistentPlayer?.showToast) {
+                window.persistentPlayer.showToast(message);
+                return;
+            }
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background-color:rgba(0,0,0,0.8);color:#fff;padding:10px 20px;border-radius:5px;z-index:10000;transition:opacity 0.5s;';
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        function showUpgradeModal(message) {
+            const modal = document.getElementById('upgradeAccessModal');
+            const messageElem = document.getElementById('upgradeMessage');
+            if (modal && messageElem) {
+                messageElem.textContent = message || "This content requires a higher tier subscription.";
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                console.log('🔐 Upgrade modal shown:', message);
+            } else {
+                console.error('⚠️ Upgrade modal elements not found in DOM');
+            }
+        }
+
+        function closeUpgradeModal() {
+            const modal = document.getElementById('upgradeAccessModal');
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+                console.log('✅ Upgrade modal closed');
+            }
+        }
+
+        function redirectToSupport() {
+            closeUpgradeModal();
+            window.location.href = '/support';
+        }
+
+        // Expose functions to window for access from modules
+        window.showUpgradeModal = showUpgradeModal;
+        window.closeUpgradeModal = closeUpgradeModal;
+        window.redirectToSupport = redirectToSupport;
+
+        async function navigateToAlbum(albumId) {
+            if (!albumId) return showToast('Invalid album ID', 'error');
+            try {
+                const response = await fetch(`/api/albums/${encodeURIComponent(albumId)}/check-access`);
+                const data = await response.json().catch(() => ({}));
+                if (response.status === 403) {
+                    showUpgradeModal(data.error?.message || 'This content requires a higher tier subscription');
+                    return;
+                }
+                if (!response.ok) return showToast(data.error?.message || 'Error accessing album', 'error');
+                location.href = `/album/${encodeURIComponent(albumId)}`;
+            } catch (error) {
+                console.error('Error checking album access:', error);
+                showToast('Error accessing album', 'error');
+            }
+        }
+
+        async function playTrackFromCatalog(trackId, title, album, coverPath) {
+            if (!trackId) return showToast('Invalid track ID', 'error');
+            try {
+                const response = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/check-access`);
+                const data = await response.json().catch(() => ({}));
+                if (response.status === 403) {
+                    showUpgradeModal(data.error?.message || 'This content requires a higher tier subscription');
+                    return false;
+                }
+                if (!response.ok) return showToast(data.error?.message || 'Error accessing track', 'error');
+                if (window.persistentPlayer) {
+                    await window.persistentPlayer.playTrack(trackId, title, album, coverPath, false);
+                    showToast(`${title} loaded. Click play to start.`);
+                }
+                return true;
+            } catch (error) {
+                console.error('Error checking track access:', error);
+                showToast('Error accessing track', 'error');
+                return false;
+            }
+        }
+
+        const BroadcastManager = {
+    config: { 
+        endpoint: '/api/creator/broadcast/active', 
+        pollInterval: 30000
+    },
+    state: { activeBroadcast: null, pollTimer: null, lastBroadcastId: null },
+    
+    init() {
+        this.setupPolling();
+        this.setupBroadcastElements();
+        this.checkForBroadcasts();
+    },
+    
+    setupPolling() {
+        if (this.state.pollTimer) clearInterval(this.state.pollTimer);
+        this.state.pollTimer = setInterval(() => this.checkForBroadcasts(), this.config.pollInterval);
+    },
+    
+    setupBroadcastElements() {
+        const dismissBtn = document.getElementById('broadcastDismissBtn');
+        if (dismissBtn) {
+            const newBtn = dismissBtn.cloneNode(true);
+            dismissBtn.parentNode?.replaceChild(newBtn, dismissBtn);
+            newBtn.addEventListener('click', () => this.acknowledgeBroadcast());
+        }
+    },
+    
+    checkForBroadcasts() {
+        fetch(this.config.endpoint)
+            .then(response => response.json())
+            .then(data => { if (data.broadcast) this.handleNewBroadcast(data.broadcast); })
+            .catch(error => console.error('Error checking broadcasts:', error));
+    },
+    
+    handleNewBroadcast(broadcast) {
+        if (broadcast.id === this.state.lastBroadcastId) return;
+        this.state.activeBroadcast = broadcast;
+        this.state.lastBroadcastId = broadcast.id;
+        this.updateBroadcastBanner();
+    },
+    
+    updateBroadcastBanner() {
+        const broadcast = this.state.activeBroadcast;
+        if (!broadcast) return;
+        
+        const banner = document.getElementById('broadcastBanner');
+        const content = document.getElementById('broadcastContent');
+        const dismissBtn = document.getElementById('broadcastDismissBtn');
+        
+        if (!banner || !content || !dismissBtn) return;
+        
+        const dismissKey = `broadcast_${broadcast.id}_dismissed`;
+        if (localStorage.getItem(dismissKey) === 'true') return;
+        
+        // FIXED: Just set the content, let CSS handle layout
+        content.textContent = broadcast.message;
+        // Force aggressive text breaking
+        content.style.cssText = 'word-break: break-all !important; overflow-wrap: break-word !important; word-wrap: break-word !important; white-space: normal !important; max-width: 100% !important; width: 100% !important;';
+        dismissBtn.dataset.broadcastId = broadcast.id;
+        
+        // FIXED: Apply only styling, no layout manipulation
+        const styles = {
+            warning: { 
+                bg: '#fef3c7', 
+                color: '#92400e', 
+                border: '#f59e0b', 
+                icon: 'fa-exclamation-triangle',
+                btnBg: '#f59e0b'
+            },
+            alert: { 
+                bg: '#fee2e2', 
+                color: '#b91c1c', 
+                border: '#ef4444', 
+                icon: 'fa-exclamation-circle',
+                btnBg: '#ef4444'
+            },
+            info: { 
+                bg: '#dbeafe', 
+                color: '#1e40af', 
+                border: '#3b82f6', 
+                icon: 'fa-info-circle',
+                btnBg: '#3b82f6'
+            },
+            default: { 
+                bg: '#fef08a', 
+                color: '#92400e', 
+                border: '#facc15', 
+                icon: 'fa-bullhorn',
+                btnBg: '#f59e0b'
+            }
+        };
+        
+        const style = styles[broadcast.message_type] || styles.default;
+        
+        // Apply colors only
+        banner.style.backgroundColor = style.bg;
+        banner.style.color = style.color;
+        banner.style.borderBottomColor = style.border;
+        
+        const icon = banner.querySelector('i');
+        if (icon) {
+            icon.className = `fas ${style.icon}`;
+        }
+        
+        dismissBtn.style.backgroundColor = style.btnBg;
+        
+        // FIXED: Simply show the banner - CSS handles the rest
+        banner.style.display = 'flex';
+        
+        // FIXED: Use simplified header adjustment
+        this.adjustHeaderForBanners();
+    },
+    
+    acknowledgeBroadcast() {
+        const broadcast = this.state.activeBroadcast;
+        if (!broadcast) return;
+        
+        const banner = document.getElementById('broadcastBanner');
+        if (banner) {
+            banner.style.display = 'none';
+            this.adjustHeaderForBanners();
+        }
+        
+        localStorage.setItem(`broadcast_${broadcast.id}_dismissed`, 'true');
+        
+        fetch('/api/creator/broadcast/acknowledge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ broadcast_id: broadcast.id })
+        }).catch(error => console.error('Error acknowledging broadcast:', error));
+        
+        this.state.activeBroadcast = null;
+    },
+    
+    // FIXED: Simplified header adjustment - no layout manipulation
+    adjustHeaderForBanners() {
+        const header = document.querySelector('.main-header');
+        const container = document.querySelector('.container');
+        const banners = document.querySelectorAll('.announcement-banner[style*="display: flex"], #broadcastBanner[style*="display: flex"]');
+        
+        if (!header || !container) return;
+        
+        let totalBannerHeight = 0;
+        banners.forEach(banner => {
+            if (banner.offsetHeight > 0) {
+                totalBannerHeight += banner.offsetHeight;
+            }
+        });
+        
+        // Let CSS handle the positioning with CSS variables or classes
+        if (totalBannerHeight > 0) {
+            document.body.classList.add('has-banners');
+            document.documentElement.style.setProperty('--banner-height', totalBannerHeight + 'px');
+        } else {
+            document.body.classList.remove('has-banners');
+            document.documentElement.style.removeProperty('--banner-height');
+        }
+    }
+};
+
+        const GracePeriodManager = {
+            config: { reminderInterval: 3600000, checkInterval: 300000 },
+            state: { isInGracePeriod: false, graceEndDate: null, lastReminderTime: null, messageDisplayed: false },
+            
+            init() {
+                this.checkGracePeriodStatus();
+                this.setupPeriodicChecks();
+                this.loadReminderState();
+                this.checkAndShowNotification(true);
+            },
+            
+            checkGracePeriodStatus() {
+                const graceMeta = document.querySelector('meta[name="grace-period-status"]');
+                if (graceMeta?.getAttribute('content') === 'active') {
+                    this.state.isInGracePeriod = true;
+                    const endMeta = document.querySelector('meta[name="grace-period-ends"]');
+                    if (endMeta) {
+                        this.state.graceEndDate = endMeta.getAttribute('content');
+                        this.state.gracePeriodEndDateObj = new Date(this.state.graceEndDate);
+                    }
+                }
+            },
+            
+            setupPeriodicChecks() {
+                if (this.state.checkTimer) clearInterval(this.state.checkTimer);
+                this.state.checkTimer = setInterval(() => this.checkAndShowNotification(false), this.config.checkInterval);
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden && this.state.isInGracePeriod) {
+                        this.checkAndShowNotification(false);
+                    }
+                });
+            },
+            
+            loadReminderState() {
+                try {
+                    const lastReminder = localStorage.getItem('grace_period_last_reminder');
+                    if (lastReminder) this.state.lastReminderTime = parseInt(lastReminder, 10);
+                } catch (error) {
+                    console.error('Error loading reminder state:', error);
+                }
+            },
+            
+            checkAndShowNotification(isInitialCheck) {
+                if (!this.state.isInGracePeriod || this.state.messageDisplayed) return;
+                
+                let remainingText = '';
+                let urgencyLevel = 'normal';
+                
+                if (this.state.gracePeriodEndDateObj) {
+                    const diffMs = this.state.gracePeriodEndDateObj - new Date();
+                    const diffHours = Math.floor(diffMs / 3600000);
+                    
+                    if (diffMs <= 0) {
+                        remainingText = 'Your grace period has ended.';
+                        urgencyLevel = 'critical';
+                    } else if (diffHours < 1) {
+                        remainingText = `only ${Math.floor((diffMs % 3600000) / 60000)} minutes remaining`;
+                        urgencyLevel = 'critical';
+                    } else if (diffHours < 5) {
+                        remainingText = `only ${diffHours} hours remaining`;
+                        urgencyLevel = 'high';
+                    } else if (diffHours < 24) {
+                        remainingText = `${diffHours} hours remaining`;
+                        urgencyLevel = 'medium';
+                    } else {
+                        remainingText = `${Math.floor(diffHours / 24)} days remaining`;
+                    }
+                }
+                
+                const shouldShow = isInitialCheck || 
+                    (this.state.lastReminderTime && (Date.now() - this.state.lastReminderTime > this.config.reminderInterval)) ||
+                    (this.state.gracePeriodEndDateObj && (this.state.gracePeriodEndDateObj - new Date() < 3600000));
+                
+                if (shouldShow) {
+                    this.showGracePeriodModal(remainingText, urgencyLevel);
+                    this.state.lastReminderTime = Date.now();
+                    localStorage.setItem('grace_period_last_reminder', this.state.lastReminderTime.toString());
+                }
+            },
+            
+            showGracePeriodModal(remainingText, urgencyLevel) {
+                this.state.messageDisplayed = true;
+                const modal = document.getElementById('upgradeAccessModal');
+                if (!modal) return;
+                
+                const header = modal.querySelector('.modal-header h2');
+                const icon = modal.querySelector('.modal-header i');
+                const message = document.getElementById('upgradeMessage');
+                
+                const urgencyConfig = {
+                    critical: { icon: 'fas fa-exclamation-circle', color: '#ef4444', title: 'Subscription Expired!' },
+                    high: { icon: 'fas fa-exclamation-triangle', color: '#f59e0b', title: 'Subscription Expiring Soon!' },
+                    medium: { icon: 'fas fa-clock', color: '#f59e0b', title: 'Subscription Grace Period' },
+                    default: { icon: 'fas fa-info-circle', color: '#3b82f6', title: 'Subscription Grace Period' }
+                };
+                
+                const config = urgencyConfig[urgencyLevel] || urgencyConfig.default;
+                icon.className = config.icon;
+                icon.style.color = config.color;
+                header.textContent = config.title;
+                
+                if (message && this.state.gracePeriodEndDateObj) {
+                    message.innerHTML = `Your subscription has expired and is in grace period (${remainingText}).<br>Your access will end on <strong>${this.state.graceEndDate}</strong> if not renewed.`;
+                }
+                
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                
+                const originalClose = window.closeUpgradeModal;
+                const originalRedirect = window.redirectToSupport;
+                
+                window.closeUpgradeModal = () => {
+                    originalClose();
+                    this.state.messageDisplayed = false;
+                    window.closeUpgradeModal = originalClose;
+                };
+                
+                window.redirectToSupport = () => {
+                    this.state.messageDisplayted = false;
+                    window.open('https://Ko-fi.com/webaudio', '_blank');
+                    closeUpgradeModal();
+                    window.redirectToSupport = originalRedirect;
+                };
+            }
+        };
+
+        function setupSessionMonitoring() {
+            const HEARTBEAT_INTERVAL = 40000;
+            let lastActivity = Date.now();
+            
+            async function sendHeartbeat() {
+                try {
+                    const response = await fetch('/api/sessions/active', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lastActivity, activityType: 'user_activity' })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        window.activeUserStats = { ...data.stats, total_active: data.total_active };
+                        window.dispatchEvent(new CustomEvent('sessionStatsUpdated', { detail: data }));
+                        
+                        if (data.pending_book_requests !== undefined && (window.isCreator || window.isTeam)) {
+                            if (window.currentPendingRequests !== data.pending_book_requests) {
+                                window.currentPendingRequests = data.pending_book_requests;
+                                updateFaviconBadge();
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Heartbeat error:', error);
+                }
+            }
+            
+            if (window.existingHeartbeatInterval) clearInterval(window.existingHeartbeatInterval);
+            window.existingHeartbeatInterval = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+            sendHeartbeat();
+            
+            const resetActivity = debounce(() => {
+                lastActivity = Date.now();
+                sendHeartbeat();
+            }, 1000);
+            
+            ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
+                document.addEventListener(event, resetActivity, { passive: true });
+            });
+            
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    if (window.existingHeartbeatInterval) {
+                        clearInterval(window.existingHeartbeatInterval);
+                        window.existingHeartbeatInterval = null;
+                    }
+                } else if (!window.existingHeartbeatInterval) {
+                    sendHeartbeat();
+                    window.existingHeartbeatInterval = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+                }
+            });
+        }
+
+        function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
+}
+
+        function updateFaviconBadge() {
+            const pendingRequests = window.currentPendingRequests;
+            if (pendingRequests > 0) {
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = 32;
+                const ctx = canvas.getContext('2d');
+                
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, 32, 32);
+                    ctx.beginPath();
+                    ctx.arc(24, 8, 8, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fill();
+                    ctx.font = 'bold 10px Arial';
+                    ctx.fillStyle = 'white';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(pendingRequests > 9 ? '9+' : pendingRequests, 24, 8);
+                    
+                    document.getElementById('favicon').href = canvas.toDataURL('image/png');
+                    const originalTitle = document.title.replace(/^\(\d+\)\s*/, '');
+                    document.title = `(${pendingRequests}) ${originalTitle}`;
+                };
+                img.src = "{{ url_for('static', path='/images/favicon.ico') }}";
+            }
+        }
+
+        class ForumWelcomeManager {
+            constructor() {
+                this.storageKey = 'forum_welcome_shown';
+                this.hasShownWelcome = false;
+                this.init();
+            }
+            
+            init() {
+                this.hasShownWelcome = localStorage.getItem(this.storageKey) === 'true';
+                
+                if (!this.hasShownWelcome && this.isInForum()) {
+                    this.showWelcomeModal();
+                }
+            }
+            
+            isInForum() {
+                return window.location.pathname.includes('/forum') ||
+                       window.location.pathname.includes('/forum') ||
+                       document.querySelector('#forumSPA, .forum-spa-container') !== null;
+            }
+            
+            showWelcomeModal() {
+                if (this.hasShownWelcome) return;
+                
+                const modal = document.getElementById('forumWelcomeModal');
+                if (!modal) return;
+                
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                
+                const firstButton = modal.querySelector('.btn-primary');
+                if (firstButton) {
+                    setTimeout(() => firstButton.focus(), 500);
+                }
+                
+                this.hasShownWelcome = true;
+                localStorage.setItem(this.storageKey, 'true');
+            }
+            
+            hideWelcomeModal() {
+                const modal = document.getElementById('forumWelcomeModal');
+                if (modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            }
+            
+            resetWelcome() {
+                localStorage.removeItem(this.storageKey);
+                this.hasShownWelcome = false;
+            }
+        }
+
+        function dismissForumWelcome() {
+            if (window.forumWelcomeManager) {
+                window.forumWelcomeManager.hideWelcomeModal();
+            }
+        }
+
+        function goToForumSettings() {
+            if (window.forumWelcomeManager) {
+                window.forumWelcomeManager.hideWelcomeModal();
+            }
+            
+            if (window.forum && typeof window.forum.navigateToSettings === 'function') {
+                window.forum.navigateToSettings();
+            } else {
+                if (window.showToast) {
+                    window.showToast('Forum settings can be accessed from the Settings button when viewing the forum');
+                }
+                
+                if (!window.location.pathname.includes('/forum')) {
+                    sessionStorage.setItem('forumNavigateToSettings', 'true');
+                    window.location.href = '/forum';
+                }
+            }
+        }
+
+        function adjustHeaderForBanners() {
+    if (BroadcastManager.adjustHeaderForBanners) {
+        BroadcastManager.adjustHeaderForBanners();
+    }
+}
+
+        document.addEventListener('DOMContentLoaded', () => {
+            BroadcastManager.init();
+            GracePeriodManager.init();
+            if (!window.heartbeatInitialized) {
+                window.heartbeatInitialized = true;
+                setupSessionMonitoring();
+            }
+
+            const bannerKey = 'announcement_banner_dismissed';
+            const announcementBanner = document.getElementById('announcementBanner');
+            const dismissBtn = document.getElementById('announcementDismissBtn');
+            
+            if (!localStorage.getItem(bannerKey)) {
+                announcementBanner.style.display = 'flex';
+                adjustHeaderForBanners();
+            }
+            
+            dismissBtn?.addEventListener('click', () => {
+                announcementBanner.style.display = 'none';
+                localStorage.setItem(bannerKey, 'true');
+                adjustHeaderForBanners();
+            });
+
+            const sideNav = document.getElementById('sideNav');
+            const openSideNav = document.getElementById('openSideNav');
+            const closeSideNav = document.getElementById('closeSideNav');
+            const sideNavOverlay = document.getElementById('sideNavOverlay');
+            
+            function toggleNav(open) {
+                sideNav.classList.toggle('open', open);
+                sideNavOverlay.style.display = open ? 'block' : 'none';
+                document.body.style.overflow = open ? 'hidden' : '';
+            }
+            
+            openSideNav?.addEventListener('click', () => toggleNav(true));
+            closeSideNav?.addEventListener('click', () => toggleNav(false));
+            sideNavOverlay?.addEventListener('click', () => toggleNav(false));
+
+            const themeToggle = document.getElementById('themeToggle');
+            const mobileThemeToggle = document.getElementById('mobileThemeToggle');
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            function updateThemeIcon(theme) {
+                const iconClass = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+                themeToggle.querySelector('i').className = iconClass;
+                mobileThemeToggle.querySelector('i').className = iconClass;
+            }
+            
+            function toggleTheme() {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+            }
+            
+            updateThemeIcon(savedTheme);
+            themeToggle?.addEventListener('click', toggleTheme);
+            mobileThemeToggle?.addEventListener('click', toggleTheme);
+
+            function showModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+            
+            function closeModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                }
+            }
+            
+            document.querySelectorAll('.coming-soon-modal, .modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeModal(modal.id);
+                        closeUpgradeModal();
+                    }
+                });
+            });
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.coming-soon-modal').forEach(modal => {
+                        if (modal.style.display === 'flex') closeModal(modal.id);
+                    });
+                    closeUpgradeModal();
+                    const forumModal = document.getElementById('forumWelcomeModal');
+                    if (forumModal && forumModal.classList.contains('active')) {
+                        dismissForumWelcome();
+                    }
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                const forumModal = document.getElementById('forumWelcomeModal');
+                if (e.target === forumModal) {
+                    dismissForumWelcome();
+                }
+            });
+
+            setTimeout(() => {
+                document.querySelectorAll('.discord-link').forEach(link => {
+                    link.classList.remove('attention');
+                    link.addEventListener('mouseover', () => link.classList.remove('attention'));
+                });
+            }, 10000);
+
+            if (window.isCreator || window.isTeam) {
+                updateFaviconBadge();
+            }
+
+            if (!window.isPlayerPage) {
+                setTimeout(() => {
+                    if (window.PersistentPlayer && !window.persistentPlayer) {
+                        window.persistentPlayer = new PersistentPlayer();
+                        const expandedState = sessionStorage.getItem('expandedPlayerState');
+                        if (expandedState) {
+                            setTimeout(() => {
+                                if (window.persistentPlayer.currentTrackId) {
+                                    window.persistentPlayer.updatePlayerState();
+                                }
+                            }, 100);
+                        }
+                    }
+                }, 300);
+            }
+
+            if (typeof Hls !== 'undefined') {
+                window.HLS_AVAILABLE = Hls.isSupported();
+                window.Hls = Hls;
+            }
+
+            setTimeout(() => {
+                if (typeof BadgeManager !== 'undefined') {
+                    BadgeManager.init();
+                    document.querySelectorAll('.notifications-link').forEach(link => {
+                        const newLink = link.cloneNode(true);
+                        link.parentNode?.replaceChild(newLink, link);
+                        newLink.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            BadgeManager.toggleNotificationPanel();
+                        });
+                    });
+                    BadgeManager.fetchNotifications();
+                }
+            }, 500);
+
+            window.forumWelcomeManager = new ForumWelcomeManager();
+            
+            setTimeout(adjustHeaderForBanners, 100);
+        });
+
+document.addEventListener('DOMContentLoaded', () => {
+    const player = document.getElementById('miniPlayer');
+    const closeBtn = document.getElementById('closeMiniPlayer');
+    const tab = document.getElementById('miniPlayerCollapseTab');
+
+    // Only proceed if player exists
+    if (!player) return;
+
+    /* ===== FORCE CORRECT POSITIONING ===== */
+    function forceRightPosition() {
+        // Don't position if player is not visible OR we're on the player page
+        if (!player.classList.contains('active') ||
+            player.style.display === 'none' ||
+            document.body.classList.contains('player-page')) {
+            return;
+        }
+
+        // Clear ALL positioning styles
+        player.style.left = '';
+        player.style.top = '';
+        player.style.right = '';
+        player.style.bottom = '';
+        player.style.transform = '';
+
+        // Force right positioning with higher specificity
+        player.style.setProperty('position', 'fixed', 'important');
+        player.style.setProperty('right', '16px', 'important');
+        player.style.setProperty('bottom', '16px', 'important');
+        player.style.setProperty('left', 'auto', 'important');
+        player.style.setProperty('top', 'auto', 'important');
+
+        // Force reflow
+        player.offsetHeight;
+
+        // console.log('Forced right positioning. Player rect:', player.getBoundingClientRect());
+    }
+    
+    // Apply positioning fix immediately and after any potential interference
+    forceRightPosition();
+    
+    // Also apply after a short delay to override any other scripts
+    setTimeout(forceRightPosition, 100);
+    setTimeout(forceRightPosition, 500);
+
+    /* ===== COLLAPSE / EXPAND SYSTEM ===== */
+    function toggleCollapse() {
+        player.classList.toggle('collapsed');
+    }
+
+    // Both the × button and the tab toggle collapse
+        if (tab) tab.addEventListener('click', toggleCollapse);
+
+    /* ===== SMOOTH DRAGGING SYSTEM ===== */
+    let drag = { active: false, startX: 0, startY: 0, origX: 0, origY: 0 };
+
+    player.addEventListener('mousedown', e => {
+        // Don't start drag if clicking on the tab or any of its children
+        if (tab && (e.target === tab || tab.contains(e.target))) return;
+        // Don't start drag if clicking on buttons
+        if (e.target.closest('button')) return;
+        
+        drag.active = true;
+        drag.startX = e.clientX;
+        drag.startY = e.clientY;
+        const rect = player.getBoundingClientRect();
+        drag.origX = rect.left;
+        drag.origY = rect.top;
+        player.classList.add('dragging');
+        player.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', e => {
+        if (!drag.active) return;
+        // Override the important styles for dragging
+        player.style.setProperty('left', (drag.origX + e.clientX - drag.startX) + 'px', 'important');
+        player.style.setProperty('top', (drag.origY + e.clientY - drag.startY) + 'px', 'important');
+        player.style.setProperty('right', 'auto', 'important');
+        player.style.setProperty('bottom', 'auto', 'important');
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (drag.active) {
+            drag.active = false;
+            player.classList.remove('dragging');
+            player.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+    });
+
+    // Initialize: Set correct chevron direction (pointing left initially)
+    if (tab) {
+        const icon = document.getElementById('miniPlayerCollapseIcon');
+        if (icon) {
+            // Set initial chevron to point left (will point right when collapsed)
+            icon.className = 'fas fa-chevron-left';
+        }
+    }
+
+    // Reset to default position on double-click
+    player.addEventListener('dblclick', (e) => {
+        if (e.target.closest('button')) return;
+        forceRightPosition();
+        player.classList.remove('collapsed'); // Also uncollapse if collapsed
+    });
+
+    // FIXED: Monitor for position changes but only when player is visible
+    let correctionCount = 0;
+    let correctionResetTimer = null;
+
+    const positionObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                // Only check position if player is active and visible
+                if (!player.classList.contains('active') || player.style.display === 'none') {
+                    return;
+                }
+
+                // ✅ CRITICAL FIX: Prevent infinite loop with correction limit
+                if (correctionCount >= 3) {
+                    // console.warn('⚠️ Position correction limit reached, stopping to prevent infinite loop');
+                    return;
+                }
+
+                const rect = player.getBoundingClientRect();
+                // Only correct if we have valid dimensions and we're not dragging
+                if (rect.width > 0 && rect.height > 0 &&
+                    rect.right < window.innerWidth - 50 &&
+                    !drag.active &&
+                    !player.classList.contains('dragging')) {
+                    correctionCount++;
+                    // console.log(`Position drift detected, correcting... (${correctionCount}/3)`);
+                    forceRightPosition();
+
+                    // Reset counter after 2 seconds of no corrections
+                    clearTimeout(correctionResetTimer);
+                    correctionResetTimer = setTimeout(() => {
+                        correctionCount = 0;
+                        console.log('✅ Position correction counter reset');
+                    }, 2000);
+                }
+            }
+        });
+    });
+
+    positionObserver.observe(player, {
+        attributes: true,
+        attributeFilter: ['style']
+    });
+
+    // Override any PersistentPlayer positioning
+    if (window.persistentPlayer && window.persistentPlayer.updatePlayerState) {
+        const originalUpdateState = window.persistentPlayer.updatePlayerState;
+        window.persistentPlayer.updatePlayerState = function(...args) {
+            const result = originalUpdateState.apply(this, args);
+            // Force correct positioning after any state update, but only if active
+            setTimeout(() => {
+                if (player.classList.contains('active')) {
+                    forceRightPosition();
+                }
+            }, 0);
+            return result;
+        };
+    }
+
+    // console.log('Mini player positioning override installed');
+});
+
+
+function adjustHeaderForBanners(){
+    const banners = document.querySelectorAll(
+        '.announcement-banner[style*="display: flex"]'
+    );
+    let total = 0;
+    banners.forEach(b => total += b.offsetHeight || 0);
+
+    document.documentElement
+            .style.setProperty('--banner-height', total + 'px');
+}
+
+/* run once on DOM-ready … */
+document.addEventListener('DOMContentLoaded', adjustHeaderForBanners);
+/* … and every time you show / hide or resize a banner */
+window.addEventListener('resize', adjustHeaderForBanners);
+
+</script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,278 @@
+from __future__ import annotations
+import asyncio
+import logging
+import os
+from pathlib import Path
+from typing import Optional, Dict, Callable, List
+import json
+from datetime import datetime
+from sqlalchemy.orm import Session
+from redis.asyncio import Redis
+import psutil
+from worker_config import worker_config
+
+logger = logging.getLogger(__name__)
+
+class MetadataExtractionQueue:
+    _instance = None
+    _initialized = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        if not self._initialized:
+            # Initialize with metadata worker configuration
+            min_workers = worker_config.worker_configs['metadata']['min_workers']
+            self._current_workers = min_workers
+
+            # Create queues and workers
+            self.extraction_queue = asyncio.Queue()
+            self._workers: List[asyncio.Task] = []
+            
+            # Stats and callbacks
+            self._active_extractions = {}
+            self._extraction_locks = {}
+            self._callbacks: Dict[str, Callable] = {}
+            self._completion_events: Dict[str, asyncio.Event] = {}
+            self._stats_lock = asyncio.Lock()
+
+            # Monitoring
+            self._monitor_task: Optional[asyncio.Task] = None
+            self._running = False
+
+            self._initialized = True
+            logger.info(
+                f"MetadataExtractionQueue initialized with {min_workers} workers\n"
+                f"CPU target: {worker_config.worker_configs['metadata']['target_cpu_percent']}%"
+            )
+
+    async def start(self):
+        """Start the metadata extraction workers."""
+        if self._running:
+            return
+
+        self._running = True
+        logger.info(f"Starting {self._current_workers} metadata extractors")
+
+        # Start workers
+        for i in range(self._current_workers):
+            worker = asyncio.create_task(
+                self._extractor_worker(f"metadata_{i}"),
+                name=f"metadata_worker_{i}"
+            )
+            self._workers.append(worker)
+            worker_config.register_worker('metadata')
+
+        # Start monitor
+        self._monitor_task = asyncio.create_task(
+            self._monitor_queue(),
+            name="metadata_monitor"
+        )
+
+        logger.info(f"Metadata extraction workers started with {len(self._workers)} workers")
+
+    async def stop(self):
+        """Stop all extraction workers."""
+        if not self._running:
+            return
+
+        self._running = False
+        logger.info("Stopping metadata extraction workers")
+
+        # Cancel workers
+        for worker in self._workers:
+            worker.cancel()
+            worker_config.unregister_worker('metadata')
+
+        # Cancel monitor
+        if self._monitor_task:
+            self._monitor_task.cancel()
+
+        # Wait for tasks
+        await asyncio.gather(*self._workers, return_exceptions=True)
+        if self._monitor_task:
+            await asyncio.gather(self._monitor_task, return_exceptions=True)
+
+        self._workers.clear()
+        logger.info("Metadata extraction workers stopped")
+
+    async def _extract_metadata(self, file_path: Path) -> Optional[Dict]:
+        """Extract metadata using ffprobe."""
+        try:
+            cmd = [
+                'ffprobe',
+                '-v', 'error',
+                '-select_streams', 'a:0',
+                '-show_entries',
+                'format=duration,bit_rate,format_name,format_long_name',
+                '-show_streams',
+                '-of', 'json',
+                str(file_path)
+            ]
+
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+
+            stdout, stderr = await process.communicate()
+
+            if process.returncode != 0:
+                raise RuntimeError(f"FFprobe failed: {stderr.decode()}")
+
+            probe_data = json.loads(stdout.decode())
+            streams = probe_data.get('streams', [])
+            format_data = probe_data.get('format', {})
+
+            audio_stream = next(
+                (s for s in streams if s.get('codec_type') == 'audio'),
+                streams[0] if streams else {}
+            )
+
+            bit_rate = format_data.get('bit_rate') or audio_stream.get('bit_rate', '0')
+            bit_rate = int(bit_rate) if str(bit_rate).isdigit() else 0
+
+            return {
+                'duration': float(format_data.get('duration', 0)),
+                'size': file_path.stat().st_size,
+                'format': format_data.get('format_name', 'unknown'),
+                'codec': audio_stream.get('codec_name', 'unknown'),
+                'sample_rate': int(audio_stream.get('sample_rate', 44100)),
+                'channels': int(audio_stream.get('channels', 2)),
+                'bit_rate': bit_rate,
+                'extracted_at': datetime.utcnow().isoformat()
+            }
+
+        except Exception as e:
+            logger.error(f"Error extracting metadata: {e}")
+            return None
+
+    async def _extractor_worker(self, worker_id: str):
+        """Worker process that handles metadata extraction."""
+        logger.info(f"Metadata extractor {worker_id} started")
+
+        while self._running:
+            try:
+                extraction_info = await self.extraction_queue.get()
+                if not extraction_info:
+                    self.extraction_queue.task_done()
+                    continue
+
+                file_id = extraction_info['file_id']
+                file_path = extraction_info['file_path']
+                db = extraction_info.get('db')
+
+                try:
+                    logger.info(f"[Metadata][{worker_id}] Starting extraction for {file_id}")
+                    
+                    metadata = await self._extract_metadata(file_path)
+                    
+                    if not metadata:
+                        raise Exception("Failed to extract metadata")
+
+                    # Execute callback with metadata
+                    if file_id in self._callbacks:
+                        try:
+                            await self._callbacks[file_id](file_id, metadata, db)
+                        except Exception as cb_err:
+                            logger.error(f"Error in completion callback: {cb_err}")
+
+                except Exception as e:
+                    logger.error(f"[Metadata][{worker_id}] Error extracting metadata: {e}")
+                    raise
+
+                finally:
+                    if file_id in self._completion_events:
+                        self._completion_events[file_id].set()
+                    self.extraction_queue.task_done()
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in metadata worker {worker_id}: {e}")
+                await asyncio.sleep(1)
+
+    async def _monitor_queue(self):
+        """Monitor queue and handle dynamic scaling."""
+        check_interval = 5
+        scale_interval = worker_config.scale_check_interval
+        time_since_scale = 0
+
+        while self._running:
+            try:
+                queue_size = self.extraction_queue.qsize()
+                worker_config.update_queue_length('metadata', queue_size)
+
+                await asyncio.sleep(check_interval)
+                time_since_scale += check_interval
+
+                if time_since_scale >= scale_interval:
+                    time_since_scale = 0
+                    if worker_config.can_scale('metadata', 'any'):
+                        await self._scale_workers()
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Monitor error in metadata queue: {e}")
+                await asyncio.sleep(check_interval)
+
+    async def _scale_workers(self):
+        """Scale workers based on WorkerConfig recommendations."""
+        recommended = worker_config.get_worker_count('metadata')
+        current = len(self._workers)
+
+        if recommended > current:
+            # Scale up
+            needed = recommended - current
+            logger.info(f"Scaling UP metadata workers by {needed}")
+            for i in range(needed):
+                idx = current + i
+                worker = asyncio.create_task(
+                    self._extractor_worker(f"metadata_{idx}"),
+                    name=f"metadata_worker_{idx}"
+                )
+                self._workers.append(worker)
+                worker_config.register_worker('metadata')
+
+        elif recommended < current:
+            # Scale down
+            excess = current - recommended
+            logger.info(f"Scaling DOWN metadata workers by {excess}")
+            
+            for _ in range(excess):
+                if self._workers:
+                    worker = self._workers.pop()
+                    worker.cancel()
+                    worker_config.unregister_worker('metadata')
+
+    async def queue_extraction(
+        self,
+        file_path: Path,
+        file_id: str,
+        completion_callback: Callable,
+        db: Optional[Session] = None
+    ) -> None:
+        """Queue metadata extraction with completion callback."""
+        try:
+            # Set up completion tracking
+            self._completion_events[file_id] = asyncio.Event()
+            self._callbacks[file_id] = completion_callback
+
+            # Queue extraction
+            await self.extraction_queue.put({
+                'file_id': file_id,
+                'file_path': file_path,
+                'db': db
+            })
+
+        except Exception as e:
+            logger.error(f"Error queuing metadata extraction: {e}")
+            raise
+
+# Create global instance
+metadata_queue = MetadataExtractionQueue()

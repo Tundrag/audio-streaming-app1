@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+
+{% block is_player_page %}true{% endblock %}
+
+{% block title %}{{ track.title }} - Music Player{% endblock %}
+
+{% block page_title %}{{ album.title[:20] ~ '...' if album.title|length > 20 else album.title }}{% endblock %}
+
+{% block page_css %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/player.css') }}">
+{% endblock %}
+
+{% block inline_css %}
+{{ super() }}
+<!-- ✅ Single source of truth: All player CSS in /static/css/player.css -->
+{% endblock %}
+
+{% block content %}
+<!-- ✅ Bootstrap marker for SSR detection (tells SPA router not to re-navigate) -->
+<div id="player-bootstrap-data" style="display: none;"></div>
+
+<!-- ✅ FIXED: Structured data for voice extension and player controller -->
+<script id="player-data" type="application/json">
+{
+    "track": {
+        "id": {{ track.id | tojson }},
+        "title": {{ track.title | tojson }},
+        "file_path": {{ track.file_path | tojson }},
+        "track_type": {{ track.track_type | tojson }},
+        "default_voice": {{ (track.default_voice or 'en-US-AvaNeural') | tojson }},
+        "current_voice": {{ (track.current_voice or track.default_voice or 'en-US-AvaNeural') | tojson }},
+        "supports_voice_switching": {{ track.supports_voice_switching | default(false) | tojson }},
+        "generated_voices": {{ track.generated_voices | default([]) | tojson }},
+        "available_voices": {{ track.available_voices | default([]) | tojson }},
+        "source_text": {{ track.source_text | default('') | tojson }},
+        "has_read_along": {{ track.has_read_along | default(false) | tojson }}
+    },
+    "album": {
+        "id": {{ album.id | tojson }},
+        "title": {{ album.title | tojson }},
+        "cover_path": {{ album.cover_path | tojson }},
+        "ordered_track_ids": {{ album.ordered_track_ids | default([]) | tojson }}
+    },
+    "user": {
+        "id": {{ user.id | tojson }},
+        "username": {{ user.username | tojson }},
+        "role": {{ user.role | tojson }},
+        "is_creator": {{ user.is_creator | tojson }},
+        "is_team": {{ user.is_team | tojson }}
+    },
+    "stream_config": {{ stream_config | tojson }}
+}
+</script>
+<!-- ✅ FIXED: Minimal global variables for backwards compatibility -->
+<script>
+  // ✅ Keep these for backwards compatibility with existing code
+  window.currentTrackId = {{ track.id | tojson }};
+  window.currentTrackTitle = {{ track.title | tojson }};
+  window.currentAlbumTitle = {{ album.title | tojson }};
+  window.currentAlbumCoverPath = {{ album.cover_path | tojson }};
+  window.currentTrackFilePath = {{ track.file_path | tojson }};
+  window.currentAlbumId = {{ album.id | tojson }};
+  
+  // ✅ FIXED: Track info for voice extension
+  window.currentTrackType = {{ track.track_type | tojson }};
+  // ✅ REMOVED: Don't set global currentVoice - let voice extension handle it
+
+  // ✅ FIXED: User data for per-user storage
+  window.currentUserData = {
+    id: {{ user.id | tojson }},
+    username: {{ user.username | tojson }},
+    role: {{ user.role | tojson }},
+    is_creator: {{ user.is_creator | tojson }},
+    is_team: {{ user.is_team | tojson }}
+  };
+  
+  // ✅ NEW: Structured data access for voice extension
+  window.trackData = null;
+  window.userData = null;
+  
+  // ✅ Load structured data from JSON
+  document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const playerDataElement = document.getElementById('player-data');
+        if (playerDataElement) {
+            const data = JSON.parse(playerDataElement.textContent);
+            window.trackData = data.track;
+            window.userData = data.user;
+            window.albumData = data.album; // ✅ This must include ordered_track_ids
+            window.streamConfigData = data.stream_config;
+            
+            console.log('✅ Loaded track data:', window.trackData);
+            console.log('✅ Loaded album data:', window.albumData);
+            console.log('✅ Track order:', window.albumData?.ordered_track_ids);
+        }
+    } catch (e) {
+        console.error('❌ Failed to parse player data:', e);
+        // Fallback data
+        window.trackData = {
+            id: {{ track.id | tojson }},
+            track_type: {{ track.track_type | tojson }},
+            default_voice: {{ (track.default_voice or 'en-US-AvaNeural') | tojson }},
+            current_voice: {{ (track.current_voice or track.default_voice or 'en-US-AvaNeural') | tojson }}
+        };
+        window.userData = {
+            id: {{ user.id | tojson }},
+            username: {{ user.username | tojson }}
+        };
+        window.albumData = {
+            id: {{ album.id | tojson }},
+            ordered_track_ids: {{ album.ordered_track_ids | default([]) | tojson }}
+        };
+    }
+});
+
+  // ✅ REMOVED: Body class now managed by PlayerController mount/destroy for proper cleanup
+  // document.body.classList.add('player-page');
+</script>
+
+<div class="player-container">
+    <div class="player-background" style="background-image: url('{{ album.cover_path }}')"></div>
+
+    <div class="player-header">
+        <a href="/album/{{ album.id }}" class="back-btn" data-spa-href="/album/{{ album.id }}">
+            <i class="fas fa-chevron-left"></i>
+            Back to Album
+        </a>
+    </div>
+
+    <div class="player-content">
+        <img src="{{ album.cover_path }}" alt="{{ album.title }}" class="album-art">
+
+        <div class="track-info">
+            <h1 class="track-title">{{ track.title }}</h1>
+            <div class="album-title">{{ album.title }}</div>
+        </div>
+
+        <!-- Social Buttons -->
+        <div class="social-actions social-actions-inline">
+            <button class="social-btn like-track-btn" id="likeTrackBtn" title="Like this track">
+                <i class="far fa-heart"></i>
+                <span class="count" id="likeCount">0</span>
+            </button>
+            <button class="social-btn comment-btn" id="commentBtn" title="View comments">
+                <i class="far fa-comment"></i>
+                <span class="count" id="commentCount">0</span>
+            </button>
+            <button class="social-btn share-btn" id="shareBtn" title="Share this track">
+                <i class="fas fa-share-alt"></i>
+                <span class="count" id="shareCount">0</span>
+            </button>
+        </div>
+
+        <div class="player-controls">
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar">
+                    <div class="player-progress" id="progress">
+                        <div class="progress-knob"></div>
+                    </div>
+                    <div class="progress-hover"></div>
+                </div>
+                <div class="time-info">
+                    <span id="currentTime">0:00:00</span>
+                    <span id="duration">0:00:00</span>
+                </div>
+            </div>
+
+            <!-- Main controls -->
+            <div class="main-controls">
+<button class="control-btn" id="rewind30Btn" title="Rewind 30 seconds">
+  <div class="time-skip-container">
+    <i class="fas fa-rotate-left fa-fw"></i>
+    <span class="time-skip-label">30</span>
+  </div>
+</button>
+<button class="control-btn" id="rewindBtn" title="Rewind 15 seconds">
+  <div class="time-skip-container">
+    <i class="fas fa-rotate-left fa-fw"></i>
+    <span class="time-skip-label">15</span>
+  </div>
+</button>
+                <div class="play-btn-container">
+                    <button class="auto-play-info-icon" id="autoPlayInfoBtn" title="Auto-play help">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                    <button class="control-btn play-btn" id="playBtn" title="Play/Pause">
+                        <div class="play-btn-wrapper">
+                            <i class="fas fa-play fa-lg" id="playIcon"></i>
+                            <svg class="auto-play-arrows" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Blue circular background -->
+                                <circle cx="50" cy="50" r="45" fill="#4A90E2" opacity="0.9"/>
+
+                                <!-- First curved arrow (top-left, clockwise) -->
+                                <path d="M 20,40 A 30,30 0 0,1 40,20" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"/>
+                                <polygon points="40,20 35,13 47,16" fill="white"/>
+
+                                <!-- Second curved arrow (bottom-right, clockwise) -->
+                                <path d="M 80,60 A 30,30 0 0,1 60,80" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"/>
+                                <polygon points="60,80 65,87 53,84" fill="white"/>
+                            </svg>
+                        </div>
+                    </button>
+                </div>
+
+<button class="control-btn" id="forwardBtn" title="Forward 15 seconds">
+  <div class="time-skip-container">
+    <i class="fas fa-rotate-right fa-fw"></i>
+    <span class="time-skip-label">15</span>
+  </div>
+</button>
+
+<button class="control-btn" id="forward30Btn" title="Forward 30 seconds">
+  <div class="time-skip-container">
+    <i class="fas fa-rotate-right fa-fw"></i>
+    <span class="time-skip-label">30</span>
+  </div>
+</button>
+                <!-- Secondary controls -->
+                <button class="secondary-btn" id="speedBtn">
+                    <i class="fas fa-gauge-high"></i>
+                    <span class="speed-display" id="speedDisplay"></span>
+                    Speed
+                </button>
+
+                <button class="secondary-btn" id="sleepBtn">
+                    <i class="fas fa-moon"></i>
+                    <span class="sleep-timer-display" id="sleepDisplay"></span>
+                    Sleep
+                </button>
+
+                <!-- ✅ Voice button controlled by voice extension -->
+                <button class="secondary-btn voice-change-btn" id="voiceChangeBtn" style="display: none;" onclick="if(window.voiceExtension) { window.voiceExtension.openVoiceModal(); }">
+    <i class="fas fa-microphone-alt"></i>
+    <span id="currentVoiceDisplay">Voice</span>
+</button>
+
+<!-- ✅ NEW: Read-Along button for TTS tracks -->
+<button class="secondary-btn read-along-btn" id="readAlongBtn" style="display: none;">
+    <i class="fas fa-book-open"></i>
+    <span>Read Along</span>
+</button>
+
+                <!-- ✅ UPDATED: Download button now uses persistence.js download manager -->
+                <button class="secondary-btn" id="downloadBtn">
+                    <i class="fas fa-download"></i>
+                    <span class="download-status" id="downloadStatus"></span>
+                    Download
+                </button>
+            </div>
+
+            <!-- Popup menus -->
+            <div class="popup-menu" id="speedMenu">
+                <div class="speed-menu">
+                    <button class="speed-option" data-speed="0.5">0.5x</button>
+                    <button class="speed-option" data-speed="0.75">0.75x</button>
+                    <button class="speed-option" data-speed="1.0">1x</button>
+                    <button class="speed-option" data-speed="1.25">1.25x</button>
+                    <button class="speed-option" data-speed="1.5">1.5x</button>
+                    <button class="speed-option" data-speed="1.75">1.75x</button>
+                    <button class="speed-option" data-speed="2.0">2x</button>
+                    <button class="speed-option" data-speed="2.5">2.5x</button>
+                    <button class="speed-option" data-speed="3.0">3x</button>
+                </div>
+            </div>
+
+            <div class="popup-menu" id="sleepMenu">
+                <div class="sleep-menu">
+                    <button class="sleep-option" data-minutes="5">5 minutes</button>
+                    <button class="sleep-option" data-minutes="15">15 minutes</button>
+                    <button class="sleep-option" data-minutes="30">30 minutes</button>
+                    <button class="sleep-option" data-minutes="45">45 minutes</button>
+                    <button class="sleep-option" data-minutes="60">1 hour</button>
+                    <button class="sleep-option" data-minutes="custom">Custom</button>
+                    <button class="sleep-option" data-minutes="cancel" style="display: none;">Cancel Timer</button>
+                </div>
+            </div>
+
+            <div class="track-navigation" id="trackNavigation">
+                {% if prev_track %}
+  <a href="/player/{{ prev_track.id }}"
+     class="nav-btn"
+     data-spa-href="/player/{{ prev_track.id }}"
+     data-track-id="{{ prev_track.id }}"
+     id="prevTrackBtn">
+    <i class="fas fa-chevron-left"></i>
+    Previous Track
+  </a>
+{% endif %}
+
+{% if next_track %}
+  <a href="/player/{{ next_track.id }}"
+     class="nav-btn"
+     data-spa-href="/player/{{ next_track.id }}"
+     data-track-id="{{ next_track.id }}"
+     id="nextTrackBtn">
+    Next Track
+    <i class="fas fa-chevron-right"></i>
+  </a>
+{% endif %}
+            </div>
+        </div>
+
+        <!-- Comment Section -->
+        <div class="comment-section" id="commentSection">
+            <div class="comment-header">
+                <h2>Comments <span id="totalCommentCount">(0)</span></h2>
+            </div>
+            
+            <div class="comment-form">
+                <div class="user-avatar">
+                    <div class="avatar-placeholder">{{ user.username|first|upper }}</div>
+                </div>
+                <form id="commentForm" class="new-comment-form">
+                    <input type="hidden" name="track_id" value="{{ track.id }}">
+                    <input type="hidden" name="timestamp" id="commentTimestamp" value="0">
+                    <div class="comment-input-container">
+                        <textarea 
+                            name="content" 
+                            placeholder="Write a comment..." 
+                            class="comment-input" 
+                            id="commentInput" 
+                            required></textarea>
+                        <div class="timestamp-display" id="timestampDisplay" style="display: none;">
+                            <i class="fas fa-clock"></i> 
+                            <input type="text" id="timestampValue" value="0:00" class="timestamp-input" placeholder="mm:ss">
+                            <button type="button" id="clearTimestamp" class="clear-timestamp-btn">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="comment-actions">
+                        <button type="button" id="addTimestampBtn" class="add-timestamp-btn">
+                            <i class="fas fa-clock"></i> Add current time
+                        </button>
+                        <button type="submit" class="submit-comment-btn">Comment</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="comment-list" id="commentList">
+                <div class="comments-loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading comments...
+                </div>
+            </div>
+
+            <!-- Edit Comment Modal -->
+            <div class="reply-modal" id="editCommentModal">
+                <div class="reply-modal-content">
+                    <div class="reply-modal-header">
+                        <h3>Edit Comment</h3>
+                        <button type="button" class="close-modal-btn" id="closeEditModal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="reply-modal-body">
+                        <form id="editCommentForm">
+                            <input type="hidden" id="editCommentId" name="comment_id">
+                            <input type="hidden" id="editTimestamp" name="timestamp" value="0">
+                            
+                            <div class="reply-input-container">
+                                <textarea 
+                                    name="content" 
+                                    placeholder="Edit your comment..." 
+                                    class="reply-input" 
+                                    id="editCommentInput" 
+                                    required></textarea>
+                                <div class="timestamp-display" id="editTimestampDisplay" style="display: none;">
+                                    <i class="fas fa-clock"></i>
+                                    <input type="text" id="editTimestampValue" value="0:00" class="timestamp-input" placeholder="mm:ss">
+                                    <button type="button" id="clearEditTimestamp" class="clear-timestamp-btn">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="reply-form-actions">
+                                <div class="reply-form-tools">
+                                    <button type="button" id="addEditTimestampBtn" class="add-timestamp-btn">
+                                        <i class="fas fa-clock"></i> Add current time
+                                    </button>
+                                </div>
+                                <div class="reply-form-buttons">
+                                    <button type="button" id="cancelEdit" class="cancel-reply-btn">Cancel</button>
+                                    <button type="submit" class="submit-reply-btn">Save Changes</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reply Modal -->
+            <div class="reply-modal" id="replyModal">
+                <div class="reply-modal-content">
+                    <div class="reply-modal-header">
+                        <h3>Reply to Comment</h3>
+                        <button type="button" class="close-modal-btn" id="closeReplyModal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="reply-modal-body">
+                        <div class="parent-comment" id="parentCommentContent"></div>
+                        <form id="replyForm">
+                            <input type="hidden" id="replyParentId" name="parent_id">
+                            <input type="hidden" id="replyTimestamp" name="timestamp" value="0">
+                            
+                            <div class="reply-input-container">
+                                <textarea 
+                                    name="content" 
+                                    placeholder="Write your reply..." 
+                                    class="reply-input" 
+                                    id="replyInput" 
+                                    required></textarea>
+                                <div class="timestamp-display" id="replyTimestampDisplay" style="display: none;">
+                                    <i class="fas fa-clock"></i>
+                                    <input type="text" id="replyTimestampValue" value="0:00" class="timestamp-input" placeholder="mm:ss">
+                                    <button type="button" id="clearReplyTimestamp" class="clear-timestamp-btn">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="reply-form-actions">
+                                <div class="reply-form-tools">
+                                    <button type="button" id="addReplyTimestampBtn" class="add-timestamp-btn">
+                                        <i class="fas fa-clock"></i> Add current time
+                                    </button>
+                                </div>
+                                <div class="reply-form-buttons">
+                                    <button type="button" id="cancelReply" class="cancel-reply-btn">Cancel</button>
+                                    <button type="submit" class="submit-reply-btn">Reply</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delete Confirmation Modal -->
+            <div class="confirmation-modal" id="deleteConfirmModal">
+                <div class="confirmation-modal-content">
+                    <div class="confirmation-modal-header">
+                        <h3>Delete Comment</h3>
+                        <button type="button" class="close-modal-btn" id="closeDeleteModal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="confirmation-modal-body">
+                        <p>Are you sure you want to delete this comment? This action cannot be undone.</p>
+                        <div class="confirmation-modal-actions">
+                            <button type="button" id="cancelDelete" class="cancel-btn">Cancel</button>
+                            <button type="button" id="confirmDelete" class="delete-btn">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Share Modal -->
+            <div class="share-modal" id="shareModal">
+                <div class="share-modal-content">
+                    <div class="share-modal-header">
+                        <h3>Share This Track</h3>
+                        <button type="button" class="close-modal-btn" id="closeShareModal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="share-modal-body">
+                        <div class="share-input-group">
+                            <input type="text" id="shareUrl" readonly value="{{ request.url }}">
+                            <button id="copyShareUrl" class="copy-btn">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <div class="share-options">
+                            <a href="#" class="share-option" id="shareTwitter" target="_blank">
+                                <i class="fab fa-twitter"></i> Twitter
+                            </a>
+                            <a href="#" class="share-option" id="shareFacebook" target="_blank">
+                                <i class="fab fa-facebook"></i> Facebook
+                            </a>
+                            <a href="#" class="share-option" id="shareWhatsapp" target="_blank">
+                                <i class="fab fa-whatsapp"></i> WhatsApp
+                            </a>
+                            <a href="#" class="share-option" id="shareTelegram" target="_blank">
+                                <i class="fab fa-telegram"></i> Telegram
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ UNIFIED: Progress overlay - controlled by persistence.js UnifiedProgressManager -->
+<div id="segmentProgress" class="segment-progress">
+    <div class="segment-progress-content">
+        <div class="segment-header">
+            <span class="segment-title">Preparing Audio Stream</span>
+            <span id="segmentCount" class="segment-count"></span>
+        </div>
+        <div class="segment-bar-container">
+            <div id="segmentProgressBar" class="segment-bar"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast for notifications -->
+<div class="toast" id="toast"></div>
+
+<!-- Custom Timer Input Toast -->
+<div class="custom-timer-toast" id="customTimerToast">
+    <h2>Set Custom Sleep Timer</h2>
+    <input type="number" id="customTimerInput" min="1" placeholder="Enter minutes">
+    <button id="setCustomTimerBtn">Set Timer</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', path='/js/comment-system.js') }}"></script>
+<script src="{{ url_for('static', path='/js/ReadAlongUI.js') }}"></script>
+<script src="{{ url_for('static', path='/js/ReadAlongContent.js') }}"></script>
+<script src="{{ url_for('static', path='/js/ReadAlongCore.js') }}"></script>
+
+<!-- ✅ SSR Initialization Script (following team pattern) -->
+<script type="module">
+import { PlayerController } from '{{ url_for("static", path="/js/player-shared-spa.js") }}';
+
+// Initialize in SSR mode on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🎵 Player SSR: Initializing controller...');
+    const playerController = new PlayerController('ssr');
+    window.playerController = playerController;
+
+    await playerController.mount();
+    console.log('✅ Player SSR: Controller mounted and ready');
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', () => {
+    if (window.playerController) {
+        window.playerController.destroy();
+    }
+});
+</script>
+{% endblock %}

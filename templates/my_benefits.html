@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+
+{% block title %}My Benefits{% endblock %}
+
+{% block page_title %}Benefits Overview{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/my-benefits.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Support Tier Card -->
+    <div class="benefit-card rounded-xl shadow-md overflow-hidden p-6">
+        <!-- Header Section -->
+        <div class="flex items-center justify-between border-b border-theme pb-4 mb-4">
+            <div>
+                <h2 class="text-3xl font-bold benefit-title">
+                    {{ benefits.tier_title }}
+                    {% if benefits.tier_info and benefits.tier_info.service_type %}
+                        <span class="service-badge {{ benefits.tier_info.service_type|lower|replace(' ', '') }}">
+                            {{ benefits.tier_info.service_type }}
+                        </span>
+                    {% endif %}
+                </h2>
+                <p class="mt-1 benefit-subtitle text-sm">
+                    {% if benefits.is_unlimited %}
+                        Unlimited Access
+                    {% elif benefits.tier_info and benefits.tier_info.service_type == "Guest Trial" %}
+                        {% if benefits.trial_active %}
+                            Trial Access - Limited Time
+                        {% else %}
+                            Trial Expired
+                        {% endif %}
+                    {% else %}
+                        {% if benefits.next_reset %}
+                            Resets on {{ benefits.next_reset.strftime('%B %d, %Y') }}
+                        {% elif benefits.tier_info and benefits.tier_info.service_type == "Ko-fi" %}
+                            Ko-fi support
+                        {% else %}
+                            Monthly subscription
+                        {% endif %}
+                    {% endif %}
+                </p>
+            </div>
+            <!-- Enhanced status indicator -->
+            <div class="status-indicator {% if benefits.grace_period_message %}{% if 'expired' in benefits.grace_period_message|lower %}status-expired{% else %}status-grace{% endif %}{% elif benefits.tier_info and benefits.tier_info.service_type == 'Guest Trial' %}{% if benefits.trial_active %}status-trial{% else %}status-expired{% endif %}{% else %}status-active{% endif %}">
+                {% if benefits.grace_period_message %}
+                    {% if 'expired' in benefits.grace_period_message|lower %}
+                        <i class="fas fa-exclamation-circle"></i> Expired
+                    {% else %}
+                        <i class="fas fa-clock"></i> Grace Period
+                    {% endif %}
+                {% elif benefits.tier_info and benefits.tier_info.service_type == 'Guest Trial' %}
+                    {% if benefits.trial_active %}
+                        <i class="fas fa-hourglass-half"></i> Trial Active
+                    {% else %}
+                        <i class="fas fa-exclamation-circle"></i> Trial Expired
+                    {% endif %}
+                {% else %}
+                    <i class="fas fa-check-circle"></i> Active
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Enhanced Grace Period Message -->
+        {% if benefits.grace_period_message %}
+        {% set is_expired = "expired" in benefits.grace_period_message|lower %}
+        <div class="grace-period-banner {% if is_expired %}grace-period-expired{% else %}grace-period-active{% endif %}">
+            <div class="grace-icon">
+                {% if is_expired %}
+                    <i class="fas fa-exclamation-circle"></i>
+                {% else %}
+                    <i class="fas fa-clock"></i>
+                {% endif %}
+            </div>
+            <div class="grace-content">
+                <div class="grace-title">
+                    {% if is_expired %}
+                        Grace Period Expired
+                    {% else %}
+                        Grace Period Active
+                    {% endif %}
+                </div>
+                <div class="grace-message">
+                    {{ benefits.grace_period_message }}
+                </div>
+            </div>
+            <a href="{% if is_expired %}/support{% else %}{% if benefits.tier_info.service_type == 'Ko-fi' %}https://ko-fi.com/webaudio{% else %}https://patreon.com/youraccount{% endif %}{% endif %}" 
+               class="grace-action" target="{% if not is_expired %}_blank{% endif %}">
+                {% if is_expired %}
+                    Renew Now
+                {% else %}
+                    Renew
+                {% endif %}
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Stats Section -->
+        <div class="stats-grid">
+            <!-- Album Downloads -->
+            <div class="benefit-section rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium">Albums</h3>
+                    <span class="text-2xl font-bold stat-value-primary">
+                        {% if benefits.is_unlimited %}
+                            ∞
+                        {% else %}
+                            {{ benefits.album_downloads.downloads_remaining }}
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text-sm benefit-subtitle">
+                    Used: {{ benefits.album_downloads.downloads_used }} / 
+                    Total: 
+                    {% if benefits.is_unlimited %}
+                        Unlimited
+                    {% else %}
+                        {{ benefits.album_downloads.downloads_allowed }}
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- Track Downloads -->
+            <div class="benefit-section rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium">Tracks</h3>
+                    <span class="text-2xl font-bold stat-value-success">
+                        {% if benefits.is_unlimited %}
+                            ∞
+                        {% else %}
+                            {{ benefits.track_downloads.downloads_remaining }}
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text-sm benefit-subtitle">
+                    Used: {{ benefits.track_downloads.downloads_used }} / 
+                    Total: 
+                    {% if benefits.is_unlimited %}
+                        Unlimited
+                    {% else %}
+                        {{ benefits.track_downloads.downloads_allowed }}
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- Book Requests -->
+            <div class="benefit-section rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium">Book Requests</h3>
+                    <span class="text-2xl font-bold stat-value-chapters">
+                        {% if benefits.is_unlimited %}
+                            ∞
+                        {% else %}
+                            {{ benefits.book_requests.requests_remaining }}
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text-sm benefit-subtitle">
+                    Used: {{ benefits.book_requests.requests_used }} / 
+                    Total: 
+                    {% if benefits.is_unlimited %}
+                        Unlimited
+                    {% else %}
+                        {{ benefits.book_requests.requests_allowed }}
+                    {% endif %}
+                </p>
+                {% if benefits.book_requests.requests_remaining > 0 %}
+                <div class="mt-2">
+                    <a href="/my-book-requests" class="inline-block px-3 py-1 text-xs rounded-full text-white" style="background-color: #9c59b6;">
+                        <i class="fas fa-book"></i> Make a Request
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Chapters Allowed -->
+            <div class="benefit-section rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium">Chapters Allowed</h3>
+                    <span class="text-2xl font-bold stat-value-chapters">
+                        {% if benefits.chapters_allowed is defined %}
+                            {% if benefits.is_unlimited or benefits.chapters_allowed >= 1000000 %}
+                                ∞
+                            {% else %}
+                                {{ benefits.chapters_allowed }}
+                            {% endif %}
+                        {% else %}
+                            <i class="fas fa-question-circle text-lg"></i>
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text-sm benefit-subtitle">
+                    {% if benefits.chapters_allowed is defined %}
+                        {% if benefits.is_unlimited or benefits.chapters_allowed >= 1000000 %}
+                            Unlimited chapters per book request
+                        {% elif benefits.chapters_allowed > 0 %}
+                            Maximum chapters per book request
+                        {% else %}
+                            No chapter limit set
+                        {% endif %}
+                    {% else %}
+                        Chapter limit not configured
+                    {% endif %}
+                </p>
+                {% if benefits.chapters_allowed is defined and benefits.chapters_allowed > 0 and benefits.chapters_allowed < 1000000 %}
+                <div class="chapters-info">
+                    <i class="fas fa-file-alt"></i>
+                    {{ benefits.chapters_allowed }} chapter{{ 's' if benefits.chapters_allowed != 1 else '' }} max per request
+                </div>
+                {% elif benefits.is_unlimited or (benefits.chapters_allowed is defined and benefits.chapters_allowed >= 1000000) %}
+                <div class="chapters-info">
+                    <i class="fas fa-infinity"></i>
+                    Unlimited chapters per request
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Patron Status -->
+        {% if benefits.tier_info and benefits.tier_info.patron_status and benefits.tier_info.service_type != 'Guest Trial' %}
+        <div class="border-t border-theme mt-6 pt-4">
+            <div class="flex items-center justify-between">
+                <span class="benefit-subtitle">Patron Status</span>
+                <span class="font-medium capitalize">
+                    {{ benefits.tier_info.patron_status|replace('_', ' ') }}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Trial Period Information for Guest Trials -->
+        {% if benefits.tier_info and benefits.tier_info.service_type == 'Guest Trial' and benefits.trial_expires_at %}
+        <div class="border-t border-theme mt-6 pt-4">
+            <div class="benefit-subtitle mb-2">Trial Period</div>
+            <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                <div>
+                    <span class="benefit-subtitle">Trial Started:</span>
+                    <span>{{ benefits.trial_started_at.strftime('%B %d, %Y at %I:%M %p') if benefits.trial_started_at else 'N/A' }}</span>
+                </div>
+                <div>
+                    <span class="benefit-subtitle">Trial Expires:</span>
+                    <span class="{% if benefits.trial_hours_remaining and benefits.trial_hours_remaining < 6 %}text-red-500 font-semibold{% elif benefits.trial_hours_remaining and benefits.trial_hours_remaining < 24 %}text-yellow-500 font-medium{% endif %}">
+                        {{ benefits.trial_expires_at.strftime('%B %d, %Y at %I:%M %p') }}
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Time Remaining Display -->
+            {% if benefits.trial_hours_remaining is defined %}
+            <div class="trial-info {% if benefits.trial_hours_remaining < 6 %}trial-urgent{% elif benefits.trial_hours_remaining < 24 %}trial-warning{% endif %}">
+                <div class="flex items-center gap-3 mb-3">
+                    <i class="fas fa-hourglass-half {% if benefits.trial_hours_remaining < 6 %}text-red-500{% elif benefits.trial_hours_remaining < 24 %}text-yellow-500{% else %}text-purple-500{% endif %} text-xl"></i>
+                    <div>
+                        <div class="trial-time-remaining {% if benefits.trial_hours_remaining < 6 %}text-red-500{% elif benefits.trial_hours_remaining < 24 %}text-yellow-500{% else %}text-purple-500{% endif %}">
+                            {% if benefits.trial_hours_remaining >= 24 %}
+                                {{ (benefits.trial_hours_remaining / 24) | round(1) }} day{{ 's' if (benefits.trial_hours_remaining / 24) | round(1) != 1 else '' }} remaining
+                            {% elif benefits.trial_hours_remaining >= 1 %}
+                                {{ benefits.trial_hours_remaining | round }} hour{{ 's' if benefits.trial_hours_remaining | round != 1 else '' }} remaining
+                            {% else %}
+                                Less than 1 hour remaining
+                            {% endif %}
+                        </div>
+                        <div class="text-sm opacity-75 mt-1">
+                            {% if benefits.trial_hours_remaining < 1 %}
+                                Your trial is ending very soon! 
+                            {% elif benefits.trial_hours_remaining < 6 %}
+                                Your trial is ending soon! Consider supporting to maintain access.
+                            {% elif benefits.trial_hours_remaining < 24 %}
+                                Your trial expires today. Don't forget to support if you're enjoying the content!
+                            {% else %}
+                                Enjoy your trial period! Support the creator to continue access after trial.
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                {% if benefits.trial_hours_remaining < 24 %}
+                <div class="flex gap-2 mt-3">
+                    <a href="/support" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors">
+                        <i class="fas fa-heart mr-2"></i>
+                        Support Now
+                    </a>
+                    <a href="https://ko-fi.com/webaudio" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-coffee mr-2"></i>
+                        Ko-fi
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Period Information for Regular Subscribers -->
+        {% if benefits.period_start and benefits.next_reset and not benefits.is_unlimited and (not benefits.tier_info or benefits.tier_info.service_type != 'Guest Trial') %}
+        <div class="border-t border-theme mt-6 pt-4">
+            <div class="benefit-subtitle mb-2">Subscription Period</div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="benefit-subtitle">Started:</span>
+                    <span>{{ benefits.period_start.strftime('%B %d, %Y') }}</span>
+                </div>
+                <div>
+                    <span class="benefit-subtitle">Resets:</span>
+                    <span>{{ benefits.next_reset.strftime('%B %d, %Y') }}</span>
+                </div>
+            </div>
+            
+            <!-- Service-specific message -->
+            {% if benefits.tier_info and benefits.tier_info.service_type and benefits.tier_info.service_type != 'Team' %}
+            <div class="mt-4 text-sm p-2 rounded-lg" 
+                 style="background-color: {% if benefits.tier_info.service_type == 'Ko-fi' %}rgba(41, 171, 224, 0.1){% elif benefits.tier_info.service_type == 'Patreon' %}rgba(249, 104, 84, 0.1){% endif %}">
+                {% if benefits.tier_info.service_type == 'Ko-fi' %}
+                    <i class="fas fa-coffee"></i>
+                    Thank you for your Ko-fi support! Your benefits are active until the reset date.
+                {% elif benefits.tier_info.service_type == 'Patreon' %}
+                    <i class="fab fa-patreon"></i>
+                    Thank you for your Patreon support! Your benefits will reset on your next billing date.
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Bootstrap data for SSR hydration -->
+<script id="my-benefits-bootstrap-data" type="application/json">
+{
+    "benefits": {
+        "tier_title": {{ benefits.tier_title | tojson }},
+        "album_downloads": {{ benefits.album_downloads | tojson }},
+        "track_downloads": {{ benefits.track_downloads | tojson }},
+        "book_requests": {{ benefits.book_requests | tojson }},
+        "chapters_allowed": {{ benefits.chapters_allowed | tojson }},
+        "period_start": {{ benefits.period_start.isoformat() | tojson if benefits.period_start else 'null' }},
+        "next_reset": {{ benefits.next_reset.isoformat() | tojson if benefits.next_reset else 'null' }},
+        "is_unlimited": {{ benefits.is_unlimited | tojson }},
+        "tier_info": {{ benefits.tier_info | tojson if benefits.tier_info else 'null' }},
+        {% if benefits.grace_period_active is defined %}
+        "grace_period_active": {{ benefits.grace_period_active | tojson }},
+        {% endif %}
+        {% if benefits.grace_period_message is defined %}
+        "grace_period_message": {{ benefits.grace_period_message | tojson }},
+        {% endif %}
+        {% if benefits.grace_period_ends_at is defined %}
+        "grace_period_ends_at": {{ benefits.grace_period_ends_at.isoformat() | tojson if benefits.grace_period_ends_at else 'null' }},
+        {% endif %}
+        {% if benefits.grace_period_time_remaining is defined %}
+        "grace_period_time_remaining": {{ benefits.grace_period_time_remaining | tojson }},
+        {% endif %}
+        {% if benefits.trial_active is defined %}
+        "trial_active": {{ benefits.trial_active | tojson }},
+        {% endif %}
+        {% if benefits.trial_started_at is defined %}
+        "trial_started_at": {{ benefits.trial_started_at.isoformat() | tojson if benefits.trial_started_at else 'null' }},
+        {% endif %}
+        {% if benefits.trial_expires_at is defined %}
+        "trial_expires_at": {{ benefits.trial_expires_at.isoformat() | tojson if benefits.trial_expires_at else 'null' }},
+        {% endif %}
+        {% if benefits.trial_hours_remaining is defined %}
+        "trial_hours_remaining": {{ benefits.trial_hours_remaining | tojson }},
+        {% endif %}
+        {% if benefits.trial_expired is defined %}
+        "trial_expired": {{ benefits.trial_expired | tojson }}
+        {% endif %}
+    }
+}
+</script>
+
+<script type="module">
+    import { MyBenefitsController } from '/static/js/my-benefits-shared-spa.js?v={{ APP_VERSION }}';
+
+    // Initialize SSR controller
+    const controller = new MyBenefitsController('ssr');
+    await controller.mount();
+    window.myBenefitsController = controller;
+</script>
+{% endblock %}

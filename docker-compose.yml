@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tundragoon/audio-streaming-app1:latest
+    network_mode: "host"
+    environment:
+      - REDIS_HOST=localhost
+      - REDIS_PORT=6379  # Use default Redis port on host
+      - DB_USER=tundrag
+      - DB_PASSWORD=Tundrag2010!
+      - DB_HOST=localhost
+      - DB_PORT=5432
+      - DB_NAME=audio_streaming_db
+    # Don't depend on redis service when using host network

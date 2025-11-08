@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Album Directory - Music Streaming App{% endblock %}
+
+{% block page_title %}Album Directory{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/catalog.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="directory-container">
+    <div class="search-container">
+        <i class="fas fa-search search-icon"></i>
+        <input type="text" 
+               class="search-input" 
+               placeholder="Search albums..." 
+               id="albumSearch"
+               aria-label="Search albums">
+    </div>
+
+    <div class="alphabet-filter" id="alphabetFilter">
+        <button class="letter-btn active" data-letter="all">All</button>
+        <button class="letter-btn" data-letter="#">#</button>
+        {% for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' %}
+            <button class="letter-btn" data-letter="{{ letter }}">{{ letter }}</button>
+        {% endfor %}
+    </div>
+
+    <div id="albumSections">
+        {% for letter, albums in albums_by_letter.items() %}
+            {% if albums %}
+                <div class="letter-section" data-letter="{{ letter }}">
+                    <h2 class="letter-heading">
+                        {{ letter }}
+                        <span class="album-count">({{ albums|length }})</span>
+                    </h2>
+                    <ul class="album-list">
+                        {% for album in albums %}
+                            <li>
+                                <a href="/album/{{ album.id }}" class="album-link" data-album-id="{{ album.id }}">
+                                    {{ album.title }}
+                                    {% if album.tier_restrictions and album.tier_restrictions.is_restricted %}
+                                        <i class="fas fa-crown crown-icon"></i>
+                                    {% endif %}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Bootstrap data for SSR hydration -->
+<script id="catalog-bootstrap-data" type="application/json">
+{
+    "albums_by_letter": {{ albums_by_letter | tojson }}
+}
+</script>
+
+<script>
+// Make initializeDirectory globally available
+window.initializeDirectory = function() {
+    console.log('=== Initializing Catalog/Directory Page ===');
+    
+    const alphabetFilter = document.getElementById('alphabetFilter');
+    const albumSections = document.getElementById('albumSections');
+    const searchInput = document.getElementById('albumSearch');
+    const allAlbumLinks = document.querySelectorAll('.album-link');
+    
+    if (!alphabetFilter || !albumSections || !searchInput) {
+        console.warn('Directory elements not found');
+        return;
+    }
+
+    console.log('Found', allAlbumLinks.length, 'album links');
+    
+    // Clean up existing event listeners
+    if (window.catalogCleanup) {
+        window.catalogCleanup();
+    }
+    
+    const cleanupFunctions = [];
+    
+    // NOTE: We don't need to setup album link click handlers anymore
+    // The AJAX navigation system will handle them automatically since they now have proper hrefs
+    
+    // Clone and re-setup alphabet filter to remove old listeners
+    const newAlphabetFilter = alphabetFilter.cloneNode(true);
+    alphabetFilter.parentNode.replaceChild(newAlphabetFilter, alphabetFilter);
+    
+    // Filter by letter
+    const handleLetterClick = function(e) {
+        if (e.target.classList.contains('letter-btn')) {
+            // Update active state
+            document.querySelectorAll('.letter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            e.target.classList.add('active');
+
+            const selectedLetter = e.target.dataset.letter;
+            filterAlbums(selectedLetter, searchInput.value);
+        }
+    };
+    
+    newAlphabetFilter.addEventListener('click', handleLetterClick);
+    
+    cleanupFunctions.push(() => {
+        newAlphabetFilter.removeEventListener('click', handleLetterClick);
+    });
+
+    // Search functionality
+    let searchTimeout;
+    const handleSearch = function(e) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const searchQuery = e.target.value.toLowerCase();
+            const activeLetter = document.querySelector('.letter-btn.active')?.dataset.letter || 'all';
+            filterAlbums(activeLetter, searchQuery);
+        }, 200);
+    };
+    
+    // Clone search input to remove old listeners
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+    
+    newSearchInput.addEventListener('input', handleSearch);
+    
+    cleanupFunctions.push(() => {
+        newSearchInput.removeEventListener('input', handleSearch);
+        clearTimeout(searchTimeout);
+    });
+
+    function filterAlbums(letter, searchQuery) {
+        const sections = document.querySelectorAll('.letter-section');
+        
+        sections.forEach(section => {
+            const albumLinks = section.querySelectorAll('.album-link');
+            let hasVisibleAlbums = false;
+
+            albumLinks.forEach(album => {
+                const albumTitle = album.textContent.trim().toLowerCase();
+                const matchesSearch = albumTitle.includes(searchQuery);
+                const matchesLetter = letter === 'all' || section.dataset.letter === letter;
+
+                const listItem = album.parentElement;
+                if (matchesSearch && matchesLetter) {
+                    listItem.style.display = '';
+                    hasVisibleAlbums = true;
+                } else {
+                    listItem.style.display = 'none';
+                }
+            });
+
+            section.style.display = hasVisibleAlbums ? '' : 'none';
+        });
+
+        updateLetterButtonStates();
+    }
+
+    function updateLetterButtonStates() {
+        const letterBtns = document.querySelectorAll('.letter-btn');
+        const searchQuery = document.getElementById('albumSearch').value.toLowerCase();
+        const allLinks = document.querySelectorAll('.album-link');
+
+        letterBtns.forEach(btn => {
+            const letter = btn.dataset.letter;
+            if (letter === 'all') return;
+
+            let hasAlbums = false;
+            
+            if (letter === '#') {
+                // Check for albums starting with numbers or symbols
+                hasAlbums = Array.from(allLinks).some(album => {
+                    const albumTitle = album.textContent.trim().toLowerCase();
+                    const firstChar = albumTitle.charAt(0).toUpperCase();
+                    return !firstChar.match(/[A-Z]/) && albumTitle.includes(searchQuery);
+                });
+            } else {
+                // Check for albums starting with the specific letter
+                hasAlbums = Array.from(allLinks).some(album => {
+                    const albumTitle = album.textContent.trim().toLowerCase();
+                    return albumTitle.charAt(0).toUpperCase() === letter && albumTitle.includes(searchQuery);
+                });
+            }
+
+            btn.classList.toggle('disabled', !hasAlbums);
+        });
+    }
+    
+    // Store cleanup function globally
+    window.catalogCleanup = function() {
+        cleanupFunctions.forEach(fn => fn());
+    };
+    
+    console.log('=== Catalog initialization complete ===');
+}
+
+// Initialize on traditional page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.querySelector('.directory-container')) {
+        console.log('DOMContentLoaded - initializing catalog');
+        initializeDirectory();
+    }
+});
+
+// Initialize on AJAX navigation
+document.addEventListener('ajaxPageInit', function(event) {
+    if (event.detail && (event.detail.type === 'catalog' || event.detail.url.includes('/catalog'))) {
+        console.log('ajaxPageInit event - initializing catalog');
+        setTimeout(() => initializeDirectory(), 100);
+    }
+});
+
+document.addEventListener('ajaxPageLoaded', function(event) {
+    if (event.detail && (event.detail.type === 'catalog' || event.detail.url.includes('/catalog'))) {
+        console.log('ajaxPageLoaded event - initializing catalog');
+        setTimeout(() => initializeDirectory(), 200);
+    }
+});
+
+// Handle visibility changes
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && document.querySelector('.directory-container')) {
+        console.log('Page became visible - checking catalog initialization');
+        // Re-initialize if needed
+        const searchInput = document.getElementById('albumSearch');
+        if (searchInput && !searchInput.dataset.initialized) {
+            console.log('Re-initializing catalog');
+            initializeDirectory();
+        }
+    }
+});
+</script>
+{% endblock %}

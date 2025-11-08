@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}My Downloads{% endblock %}
+{% block page_title %}My Downloads{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/my-downloads.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <!-- Tabs -->
+    <div class="downloads-tabs">
+        <div class="downloads-tab active" data-tab="active">
+            <i class="fas fa-download"></i>
+            Active Downloads
+            <span class="tab-badge" id="activeTabBadge">0</span>
+        </div>
+        <div class="downloads-tab" data-tab="history">
+            <i class="fas fa-history"></i>
+            Download History
+        </div>
+        {% if user.is_creator %}
+        <div class="downloads-tab" data-tab="search">
+            <i class="fas fa-search"></i>
+            User Search
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Search Section -->
+    {% if user.is_creator or user.is_team %}
+    <div class="search-section" id="searchSection">
+        <div class="search-input-group">
+            <input type="text" id="userSearchInput" class="search-input" placeholder="Search by name or email..." />
+            <button id="searchUsersBtn" class="search-btn">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </div>
+        <div id="searchResults" class="search-results"></div>
+    </div>
+    {% endif %}
+    
+    <!-- Active Downloads -->
+    <div class="active-downloads-section" id="activeDownloadsSection">
+        <div class="section-header">
+            <p>Your downloads are available for 24 hours. You can re-download any item during this period without using additional download credits. You are limited to 10 active downloads.</p>
+        </div>
+        
+        <div id="limitWarning" class="limit-warning" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+                <h4>Download Limit Warning</h4>
+                <div id="warningMessage"></div>
+            </div>
+        </div>
+        
+        <div class="download-count">
+            <i class="fas fa-download"></i>
+            <span id="downloadsCount">0</span> / 10 downloads available
+        </div>
+        
+        <div id="downloadsContainer" class="downloads-container">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Loading your downloads...</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- History Section -->
+    <div class="history-section" id="historySection">
+        <div class="section-header">
+            <h3><i class="fas fa-history"></i> Download History</h3>
+            <p>Browse your download history by month. Only the last 6 months are shown.</p>
+        </div>
+        
+        <div id="monthsGrid" class="months-grid">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Loading history...</span>
+            </div>
+        </div>
+        
+        <div id="monthDetailView" class="month-detail-view">
+            <div class="month-detail-header">
+                <button id="backToMonthsBtn" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Months
+                </button>
+                <div>
+                    <h3 id="monthDetailTitle" class="month-detail-title">January 2025</h3>
+                    <div id="monthDetailStats" class="month-detail-stats">
+                        <span><i class="fas fa-download"></i> <span id="detailTotalCount">0</span> downloads</span>
+                        <span><i class="fas fa-compact-disc"></i> <span id="detailAlbumCount">0</span> albums</span>
+                        <span><i class="fas fa-music"></i> <span id="detailTrackCount">0</span> tracks</span>
+                    </div>
+                </div>
+            </div>
+            <div class="history-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="success">Successful</button>
+                <button class="filter-btn" data-filter="error">Failed</button>
+                <button class="filter-btn" data-filter="album">Albums</button>
+                <button class="filter-btn" data-filter="track">Tracks</button>
+            </div>
+            <div id="monthDetailContent" class="month-detail-content">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Loading month details...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Modal -->
+    <div id="userDownloadsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="userDownloadsTitle">User Downloads</h3>
+                <button id="closeUserModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="user-modal-tabs">
+                    <div class="user-modal-tab active" data-user-tab="downloads">
+                        <i class="fas fa-download"></i> Active Downloads
+                    </div>
+                    <div class="user-modal-tab" data-user-tab="history">
+                        <i class="fas fa-history"></i> Download History
+                    </div>
+                </div>
+                <div id="userModalContent" class="user-modal-content">
+                    <div class="loading-spinner">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    import { MyDownloadsController } from '/static/js/my-downloads-shared-spa.js';
+
+    // Initialize SSR controller
+    const controller = new MyDownloadsController('ssr');
+    await controller.mount();
+    // Set both names for compatibility with onclick handlers
+    window.myDownloadsController = controller;
+    window.downloadsManager = controller;
+</script>
+{% endblock %}

@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block is_player_page %}true{% endblock %}
+
+{% block title %}{{ track.title }} - Read Along{% endblock %}
+
+{% block page_css %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/read-along-styles.css') }}">
+{% endblock %}
+
+{% block inline_css %}
+{{ super() }}
+<style>
+    /* Read-along specific overrides */
+    body.read-along-page #miniPlayer {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    
+    body.read-along-page {
+        padding-bottom: 0 !important;
+        margin: 0 !important;
+        height: 100vh !important;
+        overflow: hidden !important;
+    }
+    
+    .read-along-container {
+        height: 100vh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        background: var(--bg-color, #1a1a1a) !important;
+        color: var(--text-color, #ffffff) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ✅ STRUCTURED: Data for read-along SPA -->
+<script id="read-along-data" type="application/json">
+{
+    "track": {
+        "id": "{{ track.id }}",
+        "title": "{{ track.title }}",
+        "track_type": "{{ track.track_type }}",
+        "source_text": "{{ track.source_text | default('') | replace('"', '\\"') | replace('\n', '\\n') }}",
+        "default_voice": "{{ track.default_voice or 'en-US-AvaNeural' }}",
+        "current_voice": "{{ track.current_voice or track.default_voice or 'en-US-AvaNeural' }}",
+        "duration": {{ track.duration or 0 }},
+        "has_read_along": {{ track.has_read_along | default(false) | tojson }}
+    },
+    "album": {
+        "id": "{{ album.id }}",
+        "title": "{{ album.title }}",
+        "cover_path": "{{ album.cover_path }}"
+    },
+    "user": {
+        "id": {{ user.id }},
+        "username": "{{ user.username }}",
+        "role": "{{ user.role }}",
+        "is_creator": {{ user.is_creator | tojson }},
+        "is_team": {{ user.is_team | tojson }}
+    },
+    "stream_config": {{ stream_config | tojson }}
+}
+</script>
+
+<!-- ✅ GLOBAL: Variables for compatibility -->
+<script>
+  window.currentTrackId = "{{ track.id }}";
+  window.currentTrackTitle = "{{ track.title }}";
+  window.currentAlbumTitle = "{{ album.title }}";
+  window.currentAlbumCoverPath = "{{ album.cover_path }}";
+  window.currentTrackType = "{{ track.track_type }}";
+  window.currentAlbumId = "{{ album.id }}";
+  
+  window.currentUserData = {
+    id: {{ user.id }},
+    username: "{{ user.username }}",
+    role: "{{ user.role }}",
+    is_creator: {{ user.is_creator | tojson }},
+    is_team: {{ user.is_team | tojson }}
+  };
+  
+  // Mark as read-along page
+  document.body.classList.add('read-along-page');
+  
+  // Load structured data
+  document.addEventListener('DOMContentLoaded', function() {
+    try {
+      const readAlongDataElement = document.getElementById('read-along-data');
+      if (readAlongDataElement) {
+        const data = JSON.parse(readAlongDataElement.textContent);
+        window.trackData = data.track;
+        window.userData = data.user;
+        window.albumData = data.album;
+        window.streamConfigData = data.stream_config;
+        
+        console.log('✅ Loaded read-along data:', window.trackData);
+      }
+    } catch (e) {
+      console.error('❌ Failed to parse read-along data:', e);
+    }
+  });
+</script>
+
+<!-- ✅ READ-ALONG: Main SPA Container -->
+<div class="read-along-container" id="readAlongContainer">
+    
+    <!-- ✅ TOP BAR: Navigation and Controls -->
+    <div class="read-along-header">
+        <div class="header-left">
+            <button class="header-btn back-btn" id="backToPlayerBtn" title="Back to Player">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back</span>
+            </button>
+        </div>
+        
+        <div class="header-center">
+            <h1 class="track-title">{{ track.title }}</h1>
+            <p class="album-title">{{ album.title }}</p>
+        </div>
+        
+        <div class="header-right">
+            <button class="header-btn theme-toggle-btn" id="themeToggleBtn" title="Toggle Light/Dark Mode">
+                <i class="fas fa-sun" id="themeIcon"></i>
+            </button>
+            
+            <button class="header-btn highlight-toggle-btn" id="highlightToggleBtn" title="Toggle Sentence/Word Highlighting">
+                <i class="fas fa-text-height" id="highlightIcon"></i>
+                <span id="highlightMode">Sentence</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- ✅ MAIN: Reading Content Area -->
+    <div class="read-along-content" id="readAlongContent">
+        <div class="reading-area" id="readingArea">
+            <div class="loading-state" id="loadingState">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading text and timings...</p>
+            </div>
+            
+            <div class="error-state" id="errorState" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p id="errorMessage">Failed to load read-along content</p>
+                <button class="retry-btn" id="retryBtn">Retry</button>
+            </div>
+            
+            <div class="text-content" id="textContent" style="display: none;">
+                <!-- Text will be dynamically loaded here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- ✅ BOTTOM: Player Controls -->
+    <div class="read-along-player-controls" id="readAlongPlayerControls">
+        <div class="progress-section">
+            <div class="progress-container">
+                <div class="progress-bar" id="readAlongProgressBar">
+                    <div class="progress-fill" id="readAlongProgress"></div>
+                    <div class="progress-knob" id="readAlongProgressKnob"></div>
+                </div>
+                <div class="time-info">
+                    <span id="readAlongCurrentTime">0:00:00</span>
+                    <span id="readAlongDuration">0:00:00</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls-section">
+            <div class="playback-controls">
+                <button class="control-btn" id="readAlongRewind30" title="Rewind 30 seconds">
+                    <i class="fas fa-rotate-left"></i>
+                    <span class="time-label">30</span>
+                </button>
+                
+                <button class="control-btn" id="readAlongRewind15" title="Rewind 15 seconds">
+                    <i class="fas fa-rotate-left"></i>
+                    <span class="time-label">15</span>
+                </button>
+                
+                <button class="control-btn play-btn" id="readAlongPlayBtn">
+                    <i class="fas fa-play" id="readAlongPlayIcon"></i>
+                </button>
+                
+                <button class="control-btn" id="readAlongForward15" title="Forward 15 seconds">
+                    <i class="fas fa-rotate-right"></i>
+                    <span class="time-label">15</span>
+                </button>
+                
+                <button class="control-btn" id="readAlongForward30" title="Forward 30 seconds">
+                    <i class="fas fa-rotate-right"></i>
+                    <span class="time-label">30</span>
+                </button>
+            </div>
+            
+            <div class="secondary-controls">
+                <button class="secondary-btn" id="readAlongSpeedBtn">
+                    <i class="fas fa-gauge-high"></i>
+                    <span id="readAlongSpeedDisplay">1x</span>
+                </button>
+                
+                <button class="secondary-btn voice-change-btn" id="readAlongVoiceBtn" style="display: none;">
+                    <i class="fas fa-microphone-alt"></i>
+                    <span id="readAlongVoiceDisplay">Voice</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Speed Menu -->
+        <div class="popup-menu" id="readAlongSpeedMenu" style="display: none;">
+            <div class="speed-options">
+                <button class="speed-option" data-speed="0.5">0.5x</button>
+                <button class="speed-option" data-speed="0.75">0.75x</button>
+                <button class="speed-option active" data-speed="1.0">1x</button>
+                <button class="speed-option" data-speed="1.25">1.25x</button>
+                <button class="speed-option" data-speed="1.5">1.5x</button>
+                <button class="speed-option" data-speed="1.75">1.75x</button>
+                <button class="speed-option" data-speed="2.0">2x</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ TOAST: Notifications -->
+<div class="read-along-toast" id="readAlongToast"></div>
+
+<!-- ✅ PROGRESS: Loading overlay for voice changes -->
+<div id="readAlongProgressOverlay" class="progress-overlay" style="display: none;">
+    <div class="progress-content">
+        <div class="progress-header">
+            <span class="progress-title">Processing Voice</span>
+            <span id="readAlongProgressCount" class="progress-count"></span>
+        </div>
+        <div class="progress-bar-container">
+            <div id="readAlongProgressBarOverlay" class="progress-bar-overlay"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', path='/js/read-along.js') }}"></script>
+<script src="{{ url_for('static', path='/js/read-along-player.js') }}"></script>
+
+<script>
+// ============================================================================
+// READ-ALONG SPA INITIALIZATION
+// ============================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔖 Initializing Read-Along SPA');
+    
+    // Initialize read-along functionality
+    if (typeof ReadAlongSPA !== 'undefined') {
+        window.readAlongSPA = new ReadAlongSPA();
+        console.log('✅ Read-Along SPA initialized');
+    } else {
+        console.error('❌ ReadAlongSPA class not found');
+    }
+});
+
+// Prevent navigation away without saving state
+window.addEventListener('beforeunload', function(e) {
+    if (window.readAlongSPA && window.readAlongSPA.hasUnsavedState()) {
+        const message = 'You have unsaved progress. Are you sure you want to leave?';
+        e.returnValue = message;
+        return message;
+    }
+});
+</script>
+{% endblock %}

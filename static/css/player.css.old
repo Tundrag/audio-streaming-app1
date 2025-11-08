@@ -1,0 +1,306 @@
+
+    /* Player-specific overrides to prevent mini-player conflicts */
+    body.player-page #miniPlayer {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    
+    body.player-page {
+        padding-bottom: 0 !important;
+    }
+    
+    /* Voice Change Button Styles - moved to controls area */
+    .voice-change-btn {
+        background: rgba(139, 69, 19, 0.8) !important;
+        color: white !important;
+        border: 1px solid rgba(160, 82, 45, 0.5) !important;
+        padding: 0.6rem 1.2rem !important;
+        border-radius: 8px !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
+        backdrop-filter: blur(10px) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+    }
+    
+    .voice-change-btn:hover {
+        background: rgba(160, 82, 45, 0.9) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    .voice-change-btn:disabled {
+        opacity: 0.6 !important;
+        cursor: not-allowed !important;
+        transform: none !important;
+    }
+    
+    .voice-change-btn i {
+        font-size: 1rem !important;
+    }
+    
+    .current-voice-info {
+        font-size: 0.8rem !important;
+        opacity: 0.9 !important;
+        margin-left: 4px !important;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .voice-change-btn {
+            padding: 0.5rem 1rem !important;
+            font-size: 0.85rem !important;
+        }
+    }
+
+/* Enhanced CSS for voice modal - add this to the modalStyles in createVoiceModal() */
+
+.voice-tier {
+    font-size: 0.75rem !important;
+    padding: 3px 10px !important;
+    border-radius: 12px !important;
+    font-weight: 500 !important;
+    display: inline-block !important;
+    margin-top: 4px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* ✅ ENHANCED: Better tier styling */
+.voice-tier.assigned {
+    background: rgba(59, 130, 246, 0.2) !important;
+    color: #60a5fa !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+.voice-tier.not-assigned {
+    background: rgba(107, 114, 128, 0.2) !important;
+    color: #9ca3af !important;
+    border: 1px solid rgba(107, 114, 128, 0.3) !important;
+}
+
+/* ✅ UPDATED: Special styling for any default voice using data attribute */
+.voice-option[data-is-default="true"] .voice-tier {
+    background: rgba(34, 197, 94, 0.2) !important;
+    color: #4ade80 !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+}
+
+/* ✅ ENHANCED: Extra highlighting for current default voice */
+.voice-option[data-is-default="true"].current .voice-tier {
+    background: rgba(34, 197, 94, 0.3) !important;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4) !important;
+}
+
+/* ✅ ENHANCED: Better current voice highlighting */
+.voice-option.current {
+    background: rgba(160, 82, 45, 0.2) !important;
+    border-color: #a0522d !important;
+    box-shadow: 0 0 0 1px rgba(160, 82, 45, 0.3) !important;
+    transform: translateY(-1px) !important;
+}
+
+.voice-option.current::before {
+    content: "✓ ACTIVE: " !important;
+    color: #a0522d !important;
+    font-weight: bold !important;
+    font-size: 0.75rem !important;
+}
+
+/* ✅ ENHANCED: Better hover effects */
+.voice-option:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(160, 82, 45, 0.5) !important;
+    transform: translateY(-2px) !important;
+    transition: all 0.2s ease !important;
+}
+
+.voice-option:hover .voice-tier {
+    transform: scale(1.05) !important;
+    transition: transform 0.2s ease !important;
+}
+
+/* ✅ ENHANCED: Multiple tier indicator */
+.voice-tier:contains("+") {
+    position: relative !important;
+}
+
+.voice-tier:contains("+")::after {
+    content: "📊" !important;
+    margin-left: 4px !important;
+    opacity: 0.7 !important;
+}
+
+/* ✅ ENHANCED: Status indicators */
+.voice-status {
+    font-size: 0.75rem !important;
+    margin-top: 4px !important;
+    padding: 2px 6px !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+}
+
+.voice-status:contains("✓ Word-level") {
+    color: #4ade80 !important;
+    background: rgba(34, 197, 94, 0.1) !important;
+}
+
+.voice-status:contains("✓ Will generate") {
+    color: #60a5fa !important;
+    background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.voice-status:contains("Tier Required") {
+    color: #f87171 !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* ✅ ENHANCED: Better footer styling */
+.voice-info-footer {
+    padding-top: 1rem !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    font-size: 0.85rem !important;
+    opacity: 0.9 !important;
+    background: rgba(0, 0, 0, 0.1) !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+    margin-top: 12px !important;
+}
+
+.voice-info-footer p {
+    margin: 4px 0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.voice-info-footer strong {
+    color: #a0522d !important;
+}
+
+/* ✅ RESPONSIVE: Better mobile display */
+@media (max-width: 768px) {
+    .voice-tier {
+        font-size: 0.7rem !important;
+        padding: 2px 8px !important;
+    }
+    
+    .voice-name {
+        font-size: 0.9rem !important;
+    }
+    
+    .voice-description {
+        font-size: 0.8rem !important;
+    }
+}
+
+body.player-page .modal {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* 2. Fix modal content transparency - the main issue */
+body.player-page .modal-content {
+    background-color: #2d3748 !important; /* Force solid background instead of var(--bg-color) */
+    color: #ffffff !important; /* Force white text instead of var(--text-color) */
+}
+
+/* 3. Ensure CSS variables work if they're the issue */
+body.player-page {
+    --bg-color: #2d3748;
+    --text-color: #ffffff;
+    --border-color: rgba(255, 255, 255, 0.1);
+}
+
+.read-along-btn {
+    background: rgba(34, 197, 94, 0.8) !important;
+    color: white !important;
+    border: 1px solid rgba(34, 197, 94, 0.5) !important;
+    padding: 0.6rem 1.2rem !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    backdrop-filter: blur(10px) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.read-along-btn:hover {
+    background: rgba(34, 197, 94, 0.9) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.read-along-btn:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+.read-along-btn i {
+    font-size: 1rem !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .read-along-btn {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.85rem !important;
+    }
+}
+.voice-status { 
+    font-size: 0.85rem !important; 
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    margin-top: 8px !important; 
+    line-height: 1.4 !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+}
+
+.voice-status.not-generated {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    color: #60a5fa !important;
+}
+
+.voice-status.generated-ready {
+    background: rgba(34, 197, 94, 0.15) !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+    color: #22c55e !important;
+}
+
+.voice-status.no-access {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    color: #ef4444 !important;
+    font-weight: 500 !important;
+}
+
+.voice-status.processing { 
+    color: #f59e0b !important; 
+    font-weight: 600 !important;
+    background: rgba(251, 191, 36, 0.15) !important;
+    border: 1px solid rgba(251, 191, 36, 0.3) !important;
+}
+
+.voice-status.segmenting { 
+    color: #22c55e !important; 
+    font-weight: 600 !important;
+    background: rgba(34, 197, 94, 0.15) !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+}
+
+</style>

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Continue Listening - Web Audio{% endblock %}
+
+{% block page_title %}Continue Listening{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/continue-listening.css') }}">
+{% endblock %}
+
+{% block content %}
+    <div class="continue-listening-page">
+        <div class="page-header">
+            <h1>Continue Listening</h1>
+            <div class="track-stats" id="trackStats">
+                {% if tracks %}
+                    {{ tracks|length }} track{{ 's' if tracks|length != 1 else '' }} in progress
+                {% endif %}
+            </div>
+        </div>
+
+        {% if tracks %}
+        <div class="tracks-list" id="tracksList">
+            {% for track in tracks %}
+            <div class="progress-track" data-track-id="{{ track.id }}" data-position="{{ track.position|float }}">
+                <img src="{{ track.cover_path }}"
+                     alt="{{ track.title }}"
+                     class="track-thumbnail"
+                     onerror="this.src='/static/images/default-album.jpg'">
+                <div class="track-info">
+                    <div class="track-title">{{ track.title }}</div>
+                    <div class="track-album">{{ track.album_title }}</div>
+                    <div class="track-time">
+                        Last played: {{ track.last_played_formatted }}
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: {{ track.progress }}%"></div>
+                    </div>
+                </div>
+                <button class="resume-btn" onclick="resumeTrack('{{ track.id }}', {{ track.position }})">
+                    <i class="fas fa-play"></i>
+                    Resume
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="tracks-list" id="tracksList">
+            <div class="empty-state">
+                <i class="fas fa-headphones"></i>
+                <h2>No Tracks in Progress</h2>
+                <p>Start listening to tracks and they'll appear here so you can continue where you left off.</p>
+                <a href="/collection" class="btn-primary">Browse Collection</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <!-- Bootstrap data for SSR hydration -->
+    <script id="continue-listening-bootstrap-data" type="application/json">
+{
+    "tracks": {{ tracks | tojson if tracks else '[]' }}
+}
+    </script>
+
+    <script>
+        async function resumeTrack(trackId, position) {
+            console.log(`▶️ Resuming track: ${trackId}`);
+
+            // Get track element
+            const trackElement = document.querySelector(`[data-track-id="${trackId}"]`);
+            if (!trackElement) {
+                console.error('Track element not found');
+                return;
+            }
+
+            const savedPosition = parseFloat(trackElement.dataset.position) || 0;
+
+            try {
+                if (window.persistentPlayer) {
+                    // ✅ Extract track data directly from DOM (same as home page)
+                    const titleElement = trackElement.querySelector('.track-title');
+                    const albumElement = trackElement.querySelector('.track-album');
+                    const coverElement = trackElement.querySelector('.track-thumbnail');
+
+                    const trackData = {
+                        title: titleElement ? titleElement.textContent.trim() : 'Unknown Track',
+                        album_title: albumElement ? albumElement.textContent.trim() : 'Unknown Album',
+                        cover_path: coverElement ? coverElement.src : '/static/images/default-album.jpg'
+                    };
+
+                    console.log('🎵 Resuming track from DOM data:', trackData);
+
+                    // Play in mini-player
+                    await window.persistentPlayer.playTrack(
+                        trackId,
+                        trackData.title,
+                        trackData.album_title,
+                        trackData.cover_path,
+                        true  // ✅ Auto-play when resuming
+                    );
+
+                    // Seek to saved position after a short delay
+                    setTimeout(() => {
+                        if (window.persistentPlayer.audio) {
+                            window.persistentPlayer.audio.currentTime = savedPosition;
+                            console.log(`⏩ Seeking to ${savedPosition}s`);
+                        }
+                    }, 500);
+
+                    if (window.showToast) {
+                        window.showToast('Resuming playback...', 'success');
+                    }
+                } else {
+                    console.warn('Persistent player not available');
+                }
+            } catch (error) {
+                console.error('❌ Error resuming track:', error);
+                if (window.showToast) {
+                    window.showToast('Failed to resume playback', 'error');
+                }
+            }
+        }
+    </script>
+{% endblock %}

@@ -1,0 +1,3056 @@
+{% extends "base.html" %}
+
+{% block title %}Creator Management{% endblock %}
+{% block page_title %}Creator Management{% endblock %}
+
+{% block extra_css %}
+  {{ super() }}
+  <style>
+    .pin-management-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .pin-section {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: var(--bg-primary);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+    .pin-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .pin-section h2 {
+      font-size: 1.25rem;
+      color: var(--text-primary);
+      margin: 0;
+    }
+    .pin-display {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+    .pin-value {
+      font-family: monospace;
+      font-size: 1.5rem;
+      color: var(--text-primary);
+      letter-spacing: 0.25rem;
+    }
+    .pin-actions {
+      display: flex;
+      gap: 1rem;
+    }
+    .pin-button {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .pin-button-primary {
+      background: var(--button-primary);
+      color: white;
+    }
+    .pin-button-secondary {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+    .pin-button-warning {
+      background: var(--warning-color);
+      color: white;
+    }
+    .pin-button:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+    .pin-history {
+      margin-top: 1rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+    .history-item:last-child {
+      margin-bottom: 0;
+    }
+    .history-date {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+    .notification {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      border-radius: 5px;
+      color: white;
+      background-color: #4CAF50;
+      z-index: 9999;
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(100%);
+      transition: all 0.3s ease;
+    }
+    .notification.error {
+      background-color: #f44336;
+    }
+    .notification.show {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .rotation-schedule {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+      border: 1px dashed var(--border-color);
+    }
+    .schedule-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+    
+    /* Form styles */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .form-group label {
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    .form-group input {
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-family: monospace;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent-color);
+    }
+    .form-input-wrapper {
+      position: relative;
+    }
+    .toggle-visibility {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+    .form-actions {
+      margin-top: 1rem;
+    }
+    
+    /* Modal & connection test styles */
+    .connection-test-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      background: var(--bg-primary);
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      backdrop-filter: blur(10px);
+    }
+    .connection-test-results {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .test-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .test-header h3 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+    .test-header.success i {
+      color: var(--success-color, #22c55e);
+      font-size: 1.5rem;
+    }
+    .test-header.error i {
+      color: var(--error-color);
+      font-size: 1.5rem;
+    }
+    .test-details {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+    .detail-label {
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .detail-value {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .detail-value.success {
+      color: var(--success-color, #22c55e);
+    }
+    .detail-value.error {
+      color: var(--error-color);
+    }
+    .detail-value.warning {
+      color: var(--warning-color);
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+    .token-status {
+      margin-top: 1rem;
+    }
+    .token-info {
+      padding: 1rem;
+      border-radius: 6px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+    }
+    .token-info.valid {
+      border-color: var(--success-color, #22c55e);
+    }
+    .token-info.invalid {
+      border-color: var(--error-color);
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+    .next-refresh {
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+    .mt-4 {
+      margin-top: 1rem;
+    }
+
+    /* 🚀 ENHANCED BROADCAST SECTION STYLES - THEME AWARE */
+    .broadcast-section {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: var(--bg-primary);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .broadcast-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .broadcast-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    
+    .broadcast-icon {
+      background: var(--accent-color);
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      color: white;
+    }
+    
+    .broadcast-stats {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    /* Enhanced form styling */
+    .broadcast-form {
+      position: relative;
+      z-index: 2;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    
+    .textarea-wrapper {
+      position: relative;
+    }
+    
+    .broadcast-textarea {
+      width: 100%;
+      min-height: 120px;
+      max-height: 200px;
+      padding: 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-size: 1rem;
+      line-height: 1.5;
+      resize: vertical;
+      transition: all 0.3s ease;
+    }
+    
+    .broadcast-textarea:focus {
+      outline: none;
+      border-color: var(--accent-color);
+      background: var(--bg-primary);
+      box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.1);
+    }
+    
+    .broadcast-textarea::placeholder {
+      color: var(--text-secondary);
+    }
+    
+    /* Character counter */
+    .character-counter {
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    .character-counter.safe {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    
+    .character-counter.warning {
+      background: rgba(251, 191, 36, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    
+    .character-counter.danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    .type-selector {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .type-option {
+      flex: 1;
+      padding: 0.75rem;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+    
+    .type-option:hover {
+      background: var(--hover-bg);
+      transform: translateY(-1px);
+    }
+    
+    .type-option.selected {
+      background: var(--accent-color);
+      border-color: var(--accent-color);
+      color: white;
+      box-shadow: 0 0 0 0.15rem rgba(74, 144, 226, 0.2);
+    }
+    
+    .type-option.info { border-left: 4px solid #3b82f6; }
+    .type-option.warning { border-left: 4px solid #f59e0b; }
+    .type-option.alert { border-left: 4px solid #ef4444; }
+    
+    .broadcast-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-top: 1.5rem;
+    }
+    
+    .broadcast-btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .broadcast-btn-primary {
+      background: var(--button-primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+    }
+    
+    .broadcast-btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(74, 144, 226, 0.4);
+    }
+    
+    .broadcast-btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+    
+    .broadcast-btn-secondary:hover:not(:disabled) {
+      background: var(--hover-bg);
+      transform: translateY(-1px);
+    }
+    
+    .broadcast-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    
+    /* Status display */
+    .broadcast-status {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      border-radius: 8px;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .broadcast-status.success {
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #22c55e;
+    }
+    
+    .broadcast-status.error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+    
+    .status-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    
+    .status-details {
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+    
+    /* Connection indicator */
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse-dot 2s infinite;
+    }
+    
+    .connection-dot.disconnected {
+      background: #ef4444;
+      animation: none;
+    }
+    
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* Preview mode */
+    .broadcast-preview {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      border-left: 4px solid var(--accent-color);
+    }
+    
+    .preview-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-secondary);
+    }
+    
+    .preview-content {
+      font-size: 0.95rem;
+      line-height: 1.4;
+      color: var(--text-primary);
+    }
+
+.form-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.form-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.registration-status {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.registration-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.stat-card {
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.stat-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.stat-card .stat-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: var(--text-primary);
+  margin: 0.5rem 0;
+  line-height: 1;
+}
+
+.stat-card .stat-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0.5rem 0 0 0;
+  line-height: 1.3;
+}
+
+.stat-card.warning .stat-value {
+  color: var(--warning-color);
+}
+
+.stat-card.danger .stat-value {
+  color: var(--error-color);
+}
+
+.stat-card.success .stat-value {
+  color: var(--success-color, #22c55e);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0.75rem 0 0.5rem 0;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent-color);
+  transition: width 0.5s ease;
+  border-radius: 3px;
+}
+
+.progress-bar-fill.warning {
+  background: var(--warning-color);
+}
+
+.progress-bar-fill.danger {
+  background: var(--error-color);
+}
+
+.time-until-reset {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  text-align: center;
+  border: 1px solid var(--border-color);
+}
+
+.time-until-reset i {
+  margin-right: 0.5rem;
+  color: var(--accent-color);
+}
+
+.settings-overview {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.settings-overview h4 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.setting-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.setting-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.setting-value.enabled {
+  color: var(--success-color, #22c55e);
+}
+
+.setting-value.disabled {
+  color: var(--text-secondary);
+}
+
+.setting-value.unlimited {
+  color: var(--accent-color);
+}
+
+/* Modal enhancements */
+.test-header.warning i {
+  color: var(--warning-color);
+  font-size: 1.5rem;
+}
+
+.connection-test-modal {
+  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.7);
+}
+
+.modal-content {
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Form enhancements */
+.form-input-wrapper {
+  position: relative;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.help-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+  line-height: 1.4;
+}
+
+/* Button loading states */
+.pin-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pin-button .fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .registration-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 1rem;
+  }
+  
+  .stat-card .stat-value {
+    font-size: 2rem;
+  }
+}
+
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="pin-management-container">
+
+    <!-- Broadcast Message Section -->
+    <div class="broadcast-section">
+      <div class="broadcast-header">
+        <h2 class="broadcast-title">
+          <span class="broadcast-icon">
+            <i class="fas fa-bullhorn"></i>
+          </span>
+          System Broadcast
+        </h2>
+        <div class="broadcast-stats">
+          <div class="stat-item">
+            <i class="fas fa-users"></i>
+            <span id="connectedUsers">0</span> online
+          </div>
+          <div class="connection-status">
+            <div class="connection-dot disconnected" id="wsConnectionDot"></div>
+            <span id="wsConnectionStatus">Connecting...</span>
+          </div>
+        </div>
+      </div>
+
+      <form id="broadcast-form" class="broadcast-form">
+        <div class="form-group">
+          <label for="broadcast_message">Broadcast Message</label>
+          <div class="textarea-wrapper">
+            <textarea 
+              id="broadcast_message" 
+              name="message" 
+              class="broadcast-textarea"
+              placeholder="Type your announcement here... This will be displayed to all users in a banner at the top of every page."
+              maxlength="280"
+            ></textarea>
+            <div class="character-counter safe" id="charCounter">
+              <span id="charCount">0</span> / <span id="charLimit">280</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Message Type</label>
+          <div class="type-selector">
+            <div class="type-option info selected" data-type="info">
+              <i class="fas fa-info-circle"></i> Information
+            </div>
+            <div class="type-option warning" data-type="warning">
+              <i class="fas fa-exclamation-triangle"></i> Warning
+            </div>
+            <div class="type-option alert" data-type="alert">
+              <i class="fas fa-exclamation-circle"></i> Alert
+            </div>
+          </div>
+        </div>
+
+        <div id="broadcast-preview" class="broadcast-preview" style="display: none;">
+          <div class="preview-label">Preview:</div>
+          <div class="preview-content" id="preview-text"></div>
+        </div>
+
+        <div class="broadcast-actions">
+          <button type="submit" class="broadcast-btn broadcast-btn-primary" id="sendBroadcastBtn">
+            <i class="fas fa-paper-plane"></i>
+            Send Broadcast
+          </button>
+          <button type="button" class="broadcast-btn broadcast-btn-secondary" id="clearBroadcastBtn">
+            <i class="fas fa-trash"></i>
+            Clear Active
+          </button>
+          <button type="button" class="broadcast-btn broadcast-btn-secondary" id="previewBtn">
+            <i class="fas fa-eye"></i>
+            Preview
+          </button>
+        </div>
+      </form>
+
+      <div id="broadcastStatus" class="broadcast-status" style="display: none;">
+        <div class="status-header">
+          <i class="fas fa-check-circle"></i>
+          <span id="statusTitle">Broadcast Status</span>
+        </div>
+        <div class="status-details" id="statusMessage">
+          Broadcast sent successfully
+        </div>
+      </div>
+    </div>
+    
+    <!-- PIN Management Section -->
+    <div class="pin-section">
+      <div class="pin-section-header">
+        <h2>Current Creator PIN</h2>
+        <div class="pin-actions">
+          <button id="generatePin" class="pin-button pin-button-primary">
+            <i class="fas fa-rotate"></i> Generate New PIN
+          </button>
+          <button id="scheduleRotation" class="pin-button pin-button-secondary">
+            <i class="fas fa-clock"></i> Schedule Monthly Rotation
+          </button>
+        </div>
+      </div>
+      <div class="pin-display">
+        <span class="pin-value" id="currentPin">{{ user.creator_pin }}</span>
+        <button id="copyPin" class="pin-button pin-button-secondary">
+          <i class="fas fa-copy"></i> Copy
+        </button>
+      </div>
+      <div class="rotation-schedule" id="rotationSchedule" style="display: none;">
+        <div class="schedule-info">
+          <i class="fas fa-calendar-alt"></i>
+          <span id="nextRotation">Next rotation scheduled for: </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Discord Integration Section -->
+    <div class="pin-section">
+      <div class="pin-section-header">
+        <h2>Discord Integration</h2>
+        <div class="pin-actions">
+          <button id="cleanupDiscordButton" class="pin-button pin-button-warning">
+            <i class="fas fa-trash"></i> Delete All Messages
+          </button>
+          <button id="syncDiscordButton" class="pin-button pin-button-primary">
+            <i class="fab fa-discord"></i> Sync Albums to Discord
+          </button>
+        </div>
+      </div>
+
+      <form id="discord-settings-form" class="discord-settings">
+        <div class="form-group">
+          <label for="discord_webhook_url">Discord Webhook URL</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="discord_webhook_url" name="webhook_url" placeholder="https://discord.com/api/webhooks/..." autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="discord_webhook_url"></i>
+          </div>
+          <div class="help-text">
+            Create a webhook in your Discord server: Server Settings → Integrations → Webhooks → New Webhook
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="discord_bot_token">Discord Bot Token</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="discord_bot_token" name="bot_token" placeholder="Bot token for advanced message cleanup" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="discord_bot_token"></i>
+          </div>
+          <div class="help-text">
+            Used for advanced message cleanup
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="discord_base_url">Site Base URL</label>
+          <div class="form-input-wrapper">
+            <input type="text" id="discord_base_url" name="base_url" placeholder="https://yoursite.com" autocomplete="off">
+          </div>
+          <div class="help-text">
+            Your site's base URL for links in Discord messages
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 1rem;">
+          <button type="submit" id="save-discord-settings" class="pin-button pin-button-primary">
+            <i class="fas fa-save"></i> Save Settings
+          </button>
+        </div>
+
+        <div id="discordSyncStatus" class="mt-4" style="display: none;">
+          <div class="token-info">
+            <div class="status-indicator">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Syncing albums to Discord...</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="discordSyncResult" class="mt-4" style="display: none;">
+          <div class="token-info">
+            <div class="status-indicator">
+              <i class="fas fa-check-circle"></i>
+              <span id="discordSyncMessage">Albums synced successfully</span>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Ko-fi Integration Section -->
+    <div class="pin-section">
+      <div class="pin-section-header">
+        <h2>Ko-fi Integration Settings</h2>
+        <div class="pin-actions">
+          <button id="test-kofi-connection" class="pin-button pin-button-secondary">
+            <i class="fas fa-link"></i> Test Connection
+          </button>
+        </div>
+      </div>
+
+      <form id="kofi-settings-form" class="settings-form">
+        <div class="form-group">
+          <label for="google_sheet_url">Google Sheet API URL</label>
+          <div class="form-input-wrapper">
+            <input
+              type="text"
+              id="google_sheet_url"
+              name="google_sheet_url"
+              autocomplete="off"
+              placeholder="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
+            >
+            <div class="help-text">
+              URL of your deployed Google Apps Script for Ko-fi webhook processing
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="verification_token">Verification Token</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="verification_token" name="verification_token" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="verification_token"></i>
+            <div class="help-text">
+              Token used to verify webhook requests from Ko-fi
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="pin-button pin-button-primary">
+            <i class="fas fa-save"></i> Save Settings
+          </button>
+        </div>
+      </form>
+
+      <div id="kofiConnectionResult" class="mt-4" style="display: none;">
+        <div class="token-info">
+          <div class="status-indicator">
+            <i class="fas fa-check-circle"></i>
+            <span id="kofiConnectionMessage">Connection test successful</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- End Ko-fi Integration Section -->
+
+
+<!-- Guest Trial Settings Section -->
+<div class="pin-section">
+  <div class="pin-section-header">
+    <h2>Guest Trial Settings</h2>
+    <div class="pin-actions">
+      <button id="view-registration-stats" class="pin-button pin-button-secondary">
+        <i class="fas fa-chart-line"></i> View Statistics
+      </button>
+      <button id="test-guest-trial" class="pin-button pin-button-secondary">
+        <i class="fas fa-vial"></i> Test Guest Trial
+      </button>
+    </div>
+  </div>
+
+  <form id="guest-trial-settings-form" class="settings-form">
+    <!-- Basic Guest Trial Settings -->
+    <div class="form-section">
+      <h3 style="margin: 0 0 1rem 0; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+        <i class="fas fa-user-clock"></i> Basic Trial Configuration
+      </h3>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="guest_trial_enabled" name="is_enabled" style="margin-right: 0.5rem;">
+          Enable Guest Trials
+        </label>
+        <div class="help-text">
+          Allow new users to register for free trials without payment
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="trial_duration_hours">Trial Duration (Hours)</label>
+        <input
+          type="number"
+          id="trial_duration_hours"
+          name="trial_duration_hours"
+          min="1"
+          max="168"
+          step="1"
+          placeholder="48"
+        >
+        <div class="help-text">
+          How long trials last (1-168 hours, recommended: 48 = 2 days)
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="guest_tier_amount">Guest Trial Tier Value (USD/EUR)</label>
+        <div class="form-input-wrapper">
+          <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">$</span>
+          <input
+            type="number"
+            id="guest_tier_amount"
+            name="guest_tier_amount"
+            min="0"
+            max="100000"
+            step="1"
+            placeholder="0"
+            style="padding-left: 24px;"
+          >
+        </div>
+        <div class="help-text">
+          What tier level guest trials should have access to (in dollars/euros). Set to $0 to disable guest trials.
+        </div>
+      </div>
+    </div>
+
+    <!-- Abuse Prevention Settings -->
+    <div class="form-section" style="margin-top: 2rem;">
+      <h3 style="margin: 0 0 1rem 0; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+        <i class="fas fa-shield-alt"></i> Abuse Prevention
+      </h3>
+
+      <div class="form-group">
+        <label for="max_trials_per_email">Max Trials Per Email</label>
+        <input
+          type="number"
+          id="max_trials_per_email"
+          name="max_trials_per_email_per_week"
+          min="1"
+          max="10"
+          step="1"
+          placeholder="1"
+        >
+        <div class="help-text">
+          How many trials one email can request per week
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="max_trials_per_device">Max Trials Per Device</label>
+        <input
+          type="number"
+          id="max_trials_per_device"
+          name="max_trials_per_device_per_month"
+          min="1"
+          max="10"
+          step="1"
+          placeholder="1"
+        >
+        <div class="help-text">
+          How many trials one device can request per month
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="max_trials_per_ip">Max Trials Per IP</label>
+        <input
+          type="number"
+          id="max_trials_per_ip"
+          name="max_trials_per_ip_per_day"
+          min="1"
+          max="20"
+          step="1"
+          placeholder="3"
+        >
+        <div class="help-text">
+          How many trials one IP address can request per day
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW: Registration Limits Section -->
+    <div class="form-section" style="margin-top: 2rem;">
+      <h3 style="margin: 0 0 1rem 0; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+        <i class="fas fa-tachometer-alt"></i> Registration Limits
+      </h3>
+
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="registration_limit_enabled" name="registration_limit_enabled" style="margin-right: 0.5rem;">
+          Enable Registration Limits
+        </label>
+        <div class="help-text">
+          Master switch to enable/disable all registration limits
+        </div>
+      </div>
+
+      <div id="registration-limits-config" style="display: none;">
+        <!-- Daily Limits -->
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="enable_daily_reset" name="enable_daily_reset" style="margin-right: 0.5rem;">
+            Enable Daily Reset (24-hour cycles)
+          </label>
+          <div class="help-text">
+            When enabled, daily counter resets every 24 hours automatically
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="max_daily_registrations">Max Daily Registrations</label>
+          <input
+            type="number"
+            id="max_daily_registrations"
+            name="max_daily_registrations"
+            min="0"
+            max="10000"
+            step="1"
+            placeholder="50"
+          >
+          <div class="help-text">
+            Maximum registrations per 24-hour period (0 = unlimited daily)
+          </div>
+        </div>
+
+        <!-- Total Limits -->
+        <div class="form-group">
+          <label for="max_total_registrations">Max Total Registrations</label>
+          <input
+            type="number"
+            id="max_total_registrations"
+            name="max_total_registrations"
+            min="0"
+            max="100000"
+            step="1"
+            placeholder="0"
+          >
+          <div class="help-text">
+            Hard cap on total registrations ever (0 = unlimited total)
+          </div>
+        </div>
+
+        <!-- Current Status Display -->
+        <div class="registration-status" id="registration-status" style="display: none;">
+          <div class="token-info">
+            <div class="status-indicator">
+              <i class="fas fa-info-circle"></i>
+              <span>Current Registration Status</span>
+            </div>
+            <div class="status-details" id="registration-status-details">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Reset Counters Button -->
+        <div class="form-group" style="margin-top: 1rem;">
+          <button type="button" id="reset-counters" class="pin-button pin-button-warning">
+            <i class="fas fa-redo"></i> Reset Counters
+          </button>
+          <div class="help-text">
+            Manually reset daily or total registration counters
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Section -->
+    <div class="help-text" style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin-top: 2rem; border-left: 4px solid #007bff;">
+      <strong>💡 How it works:</strong> Set amount to $0 to disable guest trials. When you change the amount, 
+      any existing guest trial tier will be automatically updated to the new value. Registration limits help prevent abuse and manage server load.
+    </div>
+
+    <div class="form-actions" style="margin-top: 2rem;">
+      <button type="submit" class="pin-button pin-button-primary">
+        <i class="fas fa-save"></i> Save Guest Trial Settings
+      </button>
+    </div>
+  </form>
+
+  <div id="guestTrialConnectionResult" class="mt-4" style="display: none;">
+    <div class="token-info">
+      <div class="status-indicator">
+        <i class="fas fa-check-circle"></i>
+        <span id="guestTrialConnectionMessage">Settings saved successfully</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Registration Statistics Modal -->
+<div id="registration-stats-modal" class="connection-test-modal" style="display: none;">
+  <div class="modal-content" style="max-width: 800px;">
+    <div class="test-header success">
+      <i class="fas fa-chart-line"></i>
+      <h3>Registration Statistics & Analytics</h3>
+    </div>
+    
+    <div class="registration-stats-content" id="registration-stats-content">
+      <!-- Populated by JavaScript -->
+    </div>
+    
+    <div class="modal-actions">
+      <button class="pin-button pin-button-secondary" id="refresh-stats">
+        <i class="fas fa-sync"></i> Refresh Data
+      </button>
+      <button class="pin-button pin-button-primary" onclick="document.getElementById('registration-stats-modal').style.display = 'none'">
+        <i class="fas fa-times"></i> Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Counters Modal -->
+<div id="reset-counters-modal" class="connection-test-modal" style="display: none;">
+  <div class="modal-content">
+    <div class="test-header warning">
+      <i class="fas fa-exclamation-triangle"></i>
+      <h3>Reset Registration Counters</h3>
+    </div>
+    
+    <div class="test-details">
+      <p style="margin-bottom: 1.5rem; color: var(--text-primary);">
+        Choose which counters to reset. <strong>This action cannot be undone.</strong>
+      </p>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="reset-daily-counter" checked style="margin-right: 0.5rem;">
+          <strong>Reset Daily Counter</strong>
+        </label>
+        <div class="help-text">Reset the 24-hour registration count to 0</div>
+      </div>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="reset-total-counter" style="margin-right: 0.5rem;">
+          <strong>Reset Total Counter</strong>
+        </label>
+        <div class="help-text" style="color: var(--warning-color);">
+          ⚠️ Reset the lifetime registration count to 0 (use with caution)
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="pin-button pin-button-secondary" onclick="document.getElementById('reset-counters-modal').style.display = 'none'">
+        <i class="fas fa-times"></i> Cancel
+      </button>
+      <button class="pin-button pin-button-warning" id="confirm-reset-counters">
+        <i class="fas fa-redo"></i> Reset Selected Counters
+      </button>
+    </div>
+  </div>
+</div>
+
+
+    <!-- Patreon Integration Section -->
+    <div class="pin-section">
+      <div class="pin-section-header">
+        <h2>Patreon Integration Settings</h2>
+        <div class="form-group campaign-selector">
+          <label for="campaign_selector">Select Campaign</label>
+          <div class="selector-wrapper">
+            <select id="campaign_selector" class="campaign-dropdown">
+              <option value="">Select a campaign...</option>
+              <option value="new">➕ Create New Campaign</option>
+            </select>
+            <button id="delete-campaign" class="pin-button pin-button-warning" style="display: none;">
+              <i class="fas fa-trash"></i> Delete Campaign
+            </button>
+          </div>
+          <div id="new-campaign-input" class="mt-4" style="display: none;">
+            <input
+              type="text"
+              id="new_campaign_name"
+              class="form-control"
+              placeholder="Enter new campaign name"
+              style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; width: 100%;"
+            >
+          </div>
+        </div>
+
+        <div class="pin-actions">
+          <button id="sync-campaigns" class="pin-button pin-button-secondary">
+            <i class="fas fa-sync-alt"></i> Sync Campaigns
+          </button>
+          <button id="refresh-token" class="pin-button pin-button-primary">
+            <i class="fas fa-sync"></i> Refresh Access Token
+          </button>
+          <button id="full-refresh-token" class="pin-button pin-button-warning">
+            <i class="fas fa-sync-alt"></i> Full Token Refresh
+          </button>
+          <button id="test-connection" class="pin-button pin-button-secondary">
+            <i class="fas fa-link"></i> Test Connection
+          </button>
+        </div>
+      </div>
+
+      <div id="token-status"></div>
+
+      <form id="patreon-settings-form" class="settings-form">
+        <div class="form-group">
+          <label for="access_token">Access Token</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="access_token" name="access_token" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="access_token"></i>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="refresh_token">Refresh Token</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="refresh_token" name="refresh_token" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="refresh_token"></i>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="campaign_id">Campaign ID</label>
+          <div class="form-input-wrapper">
+            <input type="text" id="campaign_id" name="campaign_id" autocomplete="off">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="webhook_secret">Webhook Secret</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="webhook_secret" name="webhook_secret" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="webhook_secret"></i>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="client_id">Client ID</label>
+          <div class="form-input-wrapper">
+            <input type="text" id="client_id" name="client_id" autocomplete="off">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="client_secret">Client Secret</label>
+          <div class="form-input-wrapper">
+            <input type="password" id="client_secret" name="client_secret" autocomplete="off">
+            <i class="fas fa-eye toggle-visibility" data-for="client_secret"></i>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="pin-button pin-button-primary">
+            <i class="fas fa-save"></i> Save Settings
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div id="notification" class="notification"></div>
+    <div id="pinHistory" class="pin-history"></div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    // Global notification function
+    function showNotification(message, isError = false) {
+      const notification = document.getElementById('notification');
+      if (!notification) return;
+      notification.classList.remove('show');
+      void notification.offsetWidth;
+      notification.textContent = message;
+      notification.className = `notification${isError ? ' error' : ''} show`;
+      setTimeout(() => notification.classList.remove('show'), 3000);
+    }
+
+    // 🚀 ENHANCED BROADCAST MANAGER WITH WEBSOCKET
+    class EnhancedBroadcastManager {
+      constructor() {
+        this.config = {
+          maxCharacters: 280,
+          warningThreshold: 200,
+          dangerThreshold: 260,
+          wsReconnectInterval: 5000
+        };
+        
+        this.state = {
+          selectedType: 'info',
+          isConnected: false,
+          connectedUsers: 0,
+          lastBroadcastId: null,
+          websocket: null,
+          reconnectTimer: null
+        };
+        
+        this.elements = {
+          form: document.getElementById('broadcast-form'),
+          textarea: document.getElementById('broadcast_message'),
+          charCounter: document.getElementById('charCounter'),
+          charCount: document.getElementById('charCount'),
+          charLimit: document.getElementById('charLimit'),
+          typeOptions: document.querySelectorAll('.type-option'),
+          sendBtn: document.getElementById('sendBroadcastBtn'),
+          clearBtn: document.getElementById('clearBroadcastBtn'),
+          previewBtn: document.getElementById('previewBtn'),
+          preview: document.getElementById('broadcast-preview'),
+          previewText: document.getElementById('preview-text'),
+          status: document.getElementById('broadcastStatus'),
+          statusTitle: document.getElementById('statusTitle'),
+          statusMessage: document.getElementById('statusMessage'),
+          wsConnectionDot: document.getElementById('wsConnectionDot'),
+          wsConnectionStatus: document.getElementById('wsConnectionStatus'),
+          connectedUsersSpan: document.getElementById('connectedUsers')
+        };
+        
+        this.init();
+      }
+      
+      init() {
+        this.setupEventListeners();
+        this.updateCharacterCounter();
+        this.updateCharacterLimit();
+        this.initWebSocket();
+      }
+      
+      // 🚀 WEBSOCKET INTEGRATION
+      initWebSocket() {
+        const userId = {{ user.id }};
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/api/creator/broadcast/ws?user_id=${userId}`;
+        
+        try {
+          this.state.websocket = new WebSocket(wsUrl);
+          
+          this.state.websocket.onopen = () => {
+            console.log('Broadcast WebSocket connected');
+            this.updateConnectionStatus(true);
+            
+            // Clear reconnect timer
+            if (this.state.reconnectTimer) {
+              clearTimeout(this.state.reconnectTimer);
+              this.state.reconnectTimer = null;
+            }
+          };
+          
+          this.state.websocket.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              this.handleWebSocketMessage(data);
+            } catch (error) {
+              console.error('Error parsing WebSocket message:', error);
+            }
+          };
+          
+          this.state.websocket.onclose = () => {
+            console.log('Broadcast WebSocket disconnected');
+            this.updateConnectionStatus(false);
+            this.scheduleReconnect();
+          };
+          
+          this.state.websocket.onerror = (error) => {
+            console.error('Broadcast WebSocket error:', error);
+            this.updateConnectionStatus(false);
+          };
+          
+        } catch (error) {
+          console.error('Error initializing broadcast WebSocket:', error);
+          this.updateConnectionStatus(false);
+          this.scheduleReconnect();
+        }
+      }
+      
+      scheduleReconnect() {
+        if (this.state.reconnectTimer) return;
+        
+        this.state.reconnectTimer = setTimeout(() => {
+          console.log('Attempting to reconnect broadcast WebSocket...');
+          this.initWebSocket();
+        }, this.config.wsReconnectInterval);
+      }
+      
+      handleWebSocketMessage(data) {
+        console.log('Broadcast WebSocket message:', data);
+        
+        switch (data.type) {
+          case 'connected':
+            console.log('Broadcast WebSocket connection confirmed');
+            break;
+            
+          case 'stats_update':
+            if (data.stats && typeof data.stats.connected_users === 'number') {
+              this.state.connectedUsers = data.stats.connected_users;
+              this.elements.connectedUsersSpan.textContent = this.state.connectedUsers;
+            }
+            break;
+            
+          case 'broadcast_sent':
+            this.showStatus('success', 'Broadcast Sent', 
+              `Broadcast delivered to ${data.sent_to_users || 0} users`);
+            break;
+            
+          case 'broadcast_cleared':
+            this.showStatus('success', 'Broadcast Cleared', 'Active broadcast has been cleared');
+            break;
+        }
+      }
+      
+      setupEventListeners() {
+        // Character counter
+        this.elements.textarea.addEventListener('input', () => {
+          this.updateCharacterCounter();
+          this.updatePreview();
+        });
+        
+        // Type selection
+        this.elements.typeOptions.forEach(option => {
+          option.addEventListener('click', () => {
+            this.selectType(option.dataset.type);
+          });
+        });
+        
+        // Form submission
+        this.elements.form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.sendBroadcast();
+        });
+        
+        // Clear broadcast
+        this.elements.clearBtn.addEventListener('click', () => {
+          this.clearBroadcast();
+        });
+        
+        // Preview toggle
+        this.elements.previewBtn.addEventListener('click', () => {
+          this.togglePreview();
+        });
+      }
+      
+      updateCharacterCounter() {
+        const length = this.elements.textarea.value.length;
+        const limit = this.config.maxCharacters;
+        
+        this.elements.charCount.textContent = length;
+        
+        // Update counter styling
+        this.elements.charCounter.classList.remove('safe', 'warning', 'danger');
+        
+        if (length >= this.config.dangerThreshold) {
+          this.elements.charCounter.classList.add('danger');
+        } else if (length >= this.config.warningThreshold) {
+          this.elements.charCounter.classList.add('warning');
+        } else {
+          this.elements.charCounter.classList.add('safe');
+        }
+        
+        // Disable send button if over limit
+        this.elements.sendBtn.disabled = length > limit || length === 0;
+      }
+      
+      updateCharacterLimit() {
+        this.elements.charLimit.textContent = this.config.maxCharacters;
+        this.elements.textarea.setAttribute('maxlength', this.config.maxCharacters);
+      }
+      
+      selectType(type) {
+        this.state.selectedType = type;
+        
+        this.elements.typeOptions.forEach(option => {
+          option.classList.toggle('selected', option.dataset.type === type);
+        });
+        
+        this.updatePreview();
+      }
+      
+      updatePreview() {
+        const message = this.elements.textarea.value.trim();
+        if (message) {
+          this.elements.previewText.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <i class="fas ${this.getTypeIcon(this.state.selectedType)}"></i>
+              <span>${message}</span>
+            </div>
+          `;
+        }
+      }
+      
+      togglePreview() {
+        const isVisible = this.elements.preview.style.display !== 'none';
+        this.elements.preview.style.display = isVisible ? 'none' : 'block';
+        
+        if (!isVisible) {
+          this.updatePreview();
+        }
+        
+        this.elements.previewBtn.innerHTML = isVisible ? 
+          '<i class="fas fa-eye"></i> Preview' : 
+          '<i class="fas fa-eye-slash"></i> Hide Preview';
+      }
+      
+      getTypeIcon(type) {
+        const icons = {
+          info: 'fa-info-circle',
+          warning: 'fa-exclamation-triangle',
+          alert: 'fa-exclamation-circle'
+        };
+        return icons[type] || icons.info;
+      }
+      
+      async sendBroadcast() {
+        const message = this.elements.textarea.value.trim();
+        if (!message || message.length > this.config.maxCharacters) {
+          return;
+        }
+        
+        // Update UI
+        this.elements.sendBtn.disabled = true;
+        this.elements.sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        this.hideStatus();
+        
+        try {
+          const response = await fetch('/api/creator/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: message,
+              type: this.state.selectedType
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            this.showStatus('success', 'Broadcast Sent Successfully', 
+              `Your message has been sent to ${data.sent_to_users || 0} online users. ${data.message || ''}`);
+            this.elements.textarea.value = '';
+            this.updateCharacterCounter();
+            this.elements.preview.style.display = 'none';
+            this.state.lastBroadcastId = data.id;
+          } else {
+            this.showStatus('error', 'Broadcast Failed', 
+              data.message || 'Failed to send broadcast message.');
+          }
+        } catch (error) {
+          console.error('Error sending broadcast:', error);
+          this.showStatus('error', 'Network Error', 
+            'Failed to send broadcast due to a network error.');
+        } finally {
+          this.elements.sendBtn.disabled = false;
+          this.elements.sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Broadcast';
+        }
+      }
+      
+      async clearBroadcast() {
+        if (!confirm('Are you sure you want to clear the active broadcast? This will hide it for all users.')) {
+          return;
+        }
+        
+        this.elements.clearBtn.disabled = true;
+        this.elements.clearBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing...';
+        
+        try {
+          const response = await fetch('/api/creator/broadcast/clear', {
+            method: 'POST'
+          });
+          
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            this.showStatus('success', 'Broadcast Cleared', 
+              data.message || 'Active broadcast has been cleared.');
+          } else {
+            this.showStatus('error', 'Clear Failed', 
+              data.message || 'Failed to clear broadcast.');
+          }
+        } catch (error) {
+          console.error('Error clearing broadcast:', error);
+          this.showStatus('error', 'Network Error', 
+            'Failed to clear broadcast due to a network error.');
+        } finally {
+          this.elements.clearBtn.disabled = false;
+          this.elements.clearBtn.innerHTML = '<i class="fas fa-trash"></i> Clear Active';
+        }
+      }
+      
+      showStatus(type, title, message) {
+        this.elements.status.className = `broadcast-status ${type}`;
+        this.elements.statusTitle.textContent = title;
+        this.elements.statusMessage.textContent = message;
+        this.elements.status.style.display = 'block';
+        
+        // Auto-hide success messages
+        if (type === 'success') {
+          setTimeout(() => this.hideStatus(), 5000);
+        }
+      }
+      
+      hideStatus() {
+        this.elements.status.style.display = 'none';
+      }
+      
+      updateConnectionStatus(connected) {
+        this.state.isConnected = connected;
+        
+        if (connected) {
+          this.elements.wsConnectionDot.classList.remove('disconnected');
+          this.elements.wsConnectionStatus.textContent = 'WebSocket Connected';
+        } else {
+          this.elements.wsConnectionDot.classList.add('disconnected');
+          this.elements.wsConnectionStatus.textContent = 'WebSocket Disconnected';
+        }
+      }
+      
+      // Load connection stats periodically
+      async loadConnectionStats() {
+        try {
+          const response = await fetch('/api/creator/broadcast/stats');
+          const data = await response.json();
+          
+          if (data.status === 'success' && data.stats) {
+            this.elements.connectedUsersSpan.textContent = data.stats.connected_users || 0;
+          }
+        } catch (error) {
+          console.error('Error loading connection stats:', error);
+        }
+      }
+    }
+    
+    // Initialize enhanced broadcast manager
+    document.addEventListener('DOMContentLoaded', () => {
+      window.enhancedBroadcastManager = new EnhancedBroadcastManager();
+      
+      // Load stats periodically
+      setInterval(() => {
+        if (window.enhancedBroadcastManager) {
+          window.enhancedBroadcastManager.loadConnectionStats();
+        }
+      }, 30000);
+    });
+  </script>
+
+  <!-- ============= DISCORD INTEGRATION ============= -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const syncDiscordButton = document.getElementById('syncDiscordButton');
+      const cleanupDiscordButton = document.getElementById('cleanupDiscordButton');
+      const discordWebhookInput = document.getElementById('discord_webhook_url');
+      const discordBotTokenInput = document.getElementById('discord_bot_token');
+      const discordBaseUrlInput = document.getElementById('discord_base_url');
+      const discordSyncStatus = document.getElementById('discordSyncStatus');
+      const discordSyncResult = document.getElementById('discordSyncResult');
+      const discordSyncMessage = document.getElementById('discordSyncMessage');
+      const discordSettingsForm = document.getElementById('discord-settings-form');
+
+      // Load saved Discord settings
+      async function loadDiscordSettings() {
+        try {
+          const response = await fetch('/api/creator/discord/settings');
+          const data = await response.json();
+          if (data) {
+            if (data.webhook_url) {
+              discordWebhookInput.value = data.webhook_url;
+            }
+            if (data.bot_token) {
+              discordBotTokenInput.value = data.bot_token;
+            }
+            if (data.base_url) {
+              discordBaseUrlInput.value = data.base_url;
+            }
+          }
+        } catch (error) {
+          console.error('Error loading Discord settings:', error);
+        }
+      }
+
+      // Save Discord settings
+      if (discordSettingsForm) {
+        discordSettingsForm.addEventListener('submit', async function(event) {
+          event.preventDefault();
+          const webhookUrl = discordWebhookInput.value.trim();
+          const botToken = discordBotTokenInput.value.trim();
+          const baseUrl = discordBaseUrlInput.value.trim();
+
+          try {
+            const response = await fetch('/api/creator/discord/settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                webhook_url: webhookUrl,
+                bot_token: botToken,
+                base_url: baseUrl
+              })
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+              showNotification('Discord settings saved successfully');
+            } else {
+              showNotification('Failed to save Discord settings', true);
+            }
+          } catch (error) {
+            console.error('Error saving Discord settings:', error);
+            showNotification('Error saving Discord settings', true);
+          }
+        });
+      }
+
+      // Sync albums to Discord
+      if (syncDiscordButton) {
+        syncDiscordButton.addEventListener('click', async function() {
+          const webhookUrl = discordWebhookInput.value.trim();
+          if (!webhookUrl) {
+            showNotification('Please enter a Discord webhook URL first', true);
+            return;
+          }
+          syncDiscordButton.disabled = true;
+          discordSyncStatus.style.display = 'block';
+          discordSyncResult.style.display = 'none';
+
+          try {
+            const response = await fetch('/api/creator/discord/sync', { method: 'POST' });
+            const data = await response.json();
+            discordSyncStatus.style.display = 'none';
+            discordSyncResult.style.display = 'block';
+            if (response.ok) {
+              discordSyncMessage.textContent = data.message || 'Albums synced successfully';
+              discordSyncResult.querySelector('.status-indicator i').className = 'fas fa-check-circle';
+              discordSyncResult.querySelector('.status-indicator').style.color = 'var(--success-color)';
+              showNotification('Albums synced to Discord successfully');
+            } else {
+              discordSyncMessage.textContent = data.message || 'Failed to sync albums';
+              discordSyncResult.querySelector('.status-indicator i').className = 'fas fa-exclamation-circle';
+              discordSyncResult.querySelector('.status-indicator').style.color = 'var(--error-color)';
+              showNotification('Failed to sync albums to Discord', true);
+            }
+          } catch (error) {
+            console.error('Error syncing to Discord:', error);
+            discordSyncStatus.style.display = 'none';
+            discordSyncResult.style.display = 'block';
+            discordSyncMessage.textContent = 'Error syncing albums to Discord';
+            discordSyncResult.querySelector('.status-indicator i').className = 'fas fa-exclamation-circle';
+            discordSyncResult.querySelector('.status-indicator').style.color = 'var(--error-color)';
+            showNotification('Error syncing albums to Discord', true);
+          } finally {
+            syncDiscordButton.disabled = false;
+          }
+        });
+      }
+
+      // Cleanup (delete) Discord messages
+      if (cleanupDiscordButton) {
+        cleanupDiscordButton.addEventListener('click', async function() {
+          const webhookUrl = discordWebhookInput.value.trim();
+          if (!webhookUrl) {
+            showNotification('Please enter a Discord webhook URL first', true);
+            return;
+          }
+          if (!confirm('Are you sure you want to delete all Discord messages? This cannot be undone.')) {
+            return;
+          }
+          cleanupDiscordButton.disabled = true;
+          discordSyncStatus.style.display = 'block';
+          const statusIndicatorSpan = discordSyncStatus.querySelector('.status-indicator span');
+          if (statusIndicatorSpan) {
+            statusIndicatorSpan.textContent = 'Deleting Discord messages...';
+          }
+          discordSyncResult.style.display = 'none';
+
+          try {
+            const response = await fetch('/api/creator/discord/cleanup', { method: 'POST' });
+            const data = await response.json();
+            discordSyncStatus.style.display = 'none';
+            discordSyncResult.style.display = 'block';
+            if (response.ok) {
+              discordSyncMessage.textContent = data.message || 'Discord messages deleted successfully';
+              discordSyncResult.querySelector('.status-indicator i').className = 'fas fa-check-circle';
+              discordSyncResult.querySelector('.status-indicator').style.color = 'var(--success-color)';
+              showNotification('Discord messages deleted successfully');
+            } else {
+              discordSyncMessage.textContent = data.message || 'Failed to delete Discord messages';
+              discordSyncResult.querySelector('.status-indicator i').className = 'fas fa-exclamation-circle';
+              discordSyncResult.querySelector('.status-indicator').style.color = 'var(--error-color)';
+              showNotification('Failed to delete Discord messages', true);
+            }
+          } catch (error) {
+            console.error('Error deleting Discord messages:', error);
+            discordSyncStatus.style.display = 'none';
+            discordSyncResult.style.display = 'block';
+            discordSyncMessage.textContent = 'Error deleting Discord messages';
+            discordSyncResult.querySelector('.status-indicator i').className = 'fas fa-exclamation-circle';
+            discordSyncResult.querySelector('.status-indicator').style.color = 'var(--error-color)';
+            showNotification('Error deleting Discord messages', true);
+          } finally {
+            cleanupDiscordButton.disabled = false;
+          }
+        });
+      }
+
+      loadDiscordSettings();
+    });
+  </script>
+
+  <!-- ============= PIN MANAGEMENT ============= -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const generatePinBtn = document.getElementById('generatePin');
+      const scheduleRotationBtn = document.getElementById('scheduleRotation');
+      const copyPinBtn = document.getElementById('copyPin');
+      const pinHistory = document.getElementById('pinHistory');
+      const rotationSchedule = document.getElementById('rotationSchedule');
+
+      async function loadPinHistory() {
+        if (!pinHistory) {
+          console.error('PIN history element not found');
+          return;
+        }
+        try {
+          const response = await fetch('/api/creator/pin/history');
+          const data = await response.json();
+          if (data.status === 'success' && data.history) {
+            pinHistory.innerHTML = data.history.map(item => `
+              <div class="history-item">
+                <span>${item.description}</span>
+                <span class="history-date">${new Date(item.date).toLocaleDateString()}</span>
+              </div>
+            `).join('');
+          } else {
+            pinHistory.innerHTML = '<div class="history-item">No history available</div>';
+          }
+        } catch (error) {
+          console.error('Error loading PIN history:', error);
+          pinHistory.innerHTML = '<div class="history-item">Failed to load history</div>';
+        }
+      }
+
+      // Generate new PIN
+      generatePinBtn.addEventListener('click', async () => {
+        try {
+          const response = await fetch('/api/creator/pin/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            document.getElementById('currentPin').textContent = data.new_pin;
+            showNotification('PIN updated successfully');
+            loadPinHistory();
+          } else {
+            showNotification(data.message || 'Error updating PIN', true);
+          }
+        } catch (error) {
+          showNotification('Error updating PIN', true);
+        }
+      });
+
+      // Schedule monthly rotation
+      scheduleRotationBtn.addEventListener('click', async () => {
+        try {
+          const response = await fetch('/api/creator/pin/schedule-rotation', { method: 'POST' });
+          const data = await response.json();
+          if (data.status === 'success') {
+            rotationSchedule.style.display = 'block';
+            document.getElementById('nextRotation').textContent = `Next rotation scheduled for: ${data.message}`;
+            showNotification('PIN rotation scheduled');
+          } else {
+            showNotification(data.message || 'Error scheduling rotation', true);
+          }
+        } catch (error) {
+          showNotification('Error scheduling rotation', true);
+        }
+      });
+
+      // Copy PIN to clipboard
+      copyPinBtn.addEventListener('click', () => {
+        const pinElement = document.getElementById('currentPin');
+        if (pinElement) {
+          const pin = pinElement.textContent.trim();
+          navigator.clipboard.writeText(pin)
+            .then(() => showNotification('PIN copied to clipboard'))
+            .catch(() => showNotification('Failed to copy PIN', true));
+        } else {
+          showNotification('PIN element not found', true);
+        }
+      });
+
+      loadPinHistory();
+    });
+  </script>
+
+  <!-- ============= KO-FI INTEGRATION ============= -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const kofiSettingsForm = document.getElementById('kofi-settings-form');
+      const testKofiConnectionBtn = document.getElementById('test-kofi-connection');
+      const kofiConnectionResult = document.getElementById('kofiConnectionResult');
+      const kofiConnectionMessage = document.getElementById('kofiConnectionMessage');
+      const googleSheetUrlInput = document.getElementById('google_sheet_url');
+      const verificationTokenInput = document.getElementById('verification_token');
+
+      // Load Ko-fi settings
+      async function loadKofiSettings() {
+        try {
+          const response = await fetch('/api/kofi/settings');
+          const data = await response.json();
+          if (data && data.status === 'success') {
+            if (data.settings) {
+              googleSheetUrlInput.value = data.settings.google_sheet_url || '';
+              verificationTokenInput.value = data.settings.verification_token || '';
+            }
+          } else {
+            console.log('No Ko-fi settings found');
+          }
+        } catch (error) {
+          console.error('Error loading Ko-fi settings:', error);
+        }
+      }
+
+      // Save Ko-fi settings
+      if (kofiSettingsForm) {
+        kofiSettingsForm.addEventListener('submit', async function(event) {
+          event.preventDefault();
+          const googleSheetUrl = googleSheetUrlInput.value.trim();
+          const verificationToken = verificationTokenInput.value.trim();
+
+          if (!googleSheetUrl) {
+            showNotification('Please enter Google Sheet API URL', true);
+            return;
+          }
+          if (!verificationToken) {
+            showNotification('Please enter verification token', true);
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/kofi/settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                google_sheet_url: googleSheetUrl,
+                verification_token: verificationToken
+              })
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+              showNotification('Ko-fi settings saved successfully');
+            } else {
+              showNotification(data.message || 'Failed to save Ko-fi settings', true);
+            }
+          } catch (error) {
+            console.error('Error saving Ko-fi settings:', error);
+            showNotification('Error saving Ko-fi settings', true);
+          }
+        });
+      }
+
+      // Test Ko-fi connection
+      if (testKofiConnectionBtn) {
+        testKofiConnectionBtn.addEventListener('click', async function() {
+          const googleSheetUrl = googleSheetUrlInput.value.trim();
+          if (!googleSheetUrl) {
+            showNotification('Please enter Google Sheet API URL first', true);
+            return;
+          }
+
+          testKofiConnectionBtn.disabled = true;
+          testKofiConnectionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+          kofiConnectionResult.style.display = 'none';
+
+          try {
+            const response = await fetch('/api/kofi/test-connection', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ google_sheet_url: googleSheetUrl })
+            });
+            const data = await response.json();
+            kofiConnectionResult.style.display = 'block';
+
+            if (response.ok && data.status === 'success') {
+              kofiConnectionMessage.textContent = 'Connection test successful! Your Google Sheet API is responding correctly.';
+              kofiConnectionResult.querySelector('.status-indicator i').className = 'fas fa-check-circle';
+              kofiConnectionResult.querySelector('.status-indicator').style.color = 'var(--success-color)';
+              showNotification('Ko-fi connection test successful');
+            } else {
+              kofiConnectionMessage.textContent = data.message || 'Connection test failed';
+              kofiConnectionResult.querySelector('.status-indicator i').className = 'fas fa-exclamation-circle';
+              kofiConnectionResult.querySelector('.status-indicator').style.color = 'var(--error-color)';
+              showNotification('Ko-fi connection test failed', true);
+            }
+          } catch (error) {
+            console.error('Error testing Ko-fi connection:', error);
+            kofiConnectionResult.style.display = 'block';
+            kofiConnectionMessage.textContent = 'Error testing connection to Ko-fi service';
+            kofiConnectionResult.querySelector('.status-indicator i').className = 'fas fa-exclamation-circle';
+            kofiConnectionResult.querySelector('.status-indicator').style.color = 'var(--error-color)';
+            showNotification('Error testing Ko-fi connection', true);
+          } finally {
+            testKofiConnectionBtn.disabled = false;
+            testKofiConnectionBtn.innerHTML = '<i class="fas fa-link"></i> Test Connection';
+          }
+        });
+      }
+
+      // Load settings on page load
+      loadKofiSettings();
+    });
+  </script>
+
+  <!-- ============= PATREON INTEGRATION ============= -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const campaignSelector = document.getElementById('campaign_selector');
+      const newCampaignInput = document.getElementById('new-campaign-input');
+      const newCampaignName = document.getElementById('new_campaign_name');
+      const deleteBtn = document.getElementById('delete-campaign');
+      const patreonForm = document.getElementById('patreon-settings-form');
+      const tokenStatus = document.getElementById('token-status');
+      const testConnectionBtn = document.getElementById('test-connection');
+      const refreshTokenBtn = document.getElementById('refresh-token');
+      const fullRefreshBtn = document.getElementById('full-refresh-token');
+
+      function showNotification(message, isError = false) {
+        const notification = document.getElementById('notification');
+        if (!notification) return;
+        notification.classList.remove('show');
+        void notification.offsetWidth;
+        notification.textContent = message;
+        notification.className = `notification${isError ? ' error' : ''} show`;
+        setTimeout(() => notification.classList.remove('show'), 3000);
+      }
+
+      async function loadSettings() {
+        try {
+          const response = await fetch('/api/creator/patreon/settings');
+          const data = await response.json();
+          if (data) {
+            const fields = [
+              'access_token',
+              'refresh_token',
+              'campaign_id',
+              'webhook_secret',
+              'client_id',
+              'client_secret'
+            ];
+            fields.forEach(field => {
+              const input = document.getElementById(field);
+              if (input) {
+                input.value = data[field] || '';
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error loading settings:', error);
+          showNotification('Error loading settings', true);
+        }
+      }
+
+      async function updateTokenStatus() {
+        try {
+          const response = await fetch('/api/creator/patreon/refresh-status');
+          const data = await response.json();
+          let statusClass = data.status;
+          let icon = data.has_valid_token ? 'fa-check-circle' : 'fa-exclamation-circle';
+          let statusMessage = data.message;
+          if (data.token_type === 'missing_refresh') {
+            statusMessage = 'Missing refresh token - please update your Patreon settings';
+          } else if (data.token_type === 'needs_refresh') {
+            statusMessage = 'Access token needs to be refreshed';
+          }
+          tokenStatus.innerHTML = `
+            <div class="token-info ${statusClass}">
+              <div class="status-header">
+                <i class="fas ${icon}"></i>
+                <span>${statusMessage}</span>
+              </div>
+            </div>
+          `;
+        } catch (error) {
+          console.error('Error updating token status:', error);
+        }
+      }
+
+      async function loadCampaigns() {
+        try {
+          const response = await fetch('/api/creator/patreon/campaigns');
+          const data = await response.json();
+          campaignSelector.innerHTML = `
+            <option value="">Select a campaign...</option>
+            <option value="new">➕ Create New Campaign</option>
+          `;
+          if (data.campaigns && data.campaigns.length > 0) {
+            const primaryCampaign = data.campaigns.find(c => c.is_primary);
+            data.campaigns.forEach(campaign => {
+              const option = document.createElement('option');
+              option.value = campaign.id;
+              option.textContent = `${campaign.name}`;
+              if (campaign.is_primary) {
+                option.selected = true;
+              }
+              campaignSelector.appendChild(option);
+            });
+            if (primaryCampaign) {
+              await loadCampaignSettings(primaryCampaign.id);
+            }
+          }
+          deleteBtn.style.display = 'none';
+        } catch (error) {
+          console.error('Error loading campaigns:', error);
+          showNotification('Error loading campaigns', true);
+        }
+      }
+
+      async function loadCampaignSettings(campaignId) {
+        try {
+          const response = await fetch(`/api/creator/patreon/settings/${campaignId}`);
+          const data = await response.json();
+          const fields = [
+            'access_token',
+            'refresh_token',
+            'campaign_id',
+            'webhook_secret',
+            'client_id',
+            'client_secret'
+          ];
+          fields.forEach(field => {
+            const input = document.getElementById(field);
+            if (input) input.value = data[field] || '';
+          });
+          deleteBtn.style.display = 'block';
+        } catch (error) {
+          showNotification('Error loading campaign settings', true);
+        }
+      }
+
+      campaignSelector.addEventListener('change', async (e) => {
+        const selectedValue = campaignSelector.value;
+        if (selectedValue === 'new') {
+          newCampaignInput.style.display = 'block';
+          deleteBtn.style.display = 'none';
+          const inputs = patreonForm.querySelectorAll('input');
+          inputs.forEach(input => (input.value = ''));
+          const existingInfo = document.querySelector('.campaign-info');
+          if (existingInfo) {
+            existingInfo.style.display = 'none';
+          }
+        } else {
+          newCampaignInput.style.display = 'none';
+          if (selectedValue) {
+            await loadCampaignSettings(selectedValue);
+          } else {
+            deleteBtn.style.display = 'none';
+          }
+        }
+      });
+
+      if (patreonForm) {
+        patreonForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const isNewCampaign = (campaignSelector.value === 'new');
+          if (isNewCampaign && (!newCampaignName || !newCampaignName.value.trim())) {
+            showNotification('Please enter a campaign name', true);
+            return;
+          }
+          const formData = new FormData(patreonForm);
+          const settings = {};
+          formData.forEach((value, key) => {
+            settings[key] = value.trim();
+          });
+          if (isNewCampaign) {
+            settings.isNewCampaign = true;
+            settings.name = newCampaignName.value.trim();
+          } else {
+            settings.campaign_db_id = campaignSelector.value;
+          }
+
+          try {
+            const response = await fetch('/api/creator/patreon/settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(settings)
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+              showNotification(isNewCampaign ? 'Campaign created successfully' : 'Settings saved successfully');
+              await loadCampaigns();
+              if (isNewCampaign) {
+                campaignSelector.value = data.campaign_id;
+                newCampaignInput.style.display = 'none';
+                await loadCampaignSettings(data.campaign_id);
+              }
+              await updateTokenStatus();
+            } else {
+              showNotification(data.message || 'Error saving settings', true);
+            }
+          } catch (error) {
+            console.error('Error saving settings:', error);
+            showNotification('Error saving settings', true);
+          }
+        });
+      }
+
+      deleteBtn.addEventListener('click', async () => {
+        const dbCampaignId = campaignSelector.value;
+        if (!dbCampaignId) return;
+        if (confirm('Are you sure you want to delete this campaign? This will remove all associated data including users and tiers.')) {
+          try {
+            const response = await fetch(`/api/creator/patreon/campaigns/${dbCampaignId}`, {
+              method: 'DELETE'
+            });
+            if (response.ok) {
+              const data = await response.json();
+              showNotification(data.message);
+              await loadCampaigns();
+              await loadSettings();
+            } else {
+              const error = await response.json();
+              showNotification(error.detail || 'Error deleting campaign', true);
+            }
+          } catch (error) {
+            console.error('Error deleting campaign:', error);
+            showNotification('Error deleting campaign', true);
+          }
+        }
+      });
+
+      document.getElementById('sync-campaigns').addEventListener('click', async () => {
+        const selectedDbId = campaignSelector.value;
+        if (!selectedDbId || selectedDbId === 'new') {
+          showNotification('Please select an existing campaign first', true);
+          return;
+        }
+        const btn = document.getElementById('sync-campaigns');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+
+        try {
+          const response = await fetch('/api/creator/patreon/sync-campaigns', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ db_campaign_id: selectedDbId })
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            showNotification(data.message || 'Campaign synced successfully');
+            await loadCampaigns();
+          } else {
+            showNotification(data.message || 'Sync failed', true);
+          }
+        } catch (error) {
+          console.error('Sync error:', error);
+          showNotification('Error syncing campaigns', true);
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sync Campaigns';
+        }
+      });
+
+      if (refreshTokenBtn) {
+        refreshTokenBtn.addEventListener('click', async () => {
+          try {
+            refreshTokenBtn.disabled = true;
+            refreshTokenBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            const response = await fetch('/api/creator/patreon/refresh-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ full_refresh: false })
+            });
+            const data = await response.json();
+            if (data.success) {
+              showNotification('Access token refreshed successfully');
+              await loadSettings();
+              await updateTokenStatus();
+            } else if (data.error === 'invalid_grant') {
+              showNotification('Invalid refresh token. Please update your Patreon credentials', true);
+            } else {
+              showNotification(data.message || 'Error refreshing token', true);
+            }
+          } catch (error) {
+            showNotification('Error refreshing token', true);
+          } finally {
+            refreshTokenBtn.disabled = false;
+            refreshTokenBtn.innerHTML = '<i class="fas fa-sync"></i> Refresh Access Token';
+          }
+        });
+      }
+
+      if (fullRefreshBtn) {
+        fullRefreshBtn.addEventListener('click', async () => {
+          try {
+            fullRefreshBtn.disabled = true;
+            fullRefreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            const response = await fetch('/api/creator/patreon/refresh-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ full_refresh: true })
+            });
+            const data = await response.json();
+            if (data.success) {
+              showNotification('Full token refresh successful');
+              await loadSettings();
+              await updateTokenStatus();
+            } else if (data.error === 'invalid_grant') {
+              showNotification('Invalid refresh token. Please update your Patreon credentials', true);
+            } else {
+              showNotification(data.message || 'Error refreshing token', true);
+            }
+          } catch (error) {
+            showNotification('Error refreshing token', true);
+          } finally {
+            fullRefreshBtn.disabled = false;
+            fullRefreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Full Token Refresh';
+          }
+        });
+      }
+
+      if (testConnectionBtn) {
+        testConnectionBtn.addEventListener('click', async () => {
+          try {
+            testConnectionBtn.disabled = true;
+            testConnectionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+            const response = await fetch('/api/creator/patreon/test-connection');
+            const data = await response.json();
+            const dialogContent = `
+              <div class="connection-test-results">
+                <div class="test-header ${data.success ? 'success' : 'error'}">
+                  <i class="fas ${data.success ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                  <h3>${data.message}</h3>
+                </div>
+                <div class="test-details">
+                  <div class="detail-item">
+                    <span class="detail-label">Campaign Status:</span>
+                    <span class="detail-value ${data.details.campaign_status ? 'success' : 'error'}">
+                      <i class="fas ${data.details.campaign_status ? 'fa-check' : 'fa-times'}"></i>
+                      ${data.details.campaign_status ? 'Connected' : 'Not Connected'}
+                    </span>
+                  </div>
+                  ${data.details.campaign_name ? `
+                    <div class="detail-item">
+                      <span class="detail-label">Campaign:</span>
+                      <span class="detail-value">${data.details.campaign_name}</span>
+                    </div>
+                  ` : ''}
+                  <div class="detail-item">
+                    <span class="detail-label">Tiers Found:</span>
+                    <span class="detail-value">${data.details.tier_count}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Total Patrons:</span>
+                    <span class="detail-value">${data.details.patron_count}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Webhook Configuration:</span>
+                    <span class="detail-value ${data.details.webhook_status ? 'success' : 'warning'}">
+                      <i class="fas ${data.details.webhook_status ? 'fa-check' : 'fa-exclamation-triangle'}"></i>
+                      ${data.details.webhook_status ? 'Configured' : 'Not Configured'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            `;
+            const modal = document.createElement('div');
+            modal.className = 'connection-test-modal';
+            modal.innerHTML = `
+              <div class="modal-content">
+                ${dialogContent}
+                <div class="modal-actions">
+                  <button class="pin-button pin-button-primary" onclick="this.closest('.connection-test-modal').remove()">
+                    Close
+                  </button>
+                </div>
+              </div>
+            `;
+            document.body.appendChild(modal);
+            showNotification(data.success ? 'Connection test completed' : 'Connection test failed', !data.success);
+          } catch (error) {
+            showNotification('Connection test failed', true);
+          } finally {
+            testConnectionBtn.disabled = false;
+            testConnectionBtn.innerHTML = '<i class="fas fa-link"></i> Test Connection';
+          }
+        });
+      }
+
+      // Toggle password visibility for all .toggle-visibility icons
+      document.querySelectorAll('.toggle-visibility').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+          const inputId = toggle.getAttribute('data-for');
+          const input = document.getElementById(inputId);
+          if (input) {
+            input.type = (input.type === 'password') ? 'text' : 'password';
+            toggle.classList.toggle('fa-eye');
+            toggle.classList.toggle('fa-eye-slash');
+          }
+        });
+      });
+
+      loadCampaigns();
+      loadSettings();
+      updateTokenStatus();
+    });
+
+
+  <!-- ============= Guest trial INTEGRATION ============= -->
+
+
+
+document.addEventListener('DOMContentLoaded', function() {
+  // All form elements
+  const guestTrialSettingsForm = document.getElementById('guest-trial-settings-form');
+  const guestTrialEnabled = document.getElementById('guest_trial_enabled');
+  const trialDurationInput = document.getElementById('trial_duration_hours');
+  const guestTierAmountInput = document.getElementById('guest_tier_amount');
+  const maxTrialsPerEmailInput = document.getElementById('max_trials_per_email');
+  const maxTrialsPerDeviceInput = document.getElementById('max_trials_per_device');
+  const maxTrialsPerIpInput = document.getElementById('max_trials_per_ip');
+  
+  // Registration limits elements
+  const registrationLimitEnabled = document.getElementById('registration_limit_enabled');
+  const enableDailyReset = document.getElementById('enable_daily_reset');
+  const maxDailyRegistrations = document.getElementById('max_daily_registrations');
+  const maxTotalRegistrations = document.getElementById('max_total_registrations');
+  const registrationLimitsConfig = document.getElementById('registration-limits-config');
+  const registrationStatus = document.getElementById('registration-status');
+  
+  // Result elements
+  const guestTrialConnectionResult = document.getElementById('guestTrialConnectionResult');
+  const guestTrialConnectionMessage = document.getElementById('guestTrialConnectionMessage');
+
+  // Modal elements
+  const registrationStatsModal = document.getElementById('registration-stats-modal');
+  const resetCountersModal = document.getElementById('reset-counters-modal');
+  
+  // Button elements
+  const viewStatsBtn = document.getElementById('view-registration-stats');
+  const testGuestTrialBtn = document.getElementById('test-guest-trial');
+  const resetCountersBtn = document.getElementById('reset-counters');
+  const refreshStatsBtn = document.getElementById('refresh-stats');
+  const confirmResetBtn = document.getElementById('confirm-reset-counters');
+
+  // Load all guest trial settings
+  async function loadGuestTrialSettings() {
+    try {
+      const response = await fetch('/api/guest-trial/admin/settings');
+      const data = await response.json();
+      
+      if (data) {
+        // Basic settings
+        guestTrialEnabled.checked = data.is_enabled || false;
+        trialDurationInput.value = data.trial_duration_hours || 48;
+        
+        // Convert cents to dollars for display
+        const amountInDollars = Math.round((data.guest_tier_amount_cents || 0) / 100);
+        guestTierAmountInput.value = amountInDollars;
+        
+        // Abuse prevention
+        maxTrialsPerEmailInput.value = data.max_trials_per_email_per_week || 1;
+        maxTrialsPerDeviceInput.value = data.max_trials_per_device_per_month || 1;
+        maxTrialsPerIpInput.value = data.max_trials_per_ip_per_day || 3;
+        
+        // Registration limits
+        registrationLimitEnabled.checked = data.registration_limit_enabled || false;
+        enableDailyReset.checked = data.enable_daily_reset !== false;
+        maxDailyRegistrations.value = data.max_daily_registrations || 50;
+        maxTotalRegistrations.value = data.max_total_registrations || 0;
+        
+        updateLimitsVisibility();
+        updateRegistrationStatus();
+      }
+    } catch (error) {
+      console.error('Error loading guest trial settings:', error);
+      showGuestTrialResult('error', 'Error loading guest trial settings');
+    }
+  }
+
+  // Update visibility of limits configuration
+  function updateLimitsVisibility() {
+    if (registrationLimitEnabled.checked) {
+      registrationLimitsConfig.style.display = 'block';
+      updateRegistrationStatus();
+    } else {
+      registrationLimitsConfig.style.display = 'none';
+      registrationStatus.style.display = 'none';
+    }
+  }
+
+  // Update registration status display
+  async function updateRegistrationStatus() {
+    if (!registrationLimitEnabled.checked) {
+      registrationStatus.style.display = 'none';
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/guest-trial/admin/registration-stats');
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        const stats = data.stats;
+        registrationStatus.style.display = 'block';
+        
+        const statusDetails = document.getElementById('registration-status-details');
+        statusDetails.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem;">
+            <div>
+              <strong>Daily:</strong> ${stats.current_daily_count} / ${stats.daily_limit > 0 ? stats.daily_limit : '∞'}
+              ${stats.daily_limit > 0 ? `<div class="progress-bar"><div class="progress-bar-fill ${getProgressBarClass(stats.current_daily_count, stats.daily_limit)}" style="width: ${Math.min(100, (stats.current_daily_count / stats.daily_limit) * 100)}%"></div></div>` : ''}
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                ${stats.daily_remaining !== 'unlimited' ? `${stats.daily_remaining} remaining` : 'Unlimited'}
+              </div>
+            </div>
+            <div>
+              <strong>Total:</strong> ${stats.current_total_count} / ${stats.total_limit > 0 ? stats.total_limit : '∞'}
+              ${stats.total_limit > 0 ? `<div class="progress-bar"><div class="progress-bar-fill ${getProgressBarClass(stats.current_total_count, stats.total_limit)}" style="width: ${Math.min(100, (stats.current_total_count / stats.total_limit) * 100)}%"></div></div>` : ''}
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                ${stats.total_remaining !== 'unlimited' ? `${stats.total_remaining} remaining` : 'Unlimited'}
+              </div>
+            </div>
+          </div>
+          ${stats.hours_until_reset > 0 ? `<div class="time-until-reset"><i class="fas fa-clock"></i> Daily reset in ${stats.hours_until_reset.toFixed(1)} hours</div>` : ''}
+        `;
+      }
+    } catch (error) {
+      console.error('Error loading registration status:', error);
+    }
+  }
+
+  // Save guest trial settings (combined)
+  if (guestTrialSettingsForm) {
+    guestTrialSettingsForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      
+      // Convert dollars to cents for storage
+      const amountInCents = parseInt(guestTierAmountInput.value) * 100;
+      
+      const settings = {
+        // Basic settings
+        is_enabled: guestTrialEnabled.checked,
+        trial_duration_hours: parseInt(trialDurationInput.value),
+        guest_tier_amount_cents: amountInCents,
+        
+        // Abuse prevention
+        max_trials_per_email_per_week: parseInt(maxTrialsPerEmailInput.value),
+        max_trials_per_device_per_month: parseInt(maxTrialsPerDeviceInput.value),
+        max_trials_per_ip_per_day: parseInt(maxTrialsPerIpInput.value),
+        
+        // Registration limits
+        registration_limit_enabled: registrationLimitEnabled.checked,
+        enable_daily_reset: enableDailyReset.checked,
+        max_daily_registrations: parseInt(maxDailyRegistrations.value) || 0,
+        max_total_registrations: parseInt(maxTotalRegistrations.value) || 0
+      };
+
+      try {
+        const response = await fetch('/api/guest-trial/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings)
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          showGuestTrialResult('success', 'Guest trial settings saved successfully');
+          updateRegistrationStatus();
+        } else {
+          showGuestTrialResult('error', data.message || 'Failed to save guest trial settings');
+        }
+      } catch (error) {
+        console.error('Error saving guest trial settings:', error);
+        showGuestTrialResult('error', 'Error saving guest trial settings');
+      }
+    });
+  }
+
+  // Test Guest Trial functionality
+  if (testGuestTrialBtn) {
+    testGuestTrialBtn.addEventListener('click', async function() {
+      testGuestTrialBtn.disabled = true;
+      testGuestTrialBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+
+      try {
+        const response = await fetch('/api/guest-trial/admin/test', {
+          method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.status === 'success') {
+          const amountDisplay = data.guest_tier_amount_cents === 0 ? 
+            'Guest trials disabled ($0)' : 
+            `Guest trial tier: ${Math.round(data.guest_tier_amount_cents / 100)} (${data.guest_tier_amount_cents} cents)`;
+          
+          showGuestTrialResult('success', `Guest trial system working! ${amountDisplay}`);
+        } else {
+          showGuestTrialResult('error', data.message || 'Guest trial test failed');
+        }
+      } catch (error) {
+        console.error('Error testing guest trial:', error);
+        showGuestTrialResult('error', 'Error testing guest trial system');
+      } finally {
+        testGuestTrialBtn.disabled = false;
+        testGuestTrialBtn.innerHTML = '<i class="fas fa-vial"></i> Test Guest Trial';
+      }
+    });
+  }
+
+  // View registration statistics
+  if (viewStatsBtn) {
+    viewStatsBtn.addEventListener('click', async function() {
+      await loadRegistrationStats();
+      registrationStatsModal.style.display = 'flex';
+    });
+  }
+
+  // Load registration statistics
+  async function loadRegistrationStats() {
+    try {
+      const response = await fetch('/api/guest-trial/admin/registration-stats');
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        const stats = data.stats;
+        const content = document.getElementById('registration-stats-content');
+        
+        content.innerHTML = `
+          <div class="registration-stats-grid">
+            <div class="stat-card ${getStatCardClass(stats.current_daily_count, stats.daily_limit)}">
+              <h4>Daily Registrations</h4>
+              <div class="stat-value">${stats.current_daily_count}</div>
+              <p class="stat-subtitle">
+                ${stats.daily_limit > 0 ? `of ${stats.daily_limit} limit` : 'unlimited'}
+              </p>
+              ${stats.daily_limit > 0 ? `<div class="progress-bar"><div class="progress-bar-fill ${getProgressBarClass(stats.current_daily_count, stats.daily_limit)}" style="width: ${Math.min(100, (stats.current_daily_count / stats.daily_limit) * 100)}%"></div></div>` : ''}
+            </div>
+            
+            <div class="stat-card ${getStatCardClass(stats.current_total_count, stats.total_limit)}">
+              <h4>Total Registrations</h4>
+              <div class="stat-value">${stats.current_total_count}</div>
+              <p class="stat-subtitle">
+                ${stats.total_limit > 0 ? `of ${stats.total_limit} limit` : 'unlimited'}
+              </p>
+              ${stats.total_limit > 0 ? `<div class="progress-bar"><div class="progress-bar-fill ${getProgressBarClass(stats.current_total_count, stats.total_limit)}" style="width: ${Math.min(100, (stats.current_total_count / stats.total_limit) * 100)}%"></div></div>` : ''}
+            </div>
+            
+            <div class="stat-card">
+              <h4>Today's Activity</h4>
+              <div class="stat-value success">${stats.today_stats.successful}</div>
+              <p class="stat-subtitle">
+                ${stats.today_stats.failed} failed attempts
+              </p>
+            </div>
+            
+            <div class="stat-card">
+              <h4>Weekly Total</h4>
+              <div class="stat-value">${stats.weekly_stats.successful}</div>
+              <p class="stat-subtitle">
+                ${stats.weekly_stats.active_days} active days
+              </p>
+            </div>
+          </div>
+          
+          ${stats.hours_until_reset > 0 ? `
+            <div class="time-until-reset">
+              <i class="fas fa-clock"></i>
+              Daily counter resets in <strong>${stats.hours_until_reset.toFixed(1)} hours</strong>
+            </div>
+          ` : ''}
+          
+          <div class="settings-overview">
+            <h4><i class="fas fa-cog"></i> Current Settings</h4>
+            <div class="settings-grid">
+              <div class="setting-item">
+                <span class="setting-label">Limits Enabled:</span>
+                <span class="setting-value ${stats.limits_enabled ? 'enabled' : 'disabled'}">${stats.limits_enabled ? 'Yes' : 'No'}</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">Daily Reset:</span>
+                <span class="setting-value ${stats.next_reset ? 'enabled' : 'disabled'}">${stats.next_reset ? 'Enabled' : 'Disabled'}</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">Daily Limit:</span>
+                <span class="setting-value ${stats.daily_limit === 0 ? 'unlimited' : ''}">${stats.daily_limit || 'Unlimited'}</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">Total Limit:</span>
+                <span class="setting-value ${stats.total_limit === 0 ? 'unlimited' : ''}">${stats.total_limit || 'Unlimited'}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    } catch (error) {
+      console.error('Error loading registration stats:', error);
+      document.getElementById('registration-stats-content').innerHTML = `
+        <div style="text-align: center; padding: 3rem; color: var(--error-color);">
+          <i class="fas fa-exclamation-circle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+          <h4>Error Loading Statistics</h4>
+          <p>Unable to fetch registration statistics. Please try again.</p>
+        </div>
+      `;
+    }
+  }
+
+  // Reset counters
+  if (resetCountersBtn) {
+    resetCountersBtn.addEventListener('click', function() {
+      resetCountersModal.style.display = 'flex';
+    });
+  }
+
+  // Confirm reset counters
+  if (confirmResetBtn) {
+    confirmResetBtn.addEventListener('click', async function() {
+      const resetDaily = document.getElementById('reset-daily-counter').checked;
+      const resetTotal = document.getElementById('reset-total-counter').checked;
+      
+      if (!resetDaily && !resetTotal) {
+        alert('Please select at least one counter to reset');
+        return;
+      }
+      
+      try {
+        confirmResetBtn.disabled = true;
+        confirmResetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+        
+        const response = await fetch('/api/guest-trial/admin/reset-counters', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reset_daily: resetDaily,
+            reset_total: resetTotal
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          resetCountersModal.style.display = 'none';
+          showGuestTrialResult('success', 'Counters reset successfully');
+          updateRegistrationStatus();
+          
+          // Refresh stats if modal is open
+          if (registrationStatsModal.style.display === 'flex') {
+            loadRegistrationStats();
+          }
+        } else {
+          showGuestTrialResult('error', data.message || 'Failed to reset counters');
+        }
+      } catch (error) {
+        console.error('Error resetting counters:', error);
+        showGuestTrialResult('error', 'Error resetting counters');
+      } finally {
+        confirmResetBtn.disabled = false;
+        confirmResetBtn.innerHTML = '<i class="fas fa-redo"></i> Reset Selected Counters';
+      }
+    });
+  }
+
+  // Refresh statistics
+  if (refreshStatsBtn) {
+    refreshStatsBtn.addEventListener('click', async function() {
+      refreshStatsBtn.disabled = true;
+      refreshStatsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+      
+      await loadRegistrationStats();
+      
+      refreshStatsBtn.disabled = false;
+      refreshStatsBtn.innerHTML = '<i class="fas fa-sync"></i> Refresh Data';
+    });
+  }
+
+  // Helper functions
+  function showGuestTrialResult(type, message) {
+    guestTrialConnectionResult.style.display = 'block';
+    guestTrialConnectionMessage.textContent = message;
+    
+    const statusIndicator = guestTrialConnectionResult.querySelector('.status-indicator');
+    const icon = guestTrialConnectionResult.querySelector('.status-indicator i');
+    
+    if (type === 'success') {
+      icon.className = 'fas fa-check-circle';
+      statusIndicator.style.color = 'var(--success-color, #22c55e)';
+      guestTrialConnectionResult.querySelector('.token-info').style.borderColor = 'var(--success-color, #22c55e)';
+    } else {
+      icon.className = 'fas fa-exclamation-circle';
+      statusIndicator.style.color = 'var(--error-color)';
+      guestTrialConnectionResult.querySelector('.token-info').style.borderColor = 'var(--error-color)';
+    }
+    
+    setTimeout(() => {
+      guestTrialConnectionResult.style.display = 'none';
+    }, 5000);
+  }
+
+  function getStatCardClass(current, limit) {
+    if (limit === 0) return '';
+    const percentage = (current / limit) * 100;
+    if (percentage >= 90) return 'danger';
+    if (percentage >= 75) return 'warning';
+    return 'success';
+  }
+
+  function getProgressBarClass(current, limit) {
+    if (limit === 0) return '';
+    const percentage = (current / limit) * 100;
+    if (percentage >= 90) return 'danger';
+    if (percentage >= 75) return 'warning';
+    return '';
+  }
+
+  // Event listeners for configuration visibility
+  if (registrationLimitEnabled) {
+    registrationLimitEnabled.addEventListener('change', updateLimitsVisibility);
+  }
+
+  // Load settings on page load
+  loadGuestTrialSettings();
+  
+  // Auto-refresh status every 30 seconds
+  setInterval(updateRegistrationStatus, 30000);
+});
+</script>
+
+
+
+  </script>
+{% endblock %}

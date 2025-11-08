@@ -1,0 +1,530 @@
+// Enhanced AJAX Navigation System for Music Player Application
+// This handles navigation between mini player, full player, and album detail pages
+
+class AjaxNavigationManager {
+    constructor() {
+        this.isActive = false;
+        this.currentPath = window.location.pathname;
+        this.cache = new Map();
+        this.loadingElement = null;
+        
+        // Track content containers
+        this.containers = {
+            main: document.querySelector('main'),
+            playerContainer: document.querySelector('.player-container'),
+            albumDetail: document.querySelector('.album-detail')
+        };
+        
+        this.init();
+    }
+
+    init() {
+        this.createLoadingIndicator();
+        this.bindNavigationEvents();
+        this.handlePopState();
+        
+        // Initialize based on current page
+        if (window.location.pathname.includes('/player/')) {
+            this.isActive = true;
+            this.currentContentType = 'player';
+        } else if (window.location.pathname.includes('/album/')) {
+            this.isActive = true;
+            this.currentContentType = 'album';
+        }
+        
+        console.log('AJAX Navigation Manager initialized');
+    }
+
+    createLoadingIndicator() {
+        this.loadingElement = document.createElement('div');
+        this.loadingElement.className = 'ajax-loading-overlay';
+        this.loadingElement.innerHTML = `
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Loading...</span>
+            </div>
+        `;
+        this.loadingElement.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        `;
+        document.body.appendChild(this.loadingElement);
+    }
+
+    showLoading() {
+        this.loadingElement.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    hideLoading() {
+        this.loadingElement.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    bindNavigationEvents() {
+        // Handle mini player expand button
+        this.bindMiniPlayerExpand();
+        
+        // Handle album navigation links
+        this.bindAlbumNavigation();
+        
+        // Handle track navigation in player
+        this.bindTrackNavigation();
+        
+        // Handle back button in player
+        this.bindPlayerBackButton();
+    }
+
+    bindMiniPlayerExpand() {
+        // Find expand button in mini player
+        const expandBtn = document.getElementById('expandPlayer');
+        if (expandBtn) {
+            expandBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                
+                if (!window.persistentPlayer || !window.persistentPlayer.currentTrackId) {
+                    console.warn('No track currently playing');
+                    return;
+                }
+                
+                const trackId = window.persistentPlayer.currentTrackId;
+                const playerUrl = `/player/${trackId}`;
+                
+                // Save current player state for restoration
+                const currentState = {
+                    trackId: trackId,
+                    isPlaying: !window.persistentPlayer.audio.paused,
+                    position: window.persistentPlayer.audio.currentTime,
+                    playbackRate: window.persistentPlayer.audio.playbackRate || 1.0,
+                    volume: window.persistentPlayer.audio.volume
+                };
+                
+                sessionStorage.setItem('expandedPlayerState', JSON.stringify(currentState));
+                
+                await this.navigateToPlayer(playerUrl, trackId);
+            });
+        }
+    }
+
+    bindAlbumNavigation() {
+        // Handle album links throughout the site
+        document.addEventListener('click', async (e) => {
+            const albumLink = e.target.closest('a[href*="/album/"]');
+            if (albumLink && this.shouldUseAjax(albumLink.href)) {
+                e.preventDefault();
+                await this.navigateToAlbum(albumLink.href);
+            }
+        });
+    }
+
+    bindTrackNavigation() {
+        // Handle track navigation in player (next/prev buttons)
+        document.addEventListener('click', async (e) => {
+            const navBtn = e.target.closest('.nav-btn[data-track-id]');
+            if (navBtn && window.location.pathname.includes('/player/')) {
+                e.preventDefault();
+                
+                const trackId = navBtn.getAttribute('data-track-id');
+                const playerUrl = `/player/${trackId}`;
+                
+                // Save current state
+                const currentState = {
+                    wasPlaying: window.persistentPlayer && !window.persistentPlayer.audio.paused,
+                    currentTime: window.persistentPlayer ? window.persistentPlayer.audio.currentTime : 0,
+                    volume: window.persistentPlayer ? window.persistentPlayer.audio.volume : 1,
+                    playbackRate: window.persistentPlayer ? window.persistentPlayer.audio.playbackRate : 1
+                };
+                
+                sessionStorage.setItem('lastPlayerState', JSON.stringify(currentState));
+                sessionStorage.setItem('expandedPlayerState', JSON.stringify({
+                    trackId: trackId,
+                    isPlaying: currentState.wasPlaying,
+                    position: 0, // Start new track from beginning
+                    playbackRate: currentState.playbackRate
+                }));
+                
+                await this.navigateToPlayer(playerUrl, trackId);
+            }
+        });
+    }
+
+    bindPlayerBackButton() {
+        // Handle back button in player to return to album
+        document.addEventListener('click', async (e) => {
+            const backBtn = e.target.closest('.back-btn[href*="/album/"]');
+            if (backBtn && window.location.pathname.includes('/player/')) {
+                e.preventDefault();
+                await this.navigateToAlbum(backBtn.href);
+            }
+        });
+    }
+
+    shouldUseAjax(url) {
+        // Determine if we should use AJAX for this URL
+        const path = new URL(url, window.location.origin).pathname;
+        return path.includes('/album/') || path.includes('/player/');
+    }
+
+    async navigateToPlayer(url, trackId) {
+        try {
+            this.showLoading();
+            
+            // Check access first
+            const accessCheck = await this.checkTrackAccess(trackId);
+            if (!accessCheck.hasAccess) {
+                this.hideLoading();
+                if (typeof showUpgradeModal === 'function') {
+                    showUpgradeModal(accessCheck.message);
+                }
+                return;
+            }
+            
+            const content = await this.loadContent(url);
+            if (content) {
+                this.replaceContent(content, 'player');
+                this.updateUrl(url);
+                this.currentContentType = 'player';
+                this.isActive = true;
+                
+                // Initialize player functionality
+                this.initializePlayerPage();
+                
+                // Dispatch custom event
+                window.dispatchEvent(new CustomEvent('ajaxPageLoaded', {
+                    detail: { url, type: 'player', trackId }
+                }));
+            }
+        } catch (error) {
+            console.error('Navigation to player failed:', error);
+            this.showToast('Failed to load player. Please try again.');
+            // Fallback to regular navigation
+            window.location.href = url;
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    async navigateToAlbum(url) {
+        try {
+            this.showLoading();
+            
+            // Extract album ID from URL
+            const albumId = url.match(/\/album\/([^\/]+)/)?.[1];
+            if (albumId) {
+                const accessCheck = await this.checkAlbumAccess(albumId);
+                if (!accessCheck.hasAccess) {
+                    this.hideLoading();
+                    if (typeof showUpgradeModal === 'function') {
+                        showUpgradeModal(accessCheck.message);
+                    }
+                    return;
+                }
+            }
+            
+            const content = await this.loadContent(url);
+            if (content) {
+                this.replaceContent(content, 'album');
+                this.updateUrl(url);
+                this.currentContentType = 'album';
+                this.isActive = true;
+                
+                // Initialize album functionality
+                this.initializeAlbumPage();
+                
+                // Dispatch custom event
+                window.dispatchEvent(new CustomEvent('ajaxPageLoaded', {
+                    detail: { url, type: 'album', albumId }
+                }));
+            }
+        } catch (error) {
+            console.error('Navigation to album failed:', error);
+            this.showToast('Failed to load album. Please try again.');
+            // Fallback to regular navigation
+            window.location.href = url;
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    async checkTrackAccess(trackId) {
+        try {
+            const response = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/check-access`);
+            
+            if (response.status === 403) {
+                const data = await response.json();
+                return {
+                    hasAccess: false,
+                    message: data.error?.message || 'This content requires a higher tier subscription'
+                };
+            }
+            
+            return { hasAccess: response.ok };
+        } catch (error) {
+            console.error('Error checking track access:', error);
+            return { hasAccess: false, message: 'Error checking access' };
+        }
+    }
+
+    async checkAlbumAccess(albumId) {
+        try {
+            const response = await fetch(`/api/albums/${encodeURIComponent(albumId)}/check-access`);
+            
+            if (response.status === 403) {
+                const data = await response.json();
+                return {
+                    hasAccess: false,
+                    message: data.error?.message || 'This content requires a higher tier subscription'
+                };
+            }
+            
+            return { hasAccess: response.ok };
+        } catch (error) {
+            console.error('Error checking album access:', error);
+            return { hasAccess: false, message: 'Error checking access' };
+        }
+    }
+
+    async loadContent(url) {
+        // Check cache first
+        if (this.cache.has(url)) {
+            console.log('Loading from cache:', url);
+            return this.cache.get(url);
+        }
+        
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const html = await response.text();
+            
+            // Cache the response (limit cache size)
+            if (this.cache.size > 10) {
+                const firstKey = this.cache.keys().next().value;
+                this.cache.delete(firstKey);
+            }
+            this.cache.set(url, html);
+            
+            return html;
+        } catch (error) {
+            console.error('Failed to load content:', error);
+            return null;
+        }
+    }
+
+    replaceContent(html, contentType) {
+        const parser = new DOMParser();
+        const newDoc = parser.parseFromString(html, 'text/html');
+        
+        if (contentType === 'player') {
+            // Extract player content
+            const newPlayerContainer = newDoc.querySelector('.player-container');
+            const currentPlayerContainer = document.querySelector('.player-container');
+            
+            if (newPlayerContainer && currentPlayerContainer) {
+                currentPlayerContainer.replaceWith(newPlayerContainer);
+            } else {
+                // If no existing player container, replace main content
+                const main = document.querySelector('main');
+                const newMain = newDoc.querySelector('main');
+                if (main && newMain) {
+                    main.innerHTML = newMain.innerHTML;
+                }
+            }
+            
+            // Update page title
+            const newTitle = newDoc.querySelector('title')?.textContent;
+            if (newTitle) {
+                document.title = newTitle;
+            }
+            
+        } else if (contentType === 'album') {
+            // Replace main content for album pages
+            const main = document.querySelector('main');
+            const newMain = newDoc.querySelector('main');
+            
+            if (main && newMain) {
+                main.innerHTML = newMain.innerHTML;
+                
+                // Update page title
+                const newTitle = newDoc.querySelector('title')?.textContent;
+                if (newTitle) {
+                    document.title = newTitle;
+                }
+            }
+        }
+        
+        // Extract and execute any inline scripts
+        this.executeScripts(newDoc);
+    }
+
+    executeScripts(doc) {
+        const scripts = doc.querySelectorAll('script');
+        scripts.forEach(script => {
+            if (script.src) {
+                // External scripts - only load if not already loaded
+                if (!document.querySelector(`script[src="${script.src}"]`)) {
+                    const newScript = document.createElement('script');
+                    newScript.src = script.src;
+                    newScript.async = script.async;
+                    newScript.defer = script.defer;
+                    document.head.appendChild(newScript);
+                }
+            } else if (script.textContent) {
+                // Inline scripts
+                try {
+                    eval(script.textContent);
+                } catch (error) {
+                    console.error('Error executing inline script:', error);
+                }
+            }
+        });
+    }
+
+    initializePlayerPage() {
+        // Re-initialize player-specific functionality
+        console.log('Initializing player page functionality');
+        
+        // Initialize audio player if the function exists
+        if (typeof initAudioPlayer === 'function') {
+            setTimeout(initAudioPlayer, 100);
+        }
+        
+        // Initialize comment system if it exists
+        if (typeof initCommentSystem === 'function') {
+            setTimeout(initCommentSystem, 200);
+        }
+        
+        // Set up live comment updates
+        setTimeout(() => {
+            if (typeof setupLiveCommentUpdates === 'function') {
+                window.liveCommentUpdater = setupLiveCommentUpdates();
+            }
+        }, 1000);
+    }
+
+    initializeAlbumPage() {
+        // Re-initialize album-specific functionality
+        console.log('Initializing album page functionality');
+        
+        // Re-initialize AlbumDetailPage if it exists
+        if (typeof AlbumDetailPage !== 'undefined') {
+            try {
+                window.albumDetail = new AlbumDetailPage();
+                console.log('✅ AlbumDetailPage reinitialized successfully');
+            } catch (error) {
+                console.error('❌ Error reinitializing AlbumDetailPage:', error);
+            }
+        }
+        
+        // Rebind any track click handlers for mini player integration
+        this.rebindTrackHandlers();
+    }
+
+    rebindTrackHandlers() {
+        // Rebind track click handlers to work with mini player
+        document.querySelectorAll('.track-item').forEach(trackItem => {
+            const trackContent = trackItem.querySelector('.track-content');
+            if (trackContent) {
+                trackContent.addEventListener('click', async (e) => {
+                    // Prevent if clicking on checkbox or actions
+                    if (e.target.closest('.track-checkbox, .track-actions')) {
+                        return;
+                    }
+                    
+                    const trackId = trackItem.dataset.trackId;
+                    if (trackId) {
+                        // Use the existing playTrackFromCatalog function if available
+                        if (typeof playTrackFromCatalog === 'function') {
+                            const trackTitle = trackItem.querySelector('.track-title')?.textContent || 'Unknown Track';
+                            const albumTitle = document.querySelector('.album-title')?.textContent || 'Unknown Album';
+                            const albumCover = document.querySelector('.album-cover-large')?.src || '/static/images/default-album.jpg';
+                            
+                            await playTrackFromCatalog(trackId, trackTitle, albumTitle, albumCover);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    updateUrl(url) {
+        if (window.location.href !== url) {
+            window.history.pushState({ ajaxNav: true, url }, '', url);
+            this.currentPath = new URL(url).pathname;
+        }
+    }
+
+    handlePopState() {
+        window.addEventListener('popstate', async (e) => {
+            if (e.state && e.state.ajaxNav) {
+                // Handle AJAX back/forward navigation
+                const url = e.state.url || window.location.href;
+                
+                if (url.includes('/player/')) {
+                    const trackId = url.match(/\/player\/([^\/]+)/)?.[1];
+                    if (trackId) {
+                        await this.navigateToPlayer(url, trackId);
+                    }
+                } else if (url.includes('/album/')) {
+                    await this.navigateToAlbum(url);
+                } else {
+                    // Non-AJAX navigation - reload page
+                    window.location.reload();
+                }
+            }
+        });
+    }
+
+    showToast(message, duration = 3000) {
+        // Use the existing toast system if available
+        if (window.persistentPlayer && typeof window.persistentPlayer.showToast === 'function') {
+            window.persistentPlayer.showToast(message);
+        } else if (typeof showToast === 'function') {
+            showToast(message);
+        } else {
+            // Fallback toast
+            console.log('Toast:', message);
+        }
+    }
+
+    // Public methods
+    isActive() {
+        return this.isActive;
+    }
+
+    getCurrentContentType() {
+        return this.currentContentType;
+    }
+
+    clearCache() {
+        this.cache.clear();
+    }
+}
+
+// Initialize the AJAX navigation manager
+let ajaxNavManager;
+
+document.addEventListener('DOMContentLoaded', () => {
+    ajaxNavManager = new AjaxNavigationManager();
+    window.ajaxNav = ajaxNavManager;
+});
+
+// Export for use in other scripts
+window.AjaxNavigationManager = AjaxNavigationManager;

@@ -1,0 +1,427 @@
+/* statistics.css - Shared styles for Statistics page (SSR + SPA) */
+
+/* Dark theme custom properties */
+:root[data-theme="dark"] {
+    --custom-bg-primary: #121212;
+    --custom-bg-secondary: #1a1a1a;
+    --custom-bg-tertiary: #2d2d2d;
+    --custom-text-primary: #ffffff;
+    --custom-text-secondary: #b3b3b3;
+    --custom-text-bright: #f5f5f5;
+    --custom-blue: #4a90e2;
+    --custom-green: #28a745;
+    --custom-border: rgba(255, 255, 255, 0.1);
+    --custom-orange: #f59e0b;
+}
+
+/* Light theme inherits from base.html */
+:root[data-theme="light"] {
+    --custom-bg-primary: var(--background-primary);
+    --custom-bg-secondary: var(--background-secondary);
+    --custom-bg-tertiary: var(--background-tertiary);
+    --custom-text-primary: var(--text-primary);
+    --custom-text-secondary: var(--text-secondary);
+    --custom-text-bright: var(--text-primary);
+    --custom-blue: var(--primary-color);
+    --custom-green: var(--success-color);
+    --custom-border: var(--border-color);
+    --custom-orange: #f59e0b;
+}
+
+body {
+    background-color: var(--custom-bg-primary);
+    color: var(--custom-text-primary);
+}
+
+.pin-button {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pin-button-primary {
+    background: var(--custom-blue);
+    color: white;
+}
+
+.pin-button-secondary {
+    background: var(--custom-bg-secondary);
+    border: 1px solid var(--custom-border);
+    color: var(--custom-text-primary);
+}
+
+.pin-button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.active-users-stats {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--custom-bg-tertiary);
+    border-radius: 6px;
+}
+
+.user-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--custom-border);
+}
+
+.user-stat-row:last-child {
+    border-bottom: none;
+}
+
+.user-stat-row.total {
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--custom-border);
+    font-weight: bold;
+}
+
+.stat-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--custom-text-secondary);
+}
+
+.stat-value {
+    font-family: monospace;
+    font-size: 1.1rem;
+    color: var(--custom-text-bright);
+}
+
+.stats-card {
+    background-color: var(--custom-bg-secondary);
+    color: var(--custom-text-bright);
+    border-radius: 0.75rem;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.stats-section {
+    background-color: var(--custom-bg-tertiary);
+    border-radius: 0.5rem;
+}
+
+.stats-title {
+    color: var(--custom-blue);
+}
+
+.stats-subtitle {
+    color: var(--custom-text-secondary);
+}
+
+.stat-value-primary {
+    color: var(--custom-blue);
+}
+
+.stat-value-success {
+    color: var(--custom-green);
+}
+
+.hidden {
+    display: none;
+}
+
+.guest-trial-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--custom-text-secondary);
+}
+
+.trial-badge {
+    background: var(--custom-blue);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.expired-badge {
+    background: #dc3545;
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+/* Monthly Statistics Cards */
+.months-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.month-card {
+    background: var(--custom-bg-secondary);
+    border: 2px solid var(--custom-border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    font-size: 0.9rem;
+}
+
+.month-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--custom-blue);
+    transform: scaleX(0);
+    transition: transform 0.2s ease;
+}
+
+.month-card:hover {
+    transform: translateY(-1px);
+    border-color: var(--custom-blue);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+
+.month-card:hover::before {
+    transform: scaleX(1);
+}
+
+.month-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.month-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--custom-text-bright);
+}
+
+.month-total {
+    background: var(--custom-blue);
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    min-width: 24px;
+    text-align: center;
+}
+
+.month-breakdown {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+    gap: 8px;
+}
+
+.breakdown-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+
+.breakdown-albums {
+    color: var(--custom-green);
+}
+
+.breakdown-tracks {
+    color: var(--custom-orange);
+}
+
+.month-status {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--custom-text-secondary);
+    border-top: 1px solid var(--custom-border);
+    padding-top: 6px;
+}
+
+.status-success {
+    color: var(--custom-green);
+}
+
+.status-failed {
+    color: #ef4444;
+}
+
+/* Tier Breakdown Styles */
+.tier-breakdown {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--custom-border);
+    font-size: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.tier-breakdown.hidden {
+    display: none;
+}
+
+.tier-breakdown-header h4 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--custom-text-secondary);
+    margin: 0 0 6px 0;
+}
+
+.tier-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--custom-border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+}
+
+.tier-item:last-child {
+    margin-bottom: 0;
+}
+
+.tier-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.tier-name {
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: var(--custom-text-bright);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tier-price {
+    font-size: 0.7rem;
+    color: var(--custom-green);
+    font-weight: 500;
+    margin: 0 6px;
+}
+
+.tier-total {
+    background: var(--custom-blue);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 8px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.tier-item-details {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 0.7rem;
+}
+
+.tier-detail-albums {
+    color: var(--custom-green);
+}
+
+.tier-detail-tracks {
+    color: var(--custom-orange);
+}
+
+.tier-detail-failed {
+    color: #ef4444;
+}
+
+/* Empty state for months */
+.empty-months {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--custom-text-secondary);
+}
+
+.empty-months i {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-months h3 {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .months-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 10px;
+    }
+    
+    .month-card {
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+    
+    .month-name {
+        font-size: 0.9rem;
+    }
+    
+    .month-total {
+        font-size: 1rem;
+        padding: 3px 8px;
+    }
+    
+    .month-breakdown {
+        font-size: 0.75rem;
+        gap: 6px;
+    }
+    
+    .month-status {
+        font-size: 0.7rem;
+    }
+    
+    .tier-breakdown {
+        font-size: 0.7rem;
+    }
+    
+    .tier-name {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .months-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 8px;
+    }
+    
+    .month-card {
+        padding: 8px;
+    }
+    
+    .month-breakdown {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .breakdown-item {
+        justify-content: space-between;
+    }
+}

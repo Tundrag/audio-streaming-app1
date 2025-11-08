@@ -1,0 +1,593 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Book Requests{% endblock %}
+
+{% block page_title %}Manage Book Requests{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/manage-book-requests.css') }}">
+{% endblock %}
+{% block content %}
+<div class="container">
+    <!-- Notification Area -->
+    <div id="notification-area"></div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="mb-0">Book Requests</h2>
+                        <div class="badge-group">
+                            <span class="badge bg-warning text-dark me-2">{{ status_counts.pending }} Pending</span>
+                            <span class="badge bg-success me-2">{{ status_counts.approved }} Approved</span>
+                            <span class="badge bg-danger me-2">{{ status_counts.rejected }} Rejected</span>
+                            <span class="badge bg-primary">{{ status_counts.fulfilled }} Fulfilled</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Month stats -->
+                    <div class="month-stats">
+                        <div class="month-stat-card {% if not active_month %}active{% endif %}" data-month="">
+                            <div class="month-name">All Time</div>
+                            <div class="month-counts">
+                                <span>{{ status_counts.total }} requests</span><br>
+                                <span>{{ status_counts.pending }} pending</span>
+                            </div>
+                        </div>
+                        
+                        {% for month in available_months %}
+                        <div class="month-stat-card {% if month == active_month %}active{% endif %}" data-month="{{ month }}">
+                            <div class="month-name">{{ month }}</div>
+                            <div class="month-counts">
+                                <span>{{ requests_by_month[month].total }} requests</span><br>
+                                <span>{{ requests_by_month[month].pending }} pending</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Status filters -->
+                    <div class="status-filters mb-3">
+                        <div class="status-filter {% if not active_status %}active{% endif %}" data-status="">All</div>
+                        <div class="status-filter {% if active_status == 'pending' %}active{% endif %}" data-status="pending">Pending</div>
+                        <div class="status-filter {% if active_status == 'approved' %}active{% endif %}" data-status="approved">Approved</div>
+                        <div class="status-filter {% if active_status == 'rejected' %}active{% endif %}" data-status="rejected">Rejected</div>
+                        <div class="status-filter {% if active_status == 'fulfilled' %}active{% endif %}" data-status="fulfilled">Fulfilled</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Book requests list -->
+            <div class="book-requests-list">
+                {% if book_requests %}
+                    {% for request in book_requests %}
+                    <div class="request-card" id="request-{{ request.id }}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h2 class="request-title">{{ request.title }}</h2>
+                            <div class="d-flex align-items-center">
+                                <div class="status-badge status-{{ request.status }}">{{ request.status|capitalize }}</div>
+                                <!-- NEW: Show user reply indicator -->
+                                {% if request.user_reply %}
+                                <span class="user-reply-indicator">
+                                    <i class="fas fa-reply"></i> User replied
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="request-meta">
+                            <div><strong>Author:</strong> {{ request.author }}</div>
+                            <div><strong>Requested:</strong> {{ request.created_at|replace("T", " ")|truncate(16, True, "") }}</div>
+                        </div>
+                        
+                        {% if request.user %}
+<div class="user-info">
+    <i class="fas fa-user"></i>
+    {{ request.user.display_name or request.user.username }}
+    {% if request.user.chapters_allowed is defined %}
+        <span class="chapters-info">
+            {% if request.user.role_type == 'creator' and request.user.chapters_allowed >= 1000000 %}
+                <i class="fas fa-infinity"></i> ∞ chapters
+            {% elif request.user.chapters_allowed > 0 %}
+                <i class="fas fa-file-alt"></i> {{ request.user.chapters_allowed }} chapters
+            {% else %}
+                <i class="fas fa-question-circle"></i> chapters not set
+            {% endif %}
+        </span>
+    {% endif %}
+</div>
+{% endif %}
+
+                        
+                        {% if request.link %}
+                        <div>
+                            <a href="{{ request.link }}" target="_blank" class="request-link" rel="noopener noreferrer">
+                                <i class="fas fa-external-link-alt"></i> {{ request.link }}
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if request.description %}
+                        <div class="request-description">{{ request.description }}</div>
+                        {% endif %}
+                        
+                        {% if request.response_message %}
+                        <div class="response-box">
+                            <div class="response-title">Admin Response:</div>
+                            <div class="response-content">{{ request.response_message }}</div>
+                            {% if request.responder %}
+                            <div class="response-footer">
+                                Responded by {{ request.responder.username }} on {{ request.response_date|replace("T", " ")|truncate(16, True, "") }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- NEW: Show user reply if it exists -->
+                        {% if request.user_reply %}
+                        <div class="user-reply-box">
+                            <div class="response-title">User Reply:</div>
+                            <div class="response-content">{{ request.user_reply }}</div>
+                            <div class="response-footer">
+                                {% if request.user %}
+                                    Reply from {{ request.user.username or request.user.email }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Action Buttons -->
+                        <div class="action-buttons">
+                            {% if request.status == 'pending' %}
+                            <button class="btn-action btn-approve" data-request-id="{{ request.id }}">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button class="btn-action btn-reject" data-request-id="{{ request.id }}">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                            <button class="btn-action btn-respond" data-request-id="{{ request.id }}" data-title="{{ request.title }}">
+                                <i class="fas fa-reply"></i> Respond
+                            </button>
+                            {% elif request.status == 'approved' %}
+                            <button class="btn-action btn-fulfill" data-request-id="{{ request.id }}">
+                                <i class="fas fa-check-circle"></i> Mark as Fulfilled
+                            </button>
+                            <button class="btn-action btn-reject" data-request-id="{{ request.id }}">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No book requests found matching the current filters.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3>Monthly Request Stats</h3>
+                </div>
+                <div class="card-body">
+                    <p>Book requests are allocated to users based on their tier level. Each user gets a monthly quota.</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Total</th>
+                                    <th>Pending</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for month in available_months[:5] %}
+                                <tr>
+                                    <td>{{ month }}</td>
+                                    <td>{{ requests_by_month[month].total }}</td>
+                                    <td>{{ requests_by_month[month].pending }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+    </div>
+</div>
+
+<!-- Response Modal -->
+<div id="responseModal" class="response-modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2 id="modalTitle">Respond to Request</h2>
+        <form id="responseForm">
+            <input type="hidden" id="requestId" name="request_id">
+            <div class="mb-3">
+                <label for="statusSelect" class="form-label">Status</label>
+                <select class="form-select" id="statusSelect" name="status" required>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="fulfilled">Fulfilled</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="responseMessage" class="form-label">Response Message</label>
+                <textarea class="form-control" id="responseMessage" name="response_message" rows="5" placeholder="Enter your response to this request..."></textarea>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button type="button" class="btn btn-secondary me-2" id="cancelResponse">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="submitResponse">
+                    <i class="fas fa-paper-plane"></i> Submit Response
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="response-modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2 id="confirmModalTitle">Confirm Action</h2>
+        <div class="mb-4" id="confirmModalMessage">
+            Are you sure you want to take this action?
+        </div>
+        <div class="mb-3" id="confirmResponseContainer">
+            <label for="confirmResponseMessage" class="form-label">Response Message</label>
+            <textarea class="form-control" id="confirmResponseMessage" rows="3" placeholder="Enter a response message..."></textarea>
+            <small class="form-text text-muted">
+                This message will be sent to the user explaining the status change.
+            </small>
+        </div>
+        <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-secondary me-2" id="cancelConfirm">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirmAction">
+                <i class="fas fa-check"></i> Confirm
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Bootstrap data for SSR hydration -->
+<script id="manage-book-requests-bootstrap-data" type="application/json">
+{
+    "requests": {{ book_requests | tojson }},
+    "months": {{ available_months | tojson }},
+    "status_counts": {{ status_counts | tojson }},
+    "requests_by_month": {{ requests_by_month | tojson }},
+    "active_month": "{{ active_month or '' }}",
+    "active_status": "{{ active_status or '' }}"
+}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize WebSocket manager FIRST
+    const userId = {{ user.id }};
+    const isAdmin = true;
+    const currentPage = 'admin';
+
+    // Initialize the WebSocket connection
+    BookRequestWebSocketManager.init(userId, isAdmin, currentPage);
+
+    // Add connection indicator
+    const header = document.querySelector('.card-body h2');
+    if (header && !document.getElementById('ws-connection-indicator')) {
+        header.insertAdjacentHTML('afterend', `
+            <span id="ws-connection-indicator" style="
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                margin-left: 8px;
+                background-color: #ef4444;
+                vertical-align: middle;
+            " title="Connecting to live updates..."></span>
+        `);
+    }
+
+    // ✅ Clear badge when page is opened (mark as "viewed")
+    console.log('🧹 [SSR] Clearing book request badge (page viewed)');
+    if (window.BadgeManager) {
+        window.BadgeManager.state.count = 0;
+        window.BadgeManager.updateBadges();
+        window.BadgeManager.updateMobileQuickNavBadge();
+    }
+    window.currentPendingRequests = 0;
+    if (window.updateAdminDropdownBadge) {
+        window.updateAdminDropdownBadge();
+    }
+    console.log('✅ [SSR] Badge cleared');
+    
+    // Handle month filter
+    document.querySelectorAll('.month-stat-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const month = this.getAttribute('data-month');
+            const status = getActiveStatus();
+            window.location.href = `/admin/book-requests?month_year=${month}${status ? `&status=${status}` : ''}`;
+        });
+    });
+    
+    // Handle status filter
+    document.querySelectorAll('.status-filter').forEach(filter => {
+        filter.addEventListener('click', function() {
+            const status = this.getAttribute('data-status');
+            const month = getActiveMonth();
+            window.location.href = `/admin/book-requests?status=${status}${month ? `&month_year=${month}` : ''}`;
+        });
+    });
+    
+    function getActiveStatus() {
+        const activeStatus = document.querySelector('.status-filter.active');
+        return activeStatus ? activeStatus.getAttribute('data-status') : '';
+    }
+    
+    function getActiveMonth() {
+        const activeMonth = document.querySelector('.month-stat-card.active');
+        return activeMonth ? activeMonth.getAttribute('data-month') : '';
+    }
+    
+    // Response modal
+    const modal = document.getElementById('responseModal');
+    const closeModal = document.querySelector('.close-modal');
+    const cancelBtn = document.getElementById('cancelResponse');
+    const respondBtns = document.querySelectorAll('.btn-respond');
+    const responseForm = document.getElementById('responseForm');
+    
+    // Open modal
+    respondBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const requestId = this.getAttribute('data-request-id');
+            const title = this.getAttribute('data-title');
+            
+            document.getElementById('requestId').value = requestId;
+            document.getElementById('modalTitle').textContent = `Respond to: ${title}`;
+            
+            // Find current status to set as default
+            const requestCard = this.closest('.request-card');
+            if (requestCard) {
+                const statusElement = requestCard.querySelector('.status-badge');
+                if (statusElement) {
+                    const currentStatus = statusElement.textContent.trim().toLowerCase();
+                    const statusSelect = document.getElementById('statusSelect');
+                    for (let i = 0; i < statusSelect.options.length; i++) {
+                        if (statusSelect.options[i].value === currentStatus) {
+                            statusSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            modal.style.display = 'flex';
+        });
+    });
+    
+    // Close modal
+    closeModal.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+    
+    cancelBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+    
+    window.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+    
+    // Handle form submission without page reload
+    responseForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const requestId = document.getElementById('requestId').value;
+        const submitBtn = document.getElementById('submitResponse');
+        
+        // Disable button and show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        
+        try {
+            const formData = new FormData(responseForm);
+            const response = await fetch(`/api/book-requests/${requestId}/respond`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showNotification('success', 'Response submitted successfully');
+                modal.style.display = 'none';
+                // WebSocket will handle the UI update - no reload needed
+            } else {
+                showNotification('error', result.detail || 'There was an error submitting your response');
+                console.error('Error:', result);
+            }
+        } catch (error) {
+            showNotification('error', 'There was an error submitting your response');
+            console.error('Error:', error);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Response';
+        }
+    });
+
+    // Approve, Reject, and Fulfill button handlers
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.btn-approve')) {
+            const btn = e.target.closest('.btn-approve');
+            const requestId = btn.getAttribute('data-request-id');
+            showConfirmModal(
+                'Approve Book Request',
+                'Are you sure you want to approve this book request?',
+                () => {
+                    const responseMessage = document.getElementById('confirmResponseMessage').value || 
+                        'Request approved. We will try to add this book to our catalog.';
+                    respondToBookRequest(requestId, 'approved', responseMessage);
+                },
+                true,
+                'Request approved. We will try to add this book to our catalog.'
+            );
+        }
+        
+        if (e.target.closest('.btn-reject')) {
+            const btn = e.target.closest('.btn-reject');
+            const requestId = btn.getAttribute('data-request-id');
+            const requestCard = btn.closest('.request-card');
+            const isApproved = requestCard && requestCard.querySelector('.status-approved');
+            
+            let message = 'Are you sure you want to reject this book request?';
+            let defaultMessage = 'We are unable to fulfill this request at this time.';
+            
+            if (isApproved) {
+                message = 'Are you sure you want to change this approved request to rejected?';
+                defaultMessage = 'After further review, we are unable to fulfill this book request.';
+            }
+            
+            showConfirmModal(
+                'Reject Book Request',
+                message,
+                () => {
+                    const responseMessage = document.getElementById('confirmResponseMessage').value || defaultMessage;
+                    respondToBookRequest(requestId, 'rejected', responseMessage);
+                },
+                true,
+                defaultMessage
+            );
+        }
+        
+        if (e.target.closest('.btn-fulfill')) {
+            const btn = e.target.closest('.btn-fulfill');
+            const requestId = btn.getAttribute('data-request-id');
+            showConfirmModal(
+                'Mark as Fulfilled',
+                'Are you sure you want to mark this book request as fulfilled? This indicates the book has been added to the catalog.',
+                () => {
+                    const responseMessage = document.getElementById('confirmResponseMessage').value || 
+                        'Good news! Your book request has been fulfilled and the book is now available in our catalog.';
+                    fulfillBookRequest(requestId, responseMessage);
+                },
+                true,
+                'Good news! Your book request has been fulfilled and the book is now available in our catalog.'
+            );
+        }
+    });
+
+    // Confirm modal functionality
+    const confirmModal = document.getElementById('confirmModal');
+    const closeConfirmModal = confirmModal.querySelector('.close-modal');
+    const cancelConfirmBtn = document.getElementById('cancelConfirm');
+    const confirmActionBtn = document.getElementById('confirmAction');
+    const confirmResponseContainer = document.getElementById('confirmResponseContainer');
+    let confirmAction = null;
+
+    function showConfirmModal(title, message, action, showResponseField, defaultResponse) {
+        document.getElementById('confirmModalTitle').textContent = title;
+        document.getElementById('confirmModalMessage').textContent = message;
+        if (showResponseField) {
+            confirmResponseContainer.style.display = 'block';
+            const responseField = document.getElementById('confirmResponseMessage');
+            responseField.value = defaultResponse || '';
+        } else {
+            confirmResponseContainer.style.display = 'none';
+        }
+        confirmAction = action;
+        confirmModal.style.display = 'flex';
+    }
+
+    closeConfirmModal.addEventListener('click', function() {
+        confirmModal.style.display = 'none';
+    });
+
+    cancelConfirmBtn.addEventListener('click', function() {
+        confirmModal.style.display = 'none';
+    });
+
+    window.addEventListener('click', function(event) {
+        if (event.target === confirmModal) {
+            confirmModal.style.display = 'none';
+        }
+    });
+
+    confirmActionBtn.addEventListener('click', function() {
+        confirmModal.style.display = 'none';
+        if (confirmAction) {
+            confirmAction();
+        }
+    });
+
+    // API functions for book request actions - NO PAGE RELOAD
+    async function respondToBookRequest(requestId, status, message) {
+        try {
+            const formData = new FormData();
+            formData.append('status', status);
+            formData.append('response_message', message || '');
+            const response = await fetch(`/api/book-requests/${requestId}/respond`, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (response.ok) {
+                showNotification('success', result.message || 'Response recorded successfully');
+                // WebSocket will handle UI update - no reload
+            } else {
+                showNotification('error', result.detail || 'Error updating request');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('error', 'An error occurred while processing your request');
+        }
+    }
+
+    async function fulfillBookRequest(requestId, message) {
+        try {
+            const formData = new FormData();
+            formData.append('status', 'fulfilled');
+            formData.append('response_message', message || '');
+            const response = await fetch(`/api/book-requests/${requestId}/respond`, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (response.ok) {
+                showNotification('success', result.message || 'Book request marked as fulfilled');
+                // WebSocket will handle UI update - no reload
+            } else {
+                showNotification('error', result.detail || 'Error fulfilling request');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('error', 'An error occurred while processing your request');
+        }
+    }
+
+    // Notification helper
+    function showNotification(type, message) {
+        const notificationArea = document.getElementById('notification-area');
+        if (!notificationArea) return;
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+        notification.innerHTML = `
+            <strong>${type === 'success' ? 'Success!' : 'Error!'}</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        notificationArea.appendChild(notification);
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

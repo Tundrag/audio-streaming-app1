@@ -1,0 +1,623 @@
+    .support-container {
+        margin-top: 2rem;
+        margin-bottom: 3rem;
+    }
+    
+    .support-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .support-header h2 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-color);
+    }
+    
+    .support-header p {
+        font-size: 1.1rem;
+        max-width: 800px;
+        margin: 0 auto;
+        color: var(--text-muted);
+    }
+    
+    /* Support section styling */
+    .support-section {
+        margin-bottom: 4rem;
+        padding: 2rem;
+        border-radius: 12px;
+        background-color: var(--bg-alt-color);
+    }
+    
+    .support-section-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .support-section-icon {
+        font-size: 2.5rem;
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        margin-bottom: 1rem;
+    }
+    
+    .support-section-icon.kofi {
+        color: #13C3FF;
+        background-color: rgba(19, 195, 255, 0.1);
+    }
+    
+    .support-section-icon.patreon {
+        color: #FF424D;
+        background-color: rgba(255, 66, 77, 0.1);
+    }
+    
+    .support-section-title {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .support-section-title h3 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-color);
+    }
+    
+    .support-section-description {
+        font-size: 1.1rem;
+        max-width: 700px;
+        margin: 0 auto;
+        color: var(--text-muted);
+    }
+    
+    .coming-soon-tag {
+        display: inline-block;
+        background-color: var(--warning-color);
+        color: var(--bg-color);
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        margin-left: 0.5rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        vertical-align: middle;
+    }
+    
+    /* Benefits section styling */
+    .benefits-container {
+        background-color: var(--card-bg);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .benefits-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .benefits-header h4 {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text-color);
+    }
+    
+    .benefits-content {
+        padding: 1.5rem;
+    }
+    
+    .benefits-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+    
+    .benefits-list li {
+        display: flex;
+        align-items: flex-start;
+        color: var(--text-muted);
+    }
+    
+    .benefits-list li i {
+        color: var(--primary-color);
+        margin-right: 0.8rem;
+        margin-top: 0.2rem;
+        flex-shrink: 0;
+    }
+    
+    /* Action button styling */
+    .support-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+    
+    .support-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.8rem 2rem;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: transform 0.2s, background-color 0.2s;
+        min-width: 200px;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .support-btn:hover {
+        transform: translateY(-2px);
+    }
+    
+    .support-btn.patreon {
+        background-color: #FF424D;
+        color: white;
+    }
+    
+    .support-btn.patreon:hover {
+        background-color: #E5293E;
+        color: white;
+    }
+    
+    .support-btn.kofi {
+        background-color: #13C3FF;
+        color: white;
+    }
+    
+    .support-btn.kofi:hover {
+        background-color: #0DADDF;
+        color: white;
+    }
+    
+    .support-btn.disabled {
+        background-color: var(--bg-hover);
+        color: var(--text-muted);
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    /* Tier cards styling */
+    .tiers-container {
+        margin-top: 2rem;
+    }
+    
+    .tiers-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .tiers-header h4 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-color);
+    }
+    
+    .tiers-header p {
+        font-size: 1rem;
+        max-width: 700px;
+        margin: 0 auto;
+        color: var(--text-muted);
+    }
+    
+    .tiers-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .tier-card {
+        background-color: var(--card-bg);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s, box-shadow 0.3s;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .tier-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+    
+    .tier-card-header {
+        padding: 1.5rem;
+        background-color: var(--bg-alt-color);
+        border-bottom: 1px solid var(--border-color);
+        position: relative;
+    }
+    
+    .tier-platform-badge {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: white;
+    }
+    
+    .tier-platform-badge.kofi {
+        background-color: #29abe0; /* Ko-fi blue */
+    }
+    
+    .tier-platform-badge.patreon {
+        background-color: #f96854; /* Patreon red */
+    }
+    
+    .tier-card-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+        color: var(--text-color);
+    }
+    
+    .tier-card-price {
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: var(--text-color);
+        margin-bottom: 0.5rem;
+    }
+    
+    .tier-card-description {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+    
+    .tier-card-content {
+        padding: 1.5rem;
+        flex-grow: 1;
+    }
+    
+    .tier-benefits-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .tier-benefits-list li {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        color: var(--text-color);
+    }
+    
+    .tier-benefits-list li i {
+        color: var(--primary-color);
+        margin-right: 0.8rem;
+        margin-top: 0.2rem;
+        flex-shrink: 0;
+    }
+    
+    .tier-benefits-list li .highlight {
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+    
+    .tier-benefits-list li .chapter-info {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-left: 0.25rem;
+    }
+    
+    .tier-card-footer {
+        padding: 1.2rem 1.5rem;
+        border-top: 1px solid var(--border-color);
+        text-align: center;
+    }
+    
+    /* Thank you section */
+    .thank-you-message {
+        margin-top: 3rem;
+        padding: 2rem;
+        border-radius: 8px;
+        background-color: var(--card-bg);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+    
+    .thank-you-message h3 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+        font-size: 1.6rem;
+    }
+    
+    .thank-you-message p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .modal-content {
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        transform: scale(0.9) translateY(-20px);
+        transition: transform 0.3s ease;
+        position: relative;
+    }
+
+    .modal-overlay.active .modal-content {
+        transform: scale(1) translateY(0);
+    }
+
+    .modal-header {
+        padding: 2rem 2rem 1rem 2rem;
+        text-align: center;
+        border-bottom: 1px solid var(--border-color);
+        background: linear-gradient(135deg, #13C3FF 0%, #29abe0 100%);
+        color: white;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .modal-header .modal-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    .modal-header h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.8rem;
+        font-weight: 600;
+    }
+
+    .modal-header p {
+        margin: 0;
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .modal-warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .modal-warning .warning-icon {
+        font-size: 2.5rem;
+        color: #f39c12;
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    .modal-warning h4 {
+        color: #856404;
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin: 0 0 1rem 0;
+    }
+
+    .modal-warning p {
+        color: #856404;
+        font-size: 1rem;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    .email-emphasis {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .email-emphasis .email-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    .email-emphasis h4 {
+        margin: 0 0 1rem 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    .email-emphasis .user-email {
+        background-color: rgba(255, 255, 255, 0.2);
+        padding: 0.8rem 1rem;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 1rem 0;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .step-list {
+        list-style: none;
+        padding: 0;
+        margin: 1.5rem 0;
+    }
+
+    .step-list li {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background-color: var(--bg-alt-color);
+        border-radius: 6px;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .step-list li .step-number {
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .step-list li .step-content {
+        flex: 1;
+    }
+
+    .step-list li .step-content strong {
+        color: var(--primary-color);
+    }
+
+    .modal-actions {
+        padding: 1.5rem 2rem 2rem 2rem;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .modal-btn {
+        padding: 0.8rem 2rem;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 140px;
+        justify-content: center;
+    }
+
+    .modal-btn.primary {
+        background-color: #13C3FF;
+        color: white;
+    }
+
+    .modal-btn.primary:hover {
+        background-color: #0DADDF;
+        transform: translateY(-2px);
+    }
+
+    .modal-btn.secondary {
+        background-color: var(--bg-hover);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+    }
+
+    .modal-btn.secondary:hover {
+        background-color: var(--border-color);
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s ease;
+    }
+
+    .modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+    
+    @media (max-width: 768px) {
+        .support-section {
+            padding: 1.5rem;
+        }
+        .benefits-list {
+            grid-template-columns: 1fr;
+        }
+        .tiers-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .modal-content {
+            margin: 1rem;
+            width: calc(100% - 2rem);
+        }
+        
+        .modal-header {
+            padding: 1.5rem 1.5rem 1rem 1.5rem;
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .modal-actions {
+            padding: 1rem 1.5rem 1.5rem 1.5rem;
+            flex-direction: column;
+        }
+        
+        .modal-btn {
+            width: 100%;
+        }
+    }

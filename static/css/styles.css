@@ -1,0 +1,1876 @@
+/* styles.css */
+
+
+
+
+/* =========================================================
+   1. RESET & CORE STYLES
+========================================================= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+/* =========================================================
+   2. HEADER STYLES
+========================================================= */
+/* Updated Header Styles */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: var(--header-bg);
+    border-radius: 12px;
+    box-shadow: 0 2px 4px var(--shadow);
+    margin-bottom: 2rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.header-left h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.header-nav {
+    display: flex;
+    align-items: center;
+}
+
+/* Navigation Group */
+.nav-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 2rem;
+}
+
+.nav-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 0.6rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.nav-link:hover {
+    color: var(--primary-color);
+    background: var(--nav-link-hover);
+}
+
+.nav-link.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* User Info Section */
+.user-section {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    border-left: 1px solid #e2e8f0;
+    padding-left: 1.5rem;
+    margin-left: 0.5rem;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #4a5568;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.user-info i {
+    color: #718096;
+}
+
+/* Logout Button */
+.logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #f56565;
+    color: white;
+    padding: 0.6rem 1.2rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 0.95rem;
+    text-decoration: none;
+}
+
+.logout-btn:hover {
+    background: #e53e3e;
+    transform: translateY(-1px);
+}
+
+.logout-btn i {
+    font-size: 0.9rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .main-header {
+        flex-direction: column;
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .header-nav {
+        flex-direction: column;
+        width: 100%;
+        gap: 1rem;
+    }
+
+    .nav-group {
+        justify-content: center;
+        margin-right: 0;
+        width: 100%;
+    }
+
+    .user-section {
+        border-left: none;
+        padding-left: 0;
+        margin-left: 0;
+        justify-content: center;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-group {
+        flex-wrap: wrap;
+    }
+
+    .user-section {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .logout-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* =========================================================
+   3. HOME PAGE STYLES
+========================================================= */
+.hero {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(to right, #4299e1, #63b3ed);
+    color: white;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+}
+
+.hero h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+}
+
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: white;
+    color: #4299e1;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    padding: 1rem 0;
+}
+
+.feature-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.feature-card h3 {
+    color: #2d3748;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+}
+
+.feature-card i {
+    color: #4299e1;
+}
+
+.feature-card p {
+    color: #4a5568;
+    line-height: 1.5;
+}
+
+.permissions-info {
+    background: #f7fafc;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+
+.permissions-info h3 {
+    color: #2d3748;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+.permissions-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.permission-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #4a5568;
+}
+
+.permission-item i {
+    color: #48bb78;
+    width: 1.25rem;
+    text-align: center;
+}
+
+.permission-item.disabled {
+    opacity: 0.6;
+}
+
+.permission-item.disabled i {
+    color: #cbd5e0;
+}
+
+
+/* =========================================================
+   4. COLLECTION PAGE STYLES
+========================================================= */
+:root {
+    --primary-gradient: linear-gradient(145deg, #22c55e, #16a34a);
+    --hover-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --hover-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* =========================================================
+   4.1 ALBUM GRID
+========================================================= */
+.albums-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.album-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    transition: var(--hover-transition);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.album-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--hover-shadow);
+}
+
+.album-cover {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+}
+
+/* =========================================================
+   4.2 ALBUM BUTTONS
+========================================================= */
+.album-buttons {
+    display: flex;
+    gap: 6px;
+    padding: 8px;
+    background: white;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--hover-transition);
+    background: #f4f4f5;
+}
+
+.btn-icon:hover {
+    transform: translateY(-2px);
+}
+
+.btn-icon.download {
+    background: #22c55e;
+    color: white;
+}
+
+.btn-icon.download:hover {
+    background: #16a34a;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+}
+
+.btn-icon.favorite {
+    color: #6b7280;
+    background: #f4f4f5;
+}
+
+.btn-icon.favorite.active,
+.btn-icon.favorite[data-in-collection="true"] {
+    color: #ef4444;
+    background: #fee2e2;
+}
+
+.btn-icon.favorite:hover {
+    background: #e5e7eb;
+}
+
+.btn-icon.edit {
+    color: #6b7280;
+    background: #f4f4f5;
+}
+
+.btn-icon.edit:hover {
+    background: #e5e7eb;
+}
+
+.btn-icon.delete {
+    color: #ef4444;
+    background: #f4f4f5;
+}
+
+.btn-icon.delete:hover {
+    background: #fee2e2;
+}
+
+/* =========================================================
+   4.3 ALBUM INFO
+========================================================= */
+.album-info {
+    padding: 8px 12px;
+    background: white;
+}
+
+.album-info h3 {
+    font-size: 0.95rem;
+    color: #1f2937;
+    margin-bottom: 4px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.album-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    color: #6b7280;
+    font-size: 0.813rem;
+}
+
+.track-count, .access-level {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.access-level {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+    background: #f3f4f6;
+}
+
+.access-level.restricted {
+    background: linear-gradient(to right, #dbeafe, #ede9fe);
+    color: #4f46e5;
+}
+
+.access-level.restricted i {
+    color: #6366f1;
+}
+
+.download-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.download-info i {
+    color: #22c55e;
+}
+
+/* =========================================================
+   4.4 SEARCH FUNCTIONALITY
+========================================================= */
+.collection-search {
+    margin: 24px 0;
+    max-width: 600px;
+    width: 100%;
+}
+
+.search-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 48px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 1rem;
+    background: white;
+    transition: var(--hover-transition);
+}
+
+.search-input:focus {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+    outline: none;
+}
+
+.search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+    pointer-events: none;
+}
+
+.clear-search {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    transition: var(--hover-transition);
+}
+
+.clear-search:hover {
+    background: #f3f4f6;
+    color: #1f2937;
+}
+
+.search-status {
+    margin-top: 8px;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+/* =========================================================
+   4.5 ANIMATIONS
+========================================================= */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(8px); }
+}
+
+.album-card.search-visible {
+    animation: fadeIn 0.3s ease forwards;
+}
+
+.album-card.search-hidden {
+    animation: fadeOut 0.3s ease forwards;
+    display: none;
+}
+
+/* =========================================================
+   4.6 STATUS MESSAGES
+========================================================= */
+.success-message {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 20;
+    backdrop-filter: blur(8px);
+    animation: slideIn 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* =========================================================
+   4.7 LOADING STATES
+========================================================= */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading i {
+    animation: spin 1s linear infinite;
+}
+
+.btn-icon.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Hover Animations */
+.btn-icon i {
+    transition: transform 0.2s ease;
+}
+
+.btn-icon:hover i {
+    transform: scale(1.1);
+}
+
+.btn-icon.favorite:hover i {
+    transform: scale(1.2);
+}
+
+.btn-icon.download:hover i {
+    transform: translateY(-1px);
+}
+
+/* =========================================================
+   7. TRACK CONTROLS & BUTTONS
+========================================================= */
+.btn-icon {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #718096;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    color: #2d3748;
+}
+
+.rename-track {
+    color: #4299e1;
+}
+
+.delete-track {
+    color: #f56565;
+}
+
+.add-track-btn {
+    padding: 0.75rem 1.5rem;
+    background: #4299e1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    width: fit-content;
+}
+
+.add-track-btn:hover {
+    background: #3182ce;
+}
+
+/* =========================================================
+   8. BULK DELETE CONTROLS
+========================================================= */
+.bulk-delete-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+}
+
+.bulk-delete-container label {
+    color: #4a5568;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.bulk-delete-btn {
+    display: none;
+    padding: 0.5rem 1rem;
+    background: #f56565;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.bulk-delete-btn:hover {
+    background: #e53e3e;
+}
+
+/* =========================================================
+   9. MODAL STYLES
+========================================================= */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    opacity: 0;
+    transition: 0.3s ease;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-content {
+    background: white;
+    width: 95%;
+    max-width: 480px;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.modal.active .modal-content {
+    transform: translateY(0);
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 0;
+}
+
+.modal-content h2 {
+    margin-bottom: 1.5rem;
+    color: #2d3748;
+    font-size: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+    margin-top: 2rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #a0aec0;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: 0.2s ease;
+}
+
+.modal-close:hover {
+    background: #f7fafc;
+    color: #4a5568;
+}
+
+/* Form */
+.modal form {
+    padding: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-wrapper i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #a0aec0;
+    font-size: 0.95rem;
+}
+
+.input-wrapper input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    transition: 0.2s ease;
+}
+
+.input-wrapper input:focus {
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+    outline: none;
+}
+
+.input-wrapper input::placeholder {
+    color: #cbd5e0;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+    margin-top: 2rem;
+}
+
+/* =========================================================
+   10. FORM ELEMENTS
+========================================================= */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #2d3748;
+}
+
+.form-group input[type="file"] {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+}
+
+.help-text {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: #4a5568;
+}
+
+.form-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+/* =========================================================
+   11. EMPTY STATES
+========================================================= */
+.empty-tracks {
+    text-align: center;
+    padding: 2rem;
+    color: #4a5568;
+}
+
+.empty-tracks p {
+    margin: 0.5rem 0;
+}
+
+/* =========================================================
+   12. UTILITY CLASSES
+========================================================= */
+.empty-tracks {
+    text-align: center;
+    padding: 2rem;
+    color: #4a5568;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* =========================================================
+   13. FOCUS STATES
+========================================================= */
+:focus {
+    outline: 2px solid #4299e1;
+    outline-offset: 2px;
+}
+
+.btn-primary:focus,
+.btn-secondary:focus,
+.nav-link:focus {
+    outline: 2px solid #4299e1;
+    outline-offset: 2px;
+}
+
+/* Removing focus outline for mouse users */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* =========================================================
+   TEAM MANAGEMENT STYLES
+========================================================= */
+.team-management {
+    padding: 1rem;
+}
+
+/* Headers and Buttons */
+.team-header, .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 0;
+}
+
+h2 {
+    font-size: 1.5rem;
+    color: #2d3748;
+    font-weight: 600;
+    margin: 0;
+}
+
+.team-header h2 {
+    font-size: 1.8rem;
+}
+
+/* Buttons */
+.btn-primary, .add-team-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: #4299e1;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover, .add-team-btn:hover {
+    background: #3182ce;
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    background: #f56565;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+    background: #e53e3e;
+    transform: translateY(-1px);
+}
+
+.btn-cancel {
+    padding: 0.75rem 1.5rem;
+    background: #f7fafc;
+    color: #4a5568;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+    background: #edf2f7;
+}
+
+/* Team Grid and Cards */
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.team-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.team-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.team-info h3 {
+    font-size: 1.2rem;
+    color: #2d3748;
+    margin: 0 0 0.25rem;
+}
+
+.team-info p, .team-details p {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.team-info p {
+    color: #718096;
+    font-size: 0.95rem;
+}
+
+.team-details p {
+    color: #4a5568;
+    font-size: 0.9rem;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    opacity: 0;
+    transition: 0.3s ease;
+}
+
+.modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-content {
+    background: white;
+    width: 95%;
+    max-width: 480px;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.modal.active .modal-content {
+    transform: translateY(0);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #a0aec0;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: 0.2s ease;
+}
+
+.modal-close:hover {
+    background: #f7fafc;
+    color: #4a5568;
+}
+
+.modal form {
+    padding: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-wrapper i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #a0aec0;
+    font-size: 0.95rem;
+}
+
+.input-wrapper input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    transition: 0.2s ease;
+}
+
+.input-wrapper input:focus {
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+    outline: none;
+}
+
+.input-wrapper input::placeholder {
+    color: #cbd5e0;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+    margin-top: 2rem;
+}
+
+/* =========================================================
+   14. MISC UTILITIES
+========================================================= */
+.text-center {
+    text-align: center;
+}
+
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-4 { margin-top: 1rem; }
+
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+
+/* =========================================================
+   15. PRINT STYLES
+========================================================= */
+@media print {
+    .no-print {
+        display: none !important; 
+    }
+}
+
+body {
+    background: white;
+}
+
+.container {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+}
+
+.upload-status {
+    margin-top: 1rem;
+    padding: 0.5rem;
+}
+
+.upload-status p {
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.upload-status .success {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: #4CAF50;
+    border: 1px solid #4CAF50;
+}
+
+.upload-status .error {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: #F44336;
+    border: 1px solid #F44336;
+}
+
+.modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+
+/* =========================================================
+   16. PAGE BACKGROUND STYLES
+========================================================= */
+.page-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('{{ album.cover_path }}');
+    background-size: cover;
+    background-position: center;
+    filter: blur(50px) brightness(0.7);
+    z-index: -1;
+}
+
+/* Update related components */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    position: relative;
+    color: #2d3748;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.main-header {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.album-detail {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+/* ✅ REMOVED: .track-item override - album-detail.css is the single source of truth for track styling */
+
+/* =========================================================
+   17. CAROUSEL STYLES
+========================================================= */
+
+/* Carousel Container */
+.carousel-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: #f5f5f5; /* Light gray background */
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+/* Carousel Track */
+.carousel-track {
+    display: flex;
+    gap: 1rem; /* Space between carousel items */
+    transition: transform 0.3s ease; /* Smooth transition for sliding */
+    min-height: 250px; /* Minimum height to maintain consistency */
+}
+
+/* Carousel Navigation Buttons */
+.carousel-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Subtle shadow */
+    cursor: pointer;
+    z-index: 10; /* Ensure buttons are above carousel items */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.carousel-button.prev {
+    left: 0.5rem; /* Position left button */
+}
+
+.carousel-button.next {
+    right: 0.5rem; /* Position right button */
+}
+
+.carousel-button i {
+    font-size: 1.2rem;
+    color: #333; /* Dark icon color */
+}
+
+.carousel-button:hover {
+    background: rgba(0, 0, 0, 0.8); /* Darken background on hover */
+    color: white; /* Change icon color to white on hover */
+    transform: scale(1.1); /* Slightly enlarge on hover */
+}
+
+/* Track Card (Carousel Item) */
+.track-card {
+    flex: 0 0 200px;  /* Fixed width for each carousel item */
+    min-width: 200px; /* Ensure minimum width */
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow */
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth hover effects */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.track-card:hover {
+    transform: scale(1.05); /* Slightly enlarge on hover */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); /* Enhanced shadow on hover */
+}
+
+/* Track Cover Image Container */
+.track-cover-container {
+    position: relative;
+    width: 100%;
+    padding-top: 100%;  /* 1:1 Aspect ratio */
+    overflow: hidden;
+}
+
+/* Track Cover Image */
+.track-cover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensure image covers the container */
+    transition: transform 0.3s ease;
+}
+
+.track-card:hover .track-cover {
+    transform: scale(1.1); /* Zoom in image on hover */
+}
+
+/* Track Information */
+/* ✅ REMOVED: .track-info - album-detail.css & player-styles.css are the single source of truth */
+
+/* ✅ REMOVED: .track-title - album-detail.css & player-styles.css are the single source of truth */
+
+.track-album {
+    font-size: 0.9rem;
+    opacity: 0.8; /* Slight transparency for secondary info */
+}
+
+/* =========================================================
+   17.1 player.html style
+========================================================= */
+        /* Base Styles */
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: white;
+            height: 100vh;
+        }
+
+        .player-container {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #1a1a1a;
+        }
+
+        .player-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-size: cover;
+            background-position: center;
+            filter: blur(20px);
+            opacity: 0.2;
+            z-index: 0;
+        }
+
+        .player-header {
+            position: relative;
+            z-index: 1;
+            padding: 1rem;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: background 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Content Styles */
+        .player-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            flex-grow: 1;
+        }
+
+        .album-art {
+            width: 300px;
+            height: 300px;
+            border-radius: 12px;
+            box-shadow: 0 4px 60px rgba(0, 0, 0, 0.5);
+            margin-bottom: 2rem;
+        }
+
+        /* ✅ REMOVED: Player styles now ONLY in player-styles.css (single source of truth) */
+
+        /* Player Controls */
+        .player-controls {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .progress-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+            width: 0;
+            transition: width 0.1s linear;
+        }
+
+        .progress-hover {
+            position: absolute;
+            top: -25px;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: none;
+        }
+
+        .time-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            opacity: 0.7;
+        }
+
+        /* Main Controls */
+        .main-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.2s;
+            padding: 0;
+        }
+
+        .control-btn:hover {
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .play-btn {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            color: black;
+        }
+
+        .play-btn:hover {
+            background: #f0f0f0;
+            color: black;
+        }
+
+        /* Secondary Controls */
+        .secondary-controls {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-top: 1rem;
+        }
+
+        .secondary-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .secondary-btn:hover {
+            color: white;
+        }
+
+        .secondary-btn i {
+            font-size: 1.2rem;
+        }
+
+        /* Popup Menus */
+        .popup-menu {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 1rem;
+            display: none;
+            z-index: 100;
+            min-width: 200px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transform: translateY(10px);
+            opacity: 0;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .popup-menu.visible {
+            display: block;
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Speed Menu - Remains the same */
+        .speed-menu {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+
+        .speed-option {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .speed-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .speed-option.active {
+            background: white;
+            color: black;
+        }
+
+        /* Updated Sleep Menu Styles */
+        #sleepMenu {
+            width: 120px; /* Even slimmer width */
+            background: rgba(28, 28, 28, 0.95); /* Darker, more matching background */
+            backdrop-filter: blur(8px);
+            border-radius: 8px;
+            padding: 0.4rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .sleep-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 2px; /* Tighter spacing */
+        }
+
+        .sleep-option {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.9);
+            padding: 0.5rem 0.7rem;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.15s;
+            display: flex;
+            justify-content: center; /* Center the text */
+            align-items: center;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            font-weight: 400;
+        }
+
+        .sleep-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .sleep-timer-display {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            display: none;
+        }
+
+        .sleep-timer-display.active {
+            display: block;
+        }
+
+        /* Speed Display Styles - Added */
+        .speed-display {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #2196F3; /* Blue background for speed display */
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            display: none; /* Hidden by default */
+        }
+
+        .speed-display.active {
+            display: block; /* Show when active */
+        }
+
+        /* Track Navigation */
+        .track-navigation {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 2rem;
+            gap: 1rem;
+        }
+
+        .nav-btn {
+            color: white;
+            text-decoration: none;
+            opacity: 0.7;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            flex: 1;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .nav-btn:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .toast.visible {
+            opacity: 1;
+        }
+
+        /* Updated Custom Timer Modal Styles */
+        .custom-timer-toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 30, 30, 0.95);
+            color: #f0f0f0;
+            padding: 2rem 2.5rem;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            z-index: 1001; /* Higher than regular toast */
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .custom-timer-toast.visible {
+            display: flex;
+        }
+
+        .custom-timer-toast h2 {
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+            color: #ffffff;
+        }
+
+        .custom-timer-toast input {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            margin-top: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            background: #2a2a2a;
+            color: #ffffff;
+            transition: background 0.3s;
+        }
+
+        .custom-timer-toast input:focus {
+            background: #3a3a3a;
+        }
+
+        .custom-timer-toast button {
+            margin-top: 1rem;
+            padding: 0.7rem 2rem;
+            border: none;
+            border-radius: 8px;
+            background: #2196F3;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s, transform 0.2s;
+        }
+
+        .custom-timer-toast button:hover {
+            background: #1976D2;
+            transform: translateY(-2px);
+        }
+
+        /* Animation for the modal */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+
+/* =========================================================
+   17.1 RESPONSIVE CAROUSEL STYLES
+========================================================= */
+
+/* Adjust carousel items and buttons on tablets */
+@media (max-width: 1024px) {
+    .track-card {
+        flex: 0 0 180px;
+        min-width: 180px;
+    }
+
+    .carousel-button {
+        width: 35px;
+        height: 35px;
+    }
+
+    .carousel-button i {
+        font-size: 1rem;
+    }
+}
+
+/* Adjust carousel items and buttons on mobile phones */
+@media (max-width: 768px) {
+    .track-card {
+        flex: 0 0 150px;
+        min-width: 150px;
+    }
+
+    .carousel-button {
+        width: 35px;
+        height: 35px;
+    }
+
+    .carousel-button i {
+        font-size: 1rem;
+    }
+}
+
+/* Further adjustments for very small screens */
+@media (max-width: 480px) {
+    .track-card {
+        flex: 0 0 120px;
+        min-width: 120px;
+    }
+
+    .carousel-button {
+        width: 30px;
+        height: 30px;
+    }
+
+    .carousel-button i {
+        font-size: 0.9rem;
+    }
+
+    /* ✅ REMOVED: .track-info responsive - album-detail.css handles its own responsive styles */
+
+    /* ✅ REMOVED: .track-title responsive override - album-detail.css & player-styles.css handle their own responsive styles */
+
+    .track-album {
+        font-size: 0.8rem;
+    }
+}
+
+
