@@ -1,1 +1,0 @@
-# Web Audio Screenshots
