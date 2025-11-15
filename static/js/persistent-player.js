@@ -39,25 +39,57 @@ class PlaybackProgress {
     this.saveQueue = [];
     this.maxQueueSize = 10;
     this.maxRetries = 3;
+    this.hasPlaybackActivity = false; // Track if user has actually played/seeked
+    this.isLoadingTrack = false; // Track if we're in the middle of loading a track
     this.setupSync();
   }
 
   setupSync() {
     const syncProgress = () => this.syncProgress(true);
-    ['play', 'pause', 'seeking', 'ended'].forEach(ev =>
-      this.player.audio.addEventListener(ev, syncProgress)
-    );
-    setInterval(syncProgress, 30000);
-    window.addEventListener('beforeunload', () => this.forceSyncBeforeUnload());
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) syncProgress();
-      else this.processQueue();
+
+    // Mark playback activity on user interactions
+    ['play', 'seeking'].forEach(ev => {
+      this.player.audio.addEventListener(ev, () => {
+        // Ignore automatic seeks during track load
+        if (this.isLoadingTrack) return;
+        this.hasPlaybackActivity = true;
+        syncProgress();
+      });
     });
+
+    // Pause/ended also trigger sync if there was activity
+    ['pause', 'ended'].forEach(ev => {
+      this.player.audio.addEventListener(ev, () => {
+        if (this.hasPlaybackActivity) syncProgress();
+      });
+    });
+
+    // Interval sync only if there's been activity
+    setInterval(() => {
+      if (this.hasPlaybackActivity) syncProgress();
+    }, 30000);
+
+    window.addEventListener('beforeunload', () => this.forceSyncBeforeUnload());
+
+    // Visibility change - only sync if there's been activity OR audio is playing
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        const isPlaying = !this.player.audio.paused && !this.player.audio.ended;
+        if (this.hasPlaybackActivity || isPlaying) {
+          syncProgress();
+        }
+      } else {
+        this.processQueue();
+      }
+    });
+
     window.addEventListener('online', () => this.processQueue());
   }
 
   forceSyncBeforeUnload() {
     if (!this.syncEnabled || !this.player.currentTrackId || !this.player.audio.duration) return;
+    const isPlaying = !this.player.audio.paused && !this.player.audio.ended;
+    if (!this.hasPlaybackActivity && !isPlaying) return;
     const progressData = this.buildProgressData();
     if (navigator.sendBeacon) {
       const blob = new Blob([JSON.stringify(progressData)], { type: 'application/json' });
@@ -109,15 +141,14 @@ class PlaybackProgress {
       this.lastSyncedTime = currentTime;
       this.lastSyncedTrackId = this.player.currentTrackId;
       this.lastSyncTimestamp = now;
-    } catch {
+    } catch (err) {
       this.queueSave(progressData);
     }
   }
 
   queueSave(progressData) {
-    this.saveQueue = this.saveQueue.filter(
-      item => item.track_id !== progressData.track_id || Math.abs(item.position - progressData.position) > 5
-    );
+    // Remove ANY existing entry for this track - we only want the latest position
+    this.saveQueue = this.saveQueue.filter(item => item.track_id !== progressData.track_id);
     this.saveQueue.push({ ...progressData, queuedAt: Date.now(), retries: 0 });
     if (this.saveQueue.length > this.maxQueueSize) this.saveQueue.shift();
   }
@@ -126,8 +157,37 @@ class PlaybackProgress {
     if (!navigator.onLine || !this.saveQueue.length) return;
     const list = [...this.saveQueue];
     this.saveQueue = [];
+
+    // Check server state for each track to avoid overwriting newer progress from other devices
+    const serverStates = new Map();
+    for (const q of list) {
+      if (!serverStates.has(q.track_id)) {
+        try {
+          const serverProgress = await this.loadProgress(q.track_id);
+          serverStates.set(q.track_id, {
+            position: serverProgress?.position || 0,
+            timestamp: serverProgress?.last_played ? new Date(serverProgress.last_played).getTime() : 0
+          });
+        } catch {
+          serverStates.set(q.track_id, { position: 0, timestamp: 0 });
+        }
+      }
+    }
+
     for (const q of list) {
       if (q.retries >= this.maxRetries) continue;
+
+      // Skip if we already saved a newer position for this track (by position)
+      if (q.track_id === this.lastSyncedTrackId && q.position <= this.lastSyncedTime) {
+        continue;
+      }
+
+      // Skip if server has newer timestamp (from another device/tab)
+      const serverState = serverStates.get(q.track_id);
+      if (serverState && q.client_time && serverState.timestamp > q.client_time) {
+        continue;
+      }
+
       try {
         const res = await fetch('/api/progress/save', {
           method: 'POST',
@@ -135,6 +195,11 @@ class PlaybackProgress {
           body: JSON.stringify(q)
         });
         if (!res.ok) throw new Error();
+
+        // Update lastSyncedTime if this save succeeded
+        if (q.track_id === this.lastSyncedTrackId && q.position > this.lastSyncedTime) {
+          this.lastSyncedTime = q.position;
+        }
       } catch {
         q.retries++;
         if (q.retries < this.maxRetries) this.saveQueue.push(q);
@@ -703,8 +768,54 @@ class PersistentPlayer {
       if (this.idleSaveHandle) cancelIdle(this.idleSaveHandle);
       this.idleSaveHandle = requestIdle(() => this.saveState(), { timeout: 30000 });
     };
+
+    // Track user's intent to play/pause (survives browser auto-pause on mobile)
+    // Initialize from sessionStorage (check if it was playing before refresh)
+    const savedState = sessionStorage.getItem(`playerState_${this.currentTrackId}`);
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        this.intentToPlay = state.isPlaying;
+      } catch {
+        this.intentToPlay = undefined;
+      }
+    } else {
+      this.intentToPlay = undefined;
+    }
+
+    this.audio.addEventListener('play', () => {
+      this.intentToPlay = true;
+      // Immediately save to sessionStorage so it survives page unload
+      const savedState = sessionStorage.getItem(`playerState_${this.currentTrackId}`);
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          state.isPlaying = true;
+          sessionStorage.setItem(`playerState_${this.currentTrackId}`, JSON.stringify(state));
+        } catch {}
+      }
+    });
+    this.audio.addEventListener('pause', () => {
+      // Only mark as intentionally paused if user manually paused (not during seeking/buffering)
+      if (!this.audio.seeking && this.audio.readyState >= 2) {
+        this.intentToPlay = false;
+        // Immediately save to sessionStorage
+        const savedState = sessionStorage.getItem(`playerState_${this.currentTrackId}`);
+        if (savedState) {
+          try {
+            const state = JSON.parse(savedState);
+            state.isPlaying = false;
+            sessionStorage.setItem(`playerState_${this.currentTrackId}`, JSON.stringify(state));
+          } catch {}
+        }
+      }
+    });
+
     ['play','pause','seeking','ended','ratechange'].forEach(ev => this.audio.addEventListener(ev, scheduleIdleSave));
     document.addEventListener('visibilitychange', scheduleIdleSave);
+
+    // Save state on pagehide (fires BEFORE browser pauses audio)
+    window.addEventListener('pagehide', () => this.saveState());
     window.addEventListener('beforeunload', () => this.saveState());
   }
 
@@ -980,6 +1091,8 @@ class PersistentPlayer {
     if (this._isSaving || !this.currentTrackId || !this.trackMetadata.id) return;
     try {
       this._isSaving = true;
+      // Use intentToPlay if available (set during play), otherwise check actual state
+      const shouldBePlaying = this.intentToPlay !== undefined ? this.intentToPlay : !this.audio.paused;
       const state = {
         trackId: this.trackMetadata.id,
         title: this.trackMetadata.title,
@@ -988,7 +1101,7 @@ class PersistentPlayer {
         voice: this.currentVoice || this.trackMetadata.voice,
         trackType: this.trackType || this.trackMetadata.trackType,
         albumId: this.trackMetadata.albumId,
-        isPlaying: !this.audio.paused,
+        isPlaying: shouldBePlaying,
         volume: this.audio.volume,
         muted: this.audio.muted,
         playbackRate: this.audio.playbackRate,
@@ -1270,6 +1383,10 @@ class PersistentPlayer {
 
       this.setTrackMetadata(trackId, title, album, coverPath, voice, trackType, albumId, contentVersion);
 
+      // Reset playback activity flag when loading a new track
+      this.progress.hasPlaybackActivity = false;
+      this.progress.isLoadingTrack = true; // Mark that we're loading to ignore automatic seeks
+
       // Handle access check result
       if (accessCheck && !accessCheck.hasAccess) {
         if (typeof window.showUpgradeModal === 'function') {
@@ -1344,6 +1461,7 @@ class PersistentPlayer {
         });
         this.audio.addEventListener('loadedmetadata', () => {
           if (startPosition > 0) this.audio.currentTime = startPosition;
+          setTimeout(() => { this.progress.isLoadingTrack = false; }, 100);
         }, { once: true });
         if (savedState.volume !== undefined) this.audio.volume = savedState.volume;
         if (savedState.muted) this.audio.muted = true;
@@ -1351,7 +1469,9 @@ class PersistentPlayer {
         setTimeout(() => this.progress.resumeSync(), 500);
 
         if (shouldPlay) {
-          this.audio.play().catch(() => {});
+          this.audio.play().catch(err => {
+            // Silently handle auto-play blocking
+          });
         }
         this.saveState();
         this.updatePlayerState();

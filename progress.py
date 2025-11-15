@@ -50,6 +50,7 @@ async def save_progress(
         now = datetime.now(timezone.utc)
         duration = max(1, progress.get('duration', 0))
         current_position = progress.get('position', 0)
+        client_time = progress.get('client_time')  # Timestamp from client
         completion_rate = min(100, (current_position / duration * 100)) if duration > 0 else 0
         is_listen = completion_rate >= 60  # Listen threshold
         is_completed = progress.get('completed', False) or completion_rate >= 90  # Completion threshold
@@ -72,6 +73,19 @@ async def save_progress(
             db.add(track_plays)
 
         if progress_record:
+            # Check if incoming save is older than what we already have
+            if client_time and progress_record.last_played:
+                client_timestamp = datetime.fromtimestamp(client_time / 1000, tz=timezone.utc)
+                if client_timestamp < progress_record.last_played:
+                    logger.warning(f"Rejected stale progress save for track {track_id}: "
+                                 f"client_time={client_timestamp} < last_played={progress_record.last_played}")
+                    return {
+                        "status": "rejected_stale",
+                        "reason": "Server has newer progress",
+                        "server_position": progress_record.position,
+                        "server_timestamp": progress_record.last_played.isoformat()
+                    }
+
             # Update existing record
             progress_record.position = current_position
             progress_record.duration = duration
