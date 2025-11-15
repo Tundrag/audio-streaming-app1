@@ -803,10 +803,10 @@ class CollectionActions {
             // Create progress overlay
             const albumCard = button.closest('.album-card');
             let progressContainer = albumCard.querySelector('.download-progress');
-            
+
             if (!progressContainer) {
                 progressContainer = this.createProgressElement();
-                albumCard.appendChild(progressContainer);
+                albumCard.prepend(progressContainer);
             }
 
             // Get the progress elements for future updates

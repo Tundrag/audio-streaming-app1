@@ -32,9 +32,20 @@ import logging
 from typing import Dict, Optional, Any, List, Set, Union
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
+from enum import Enum
 from redis_state.config import redis_client
 
 logger = logging.getLogger(__name__)
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """JSON encoder that handles datetime objects and Enums"""
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, Enum):
+            return obj.value
+        return super().default(obj)
 
 
 @dataclass
@@ -172,7 +183,7 @@ class RedisStateManager:
             })
 
             key = self._session_key(session_id)
-            value = json.dumps(session_data)
+            value = json.dumps(session_data, cls=DateTimeEncoder)
             ttl_seconds = ttl or self.config.SESSION_TTL
 
             success = self.redis.set(key, value, ex=ttl_seconds)
@@ -241,7 +252,7 @@ class RedisStateManager:
             session["updated_at"] = time.time()
 
             key = self._session_key(session_id)
-            value = json.dumps(session)
+            value = json.dumps(session, cls=DateTimeEncoder)
 
             if extend_ttl:
                 # Determine TTL based on status
@@ -470,7 +481,7 @@ class RedisStateManager:
             }
 
             key = self._progress_key(job_id)
-            value = json.dumps(data)
+            value = json.dumps(data, cls=DateTimeEncoder)
             ttl_seconds = ttl or self.config.PROGRESS_TTL
 
             success = self.redis.set(key, value, ex=ttl_seconds)
@@ -559,7 +570,7 @@ class RedisStateManager:
             }
 
             key = self._status_key(entity_id)
-            value = json.dumps(data)
+            value = json.dumps(data, cls=DateTimeEncoder)
 
             # Smart TTL based on status
             if ttl is None:
@@ -770,7 +781,7 @@ class RedisStateManager:
         try:
             key = self._hash_key(hash_name)
             # Convert value to JSON if it's not a string
-            str_value = json.dumps(value) if not isinstance(value, str) else value
+            str_value = json.dumps(value, cls=DateTimeEncoder) if not isinstance(value, str) else value
 
             result = self.redis.hset(key, field, str_value)
             logger.debug(f"[{self.namespace}] Set hash field: {hash_name}.{field}")

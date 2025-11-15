@@ -1000,6 +1000,24 @@ class DownloadManager:
             return
         self._is_running = True
 
+        # ===== CLEANUP ORPHANED LOCKS ON STARTUP =====
+        # Release any stale locks from previous container crashes
+        try:
+            logger.info("Cleaning up orphaned Redis locks on startup...")
+            # Get all active downloads from Redis
+            all_downloads = self._download_state._manager.get_all_sessions()
+            cleaned_count = 0
+            for download_session in all_downloads:
+                download_id = download_session.get("session_id") or download_session.get("download_id")
+                if download_id:
+                    # Release the lock (it will only release if it exists)
+                    if self._download_state._manager.release_lock(download_id):
+                        cleaned_count += 1
+            if cleaned_count > 0:
+                logger.info(f"Released {cleaned_count} orphaned Redis locks")
+        except Exception as e:
+            logger.warning(f"Lock cleanup on startup failed: {e}")
+
         # Ensure S4 is up at manager start
         try:
             from mega_s4_client import mega_s4_client
@@ -1088,58 +1106,84 @@ class DownloadManager:
     ) -> Dict:
         """
         Enqueue an album download; enforces per-user concurrency cap for non-creators.
+        Uses Redis distributed lock to prevent duplicate downloads across containers.
         """
         download_id = reservation_id or f"{user_id}_{album_id}"
 
-        async with self._lock:
-            # FORCE CLEAR any existing stale data
-            if download_id in self.active_downloads:
-                logger.info(f"Clearing stale active download: {download_id}")
-                self.active_downloads.pop(download_id, None)
-            if download_id in self.completed_downloads:
-                logger.info(f"Clearing stale completed download: {download_id}")
-                self.completed_downloads.pop(download_id, None)
+        # ===== DISTRIBUTED LOCK (prevents cross-container race conditions) =====
+        # Try to acquire Redis lock with 5-minute timeout
+        lock_acquired = self._download_state._manager.acquire_lock(
+            resource_id=download_id,
+            timeout=300,  # 5 minutes
+            owner_id=self._download_state.container_id
+        )
 
-            # Concurrency cap
-            if not is_creator:
-                active = self._count_user_actives_locked(user_id)
-                if active >= MAX_CONCURRENT_ALBUM_DOWNLOADS_PER_USER:
-                    raise ConcurrentLimitExceeded(MAX_CONCURRENT_ALBUM_DOWNLOADS_PER_USER, active)
+        if not lock_acquired:
+            logger.warning(f"Download {download_id} already in progress (locked by another container)")
+            raise Exception(f"Download {download_id} is already being processed")
 
-            # Remove any stale ZIP files
-            zip_path = self.temp_dir / f"{download_id}.zip"
-            if zip_path.exists():
-                try:
-                    zip_path.unlink()
-                    logger.info(f"Removed stale ZIP: {zip_path}")
-                except Exception as e:
-                    logger.error(f"Stale ZIP remove failed: {e}")
+        try:
+            async with self._lock:
+                # FORCE CLEAR any existing stale data
+                if download_id in self.active_downloads:
+                    logger.info(f"Clearing stale active download: {download_id}")
+                    self.active_downloads.pop(download_id, None)
+                if download_id in self.completed_downloads:
+                    logger.info(f"Clearing stale completed download: {download_id}")
+                    self.completed_downloads.pop(download_id, None)
 
-            task = {
-                "download_id": download_id,
-                "tracks": tracks,
-                "user_id": user_id,
-                "album_id": album_id,
-                "should_charge": should_charge,
-                "reservation_id": reservation_id,
-            }
+                # Concurrency cap
+                if not is_creator:
+                    active = self._count_user_actives_locked(user_id)
+                    if active >= MAX_CONCURRENT_ALBUM_DOWNLOADS_PER_USER:
+                        # Release lock before raising exception
+                        self._download_state._manager.release_lock(download_id)
+                        raise ConcurrentLimitExceeded(MAX_CONCURRENT_ALBUM_DOWNLOADS_PER_USER, active)
 
-            # Initial state
-            self.active_downloads[download_id] = {
-                "status": DownloadStage.QUEUED.value,
-                "stage": DownloadStage.QUEUED.value,
-                "progress": 0,
-                "queued_at": datetime.now(timezone.utc),
-                "stage_detail": "Queued for download",
-                "download_path": None,
-                "track_number": 0,
-                "total_tracks": len(tracks),
-                "tracks": tracks,
-            }
+                # Remove any stale ZIP files
+                zip_path = self.temp_dir / f"{download_id}.zip"
+                if zip_path.exists():
+                    try:
+                        zip_path.unlink()
+                        logger.info(f"Removed stale ZIP: {zip_path}")
+                    except Exception as e:
+                        logger.error(f"Stale ZIP remove failed: {e}")
 
-            await self.download_queue.put(task)
-            logger.info(f"Queued album: {download_id} (charge={should_charge}, reservation={reservation_id})")
-            return self.active_downloads[download_id]
+                task = {
+                    "download_id": download_id,
+                    "tracks": tracks,
+                    "user_id": user_id,
+                    "album_id": album_id,
+                    "should_charge": should_charge,
+                    "reservation_id": reservation_id,
+                }
+
+                # Initial state
+                initial_state = {
+                    "status": DownloadStage.QUEUED.value,
+                    "stage": DownloadStage.QUEUED.value,
+                    "progress": 0,
+                    "queued_at": datetime.now(timezone.utc),
+                    "stage_detail": "Queued for download",
+                    "download_path": None,
+                    "track_number": 0,
+                    "total_tracks": len(tracks),
+                    "tracks": tracks,
+                }
+
+                self.active_downloads[download_id] = initial_state
+
+                await self.download_queue.put(task)
+                logger.info(f"Queued album: {download_id} (charge={should_charge}, reservation={reservation_id})")
+
+                # Return the initial state we just set (don't re-fetch from Redis to avoid KeyError)
+                return initial_state
+
+        except Exception as e:
+            # Release lock on any error
+            self._download_state._manager.release_lock(download_id)
+            logger.error(f"Error queuing download {download_id}: {e}")
+            raise
 
 
     async def get_download_status(self, download_id: str) -> Optional[Dict]:
@@ -1227,6 +1271,15 @@ class DownloadManager:
                         current["completed_at"] = datetime.now(timezone.utc)
                         self.completed_downloads[download_id] = current
                         self.active_downloads.pop(download_id, None)
+
+                        # ===== RELEASE DISTRIBUTED LOCK =====
+                        # Download finished (success or failure), release Redis lock
+                        lock_released = self._download_state._manager.release_lock(download_id)
+                        if lock_released:
+                            logger.info(f"Released Redis lock for download: {download_id}")
+                        else:
+                            logger.warning(f"Failed to release Redis lock for download: {download_id}")
+
                         if new_stage == DownloadStage.COMPLETED.value:
                             logger.info(f"Album complete: {download_id}")
                         else:
@@ -1270,6 +1323,8 @@ class DownloadManager:
                     to_remove.append(download_id)
             for download_id in to_remove:
                 self.completed_downloads.pop(download_id, None)
+                # Release any orphaned Redis locks
+                self._download_state._manager.release_lock(download_id)
                 logger.info(f"Cleaned old album: {download_id}")
 
 

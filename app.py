@@ -8,8 +8,8 @@ from models import Campaign  # Import Campaign model
 from platform_tiers import platform_router
 from patreon_routes import router as patreon_router
 from functools import wraps
-from core.download_workers import DownloadStage, download_manager
-from core.track_download_workers import track_download_manager  # For tracks
+from downloads.album_download_workers import DownloadStage, download_manager
+from downloads.track_download_workers import track_download_manager  # For tracks
 from upload_queue import upload_queue
 from mega_upload_manager import mega_upload_manager
 from metadata_extraction import metadata_queue
@@ -38,8 +38,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from chunked_upload import router as chunked_upload_router
 from discord_integration import discord  # Import only discord instance
 from discord_routes import router as discord_router
-from core.download_cleanup_service import download_cleanup_service
-from core.my_downloads import router as my_downloads_router
+from downloads.download_cleanup_service import download_cleanup_service
+from downloads.my_downloads import router as my_downloads_router
 from chunked_upload import start_cleanup_background_task
 from book_request import get_user_book_requests, get_all_book_requests, get_user_book_request_quota
 from book_request import add_pending_request_count
@@ -574,7 +574,7 @@ async def lifespan(app: FastAPI):
         
         # Run system recovery check
         logger.info("🔧 Running system recovery check...")
-        from core.download_cleanup_service import download_recovery_service
+        from downloads.download_cleanup_service import download_recovery_service
         download_recovery_service.get_db_func = get_db
         await download_recovery_service.full_recovery_on_startup()
         
@@ -598,10 +598,10 @@ async def lifespan(app: FastAPI):
         
         # Start download managers
         logger.info(f"Starting download manager with {worker_config.worker_configs['mega_upload']['max_workers']} workers...")
-        from core.download_workers import download_manager
+        from downloads.album_download_workers import download_manager
         await download_manager.start()
-        
-        from core.track_download_workers import track_download_manager
+
+        from downloads.track_download_workers import track_download_manager
         await track_download_manager.start()
         
         # Start download cleanup service
@@ -8300,7 +8300,7 @@ async def init_track_download(
         # ✅ NEW: Queue download with concurrency limit handling
         try:
             # Import the exception from the track worker
-            from core.track_download_workers import ConcurrentLimitExceeded
+            from downloads.track_download_workers import ConcurrentLimitExceeded
             
             queued_download_id = await track_download_manager.queue_download(
                 user_id=current_user.id,
@@ -8474,7 +8474,7 @@ async def download_track_file(
         waited_time = 0
         
         # Check if download is actively processing
-        from core.track_download_workers import track_download_manager
+        from downloads.track_download_workers import track_download_manager
         download_status = await track_download_manager.get_download_status(download_id)
         
         if download_status and download_status.get('status') in ['processing', 'queued']:
