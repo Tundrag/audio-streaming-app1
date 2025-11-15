@@ -1788,6 +1788,7 @@ input[type="checkbox"] {
     font-size: 1rem;
     line-height: 1;
     vertical-align: middle;
+    color: #3b82f6;
 }
 
 /* Ensure track title can accommodate inline symbols */

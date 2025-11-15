@@ -290,23 +290,69 @@ class ReadAlongCore {
 
     // Main lifecycle methods
     async open(trackId, voiceId) {
-        
+        console.log('[ReadAlong][Core] open() called with trackId:', trackId, 'voiceId:', voiceId);
+
         if (this.isOpen) {
+            console.log('[ReadAlong][Core] Already open, returning early');
             return;
+        }
+        
+        const playerDefaultVoice = typeof this.player?.getTrackDefaultVoice === 'function'
+            ? this.player.getTrackDefaultVoice()
+            : null;
+        const overlayVoice = this.content.getCurrentVoice();
+        const playerVoice = this.player?.currentVoice || null;
+        const metadataVoice = this.player?.trackMetadata?.defaultVoice || null;
+        const resolvedVoice = overlayVoice
+            || voiceId
+            || playerVoice
+            || metadataVoice
+            || playerDefaultVoice
+            || this.currentVoiceId
+            || this.voiceId
+            || null;
+
+        console.groupCollapsed('[ReadAlong][Core] open()');
+        console.log('trackId:', trackId);
+        console.log('incomingVoice:', voiceId);
+        console.log('overlayVoice:', overlayVoice);
+        console.log('playerVoice:', playerVoice);
+        console.log('metadataVoice:', metadataVoice);
+        console.log('playerDefaultVoice:', playerDefaultVoice);
+        console.log('resolvedVoice:', resolvedVoice);
+        console.log('persistentPlayer?', !!this.player, 'has audio?', !!this.player?.audio);
+        console.log('trackData track_type:', window.trackData?.track_type, 'has_read_along:', window.trackData?.has_read_along);
+        console.groupEnd();
+
+        if (!resolvedVoice) {
+            throw new Error('No voice available for read-along');
         }
         
         // CRITICAL: Check access BEFORE opening overlay
         this.trackId = trackId;
-        this.voiceId = voiceId;
-        this.currentVoiceId = this.content.getCurrentVoice() || voiceId || null;
+        this.voiceId = resolvedVoice;
+        this.currentVoiceId = resolvedVoice;
         
         
         try {
             // Try access check without page parameters first (to avoid 422)
-            const voiceToCheck = this.currentVoiceId || voiceId;
+            const voiceToCheck = this.currentVoiceId;
             const checkUrl = `/api/tracks/${encodeURIComponent(trackId)}/read-along/${encodeURIComponent(voiceToCheck)}`;
-            
+            console.log('[ReadAlong][Core] Access check', {
+                url: checkUrl,
+                trackId,
+                voiceId: voiceToCheck
+            });
+
+            console.log('[ReadAlong][Core] NETWORK REQUEST (access check) STARTING:', checkUrl);
+            const accessFetchStart = performance.now();
             const accessResponse = await fetch(checkUrl, { credentials: 'include' });
+            const accessFetchEnd = performance.now();
+            console.log('[ReadAlong][Core] NETWORK REQUEST (access check) COMPLETED in', (accessFetchEnd - accessFetchStart).toFixed(0) + 'ms');
+            console.log('[ReadAlong][Core] Access check response', {
+                status: accessResponse.status,
+                ok: accessResponse.ok
+            });
             
             // Handle different error types
             if (accessResponse.status === 403) {
@@ -418,13 +464,17 @@ class ReadAlongCore {
         this.startRafLoop();
         
         this.ui.updateTrackInfo();
-        
+
+        console.log('[ReadAlong][Core] About to load initial content for page', this.currentPage);
         try {
             await this.content.loadContent();
-            
+            console.log('[ReadAlong][Core] Initial content loaded successfully');
+
             this.content.buildTimingIndex();
-            
+            console.log('[ReadAlong][Core] Timing index built, timings count:', this.content.preciseWordTimings?.length || 0);
+
             this.syncWithCurrentAudio();
+            console.log('[ReadAlong][Core] Synced with current audio');
             
             setTimeout(() => {
                 this.ui.updateProgress();

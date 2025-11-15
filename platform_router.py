@@ -10,7 +10,6 @@ import json
 from models import User, UserRole, CampaignTier
 from database import get_db
 from auth import login_required
-from permissions import verify_role_permission
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +23,16 @@ platform_router = APIRouter(
 PLATFORM_TYPES = ["PATREON", "KOFI"]
 
 @platform_router.get("/tiers")
-@verify_role_permission(["creator"])
 async def get_platform_tiers(
     platform: str,
     current_user: User = Depends(login_required),
     db: Session = Depends(get_db)
 ):
     """Get tiers for a specific platform (patreon, kofi)"""
+    # Check if user is creator
+    if not current_user.is_creator:
+        raise HTTPException(status_code=403, detail="Only creators can access this endpoint")
+
     try:
         platform = platform.upper()
         if platform not in PLATFORM_TYPES:
@@ -73,12 +75,15 @@ async def get_platform_tiers(
         raise HTTPException(status_code=500, detail=f"Error fetching platform tiers: {str(e)}")
 
 @platform_router.post("/import/kofi")
-@verify_role_permission(["creator"])
 async def import_kofi_tiers(
     current_user: User = Depends(login_required),
     db: Session = Depends(get_db)
 ):
     """Import Ko-fi tiers from existing Ko-fi users"""
+    # Check if user is creator
+    if not current_user.is_creator:
+        raise HTTPException(status_code=403, detail="Only creators can access this endpoint")
+
     try:
         # Find all Ko-fi users for this creator
         kofi_users = db.query(User).filter(
@@ -195,12 +200,15 @@ async def import_kofi_tiers(
 
 # Add this endpoint to update all Patreon tiers to have the correct platform type
 @platform_router.post("/update/platform-types")
-@verify_role_permission(["creator"])
 async def update_platform_types(
     current_user: User = Depends(login_required),
     db: Session = Depends(get_db)
 ):
     """Update existing tiers to have the correct platform type"""
+    # Check if user is creator
+    if not current_user.is_creator:
+        raise HTTPException(status_code=403, detail="Only creators can access this endpoint")
+
     try:
         # First, get all tiers without a platform type
         tiers_without_platform = db.query(CampaignTier).filter(

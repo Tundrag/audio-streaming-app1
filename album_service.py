@@ -767,6 +767,13 @@ class AlbumService:
                     "title": album.title
                 })
 
+                # ✅ SECURITY: Bump content_version on all tracks when tier restrictions change
+                # This invalidates all existing authorization tokens
+                tracks = self.db.query(Track).filter(Track.album_id == album.id).all()
+                for track in tracks:
+                    old_version = track.content_version or 0
+                    track.content_version = old_version + 1
+
             self.db.commit()
 
             # Get creator name for notification

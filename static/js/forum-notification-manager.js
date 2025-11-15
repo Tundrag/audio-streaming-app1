@@ -26,7 +26,6 @@ class EnhancedForumNotificationManager {
     this.injectBadgeStyles();
 
     window.enhancedForumNotificationManager = this;
-    // console.log("🔔 Forum notification manager initialized");
   }
 
   attachForumObservers() {
@@ -88,7 +87,6 @@ class EnhancedForumNotificationManager {
   }
 
   onThreadChange() {
-    // console.log(`🔄 Thread changed: ${this.currentThreadId}`);
     
     if (this.isInForum && this.currentThreadId) {
       this.clearThreadNotifications(this.currentThreadId);
@@ -99,7 +97,6 @@ class EnhancedForumNotificationManager {
 
   // 🔥 ENHANCED: Better thread notification clearing with WebSocket sync
   clearThreadNotifications(threadId) {
-    // console.log(`🧹 Clearing notifications for thread ${threadId}`);
     
     const hadNotifications = this.threadNotifications.has(threadId);
     this.threadNotifications.delete(threadId);
@@ -122,7 +119,6 @@ class EnhancedForumNotificationManager {
       return response.json();
     })
     .then(data => {
-      // console.log(`✅ Thread ${threadId} marked as read:`, data);
       
       // 🔥 NEW: Force a badge update after successful API call
       if (data.updated_counts) {
@@ -141,7 +137,6 @@ class EnhancedForumNotificationManager {
   }
 
   clearAllNotifications() {
-    // console.log(`🧹 Clearing all forum notifications`);
     this.threadNotifications.clear();
     this.totalUnreadCount = 0;
     this.renderAllBadges();
@@ -153,18 +148,15 @@ class EnhancedForumNotificationManager {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const url = `${proto}//${location.host}/api/forum/ws/global`;
 
-    // console.log("🔔 Connecting forum notification WS...");
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => { 
       this.isWsConnected = true;  
       this.wsReconnectTries = 0; 
-      // console.log("✅ Forum notification WebSocket connected");
       this.fetchInitialCounts();
     };
     this.ws.onclose = () => { 
       this.isWsConnected = false; 
-      // console.log("❌ Forum notification WebSocket disconnected");
       this.retryWebSocket(); 
     };
     this.ws.onerror = (error) => { 
@@ -177,12 +169,10 @@ class EnhancedForumNotificationManager {
   retryWebSocket() {
     if (this.wsReconnectTries >= 6) return;
     const delay = Math.min(5000 * ++this.wsReconnectTries, 30000);
-    // console.log(`🔄 Retrying WebSocket connection in ${delay}ms (attempt ${this.wsReconnectTries})`);
     setTimeout(() => this.openWebSocket(), delay);
   }
 
   handleWSMessage(msg) {
-    // console.log("📨 Forum notification WebSocket message:", msg);
     
     switch (msg?.type) {
       case "new_notification":  
@@ -298,7 +288,6 @@ class EnhancedForumNotificationManager {
   }
 
   processInitialData(notifications) {
-    // console.log(`📥 Processing ${notifications.length} initial notifications`);
     
     const threadCounts = new Map();
     
@@ -316,7 +305,6 @@ class EnhancedForumNotificationManager {
     this.threadNotifications = threadCounts;
     this.recomputeTotal();
     
-    // console.log(`✅ Loaded ${this.totalUnreadCount} unread notifications across ${threadCounts.size} threads`);
   }
 
   recomputeTotal() {
@@ -347,7 +335,6 @@ class EnhancedForumNotificationManager {
       this.paintThreadList();
     }
     
-    // console.log(`🎨 Rendered badges - Total: ${this.totalUnreadCount}, Threads: ${this.threadNotifications.size}`);
   }
 
   paintBadge(el, count) {
@@ -404,7 +391,6 @@ class EnhancedForumNotificationManager {
 
   async fetchInitialCounts() {
     try {
-      // console.log("🔄 Fetching fresh notification counts...");
       
       const response = await fetch('/api/forum/notifications?limit=100');
       if (!response.ok) return;
@@ -427,7 +413,6 @@ class EnhancedForumNotificationManager {
   }
   
   onThreadEntered(threadId) {
-    // console.log(`👁️ User entered thread ${threadId}`);
     this.currentThreadId = threadId;
     this.clearThreadNotifications(threadId);
   }
@@ -442,7 +427,6 @@ class EnhancedForumNotificationManager {
 
   // 🔥 NEW: Force update method for external calls
   forceUpdate() {
-    // console.log("🔄 Force updating all badges");
     this.renderAllBadges(true);
   }
 

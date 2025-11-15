@@ -878,19 +878,32 @@ class TrackCentricTextStorageService:
             return False
     
     async def get_word_timings(self, track_id: str, voice_id: str, db: Optional[Session] = None) -> List[Dict]:
+        import time as time_module
+        perf_start = time_module.perf_counter()
+
         cache_key = f"timing:{track_id}:{voice_id}"
         cached_packed = await self._cache_get_bytes(cache_key)
         if cached_packed:
-            return await self._unpack_word_timings_async(cached_packed)
-        
+            perf_cache = time_module.perf_counter()
+            result = await self._unpack_word_timings_async(cached_packed)
+            perf_end = time_module.perf_counter()
+            logger.info(f"[WordTimingsPerf] CACHE HIT {track_id}:{voice_id} - cache_get: {(perf_cache-perf_start)*1000:.1f}ms, unpack: {(perf_end-perf_cache)*1000:.1f}ms, TOTAL: {(perf_end-perf_start)*1000:.1f}ms")
+            return result
+
+        perf_cache_miss = time_module.perf_counter()
+        logger.info(f"[WordTimingsPerf] CACHE MISS {track_id}:{voice_id} - cache check took: {(perf_cache_miss-perf_start)*1000:.1f}ms")
+
         parts_dir = self._get_timings_parts_dir(track_id, voice_id)
         has_parts = await self._exists(parts_dir)
         shard_files = []
         if has_parts:
             shard_files = sorted(await anyio.to_thread.run_sync(lambda: list(parts_dir.glob("part-*.bin.zst"))))
-        
+
+        perf_glob = time_module.perf_counter()
+        logger.info(f"[WordTimingsPerf] File discovery took: {(perf_glob-perf_cache_miss)*1000:.1f}ms (has_parts: {has_parts}, shard_count: {len(shard_files)})")
+
         all_words: List[Dict] = []
-        
+
         if has_parts and shard_files:
             for shard_file in shard_files:
                 try:
@@ -902,24 +915,48 @@ class TrackCentricTextStorageService:
                         all_words.extend(shard_words)
                 except Exception:
                     continue
-        
+            perf_shards = time_module.perf_counter()
+            logger.info(f"[WordTimingsPerf] Shard processing took: {(perf_shards-perf_glob)*1000:.1f}ms ({len(all_words)} words from {len(shard_files)} shards)")
+
         if not all_words:
             main_file = self._get_timing_file_path(track_id, voice_id)
+            perf_main_start = time_module.perf_counter()
             if await self._exists(main_file):
+                perf_exists = time_module.perf_counter()
                 async with aiofiles.open(main_file, 'rb') as f:
                     compressed_data = await f.read()
+                perf_read = time_module.perf_counter()
+                logger.info(f"[WordTimingsPerf] Main file I/O - exists check: {(perf_exists-perf_main_start)*1000:.1f}ms, read: {(perf_read-perf_exists)*1000:.1f}ms ({len(compressed_data)} bytes)")
                 if compressed_data:
                     packed_data = await self._decompress_async(compressed_data)
+                    perf_decompress = time_module.perf_counter()
+                    logger.info(f"[WordTimingsPerf] Decompression took: {(perf_decompress-perf_read)*1000:.1f}ms ({len(packed_data)} bytes unpacked)")
                     all_words = await self._unpack_word_timings_async(packed_data)
-        
+                    perf_unpack = time_module.perf_counter()
+                    logger.info(f"[WordTimingsPerf] Unpacking took: {(perf_unpack-perf_decompress)*1000:.1f}ms ({len(all_words)} words)")
+
         if not all_words:
+            logger.warning(f"[WordTimingsPerf] No word timings found for {track_id}:{voice_id}")
             return []
-        
+
+        perf_sort_start = time_module.perf_counter()
         all_words.sort(key=lambda w: w.get('start_time', 0))
+        perf_sort = time_module.perf_counter()
+        logger.info(f"[WordTimingsPerf] Sorting {len(all_words)} words took: {(perf_sort-perf_sort_start)*1000:.1f}ms")
+
         packed_merged = await self._pack_word_timings_async(all_words)
+        perf_pack = time_module.perf_counter()
+        logger.info(f"[WordTimingsPerf] Re-packing took: {(perf_pack-perf_sort)*1000:.1f}ms")
+
         await self._cache_set_bytes(cache_key, packed_merged)
+        perf_cache_set = time_module.perf_counter()
+        logger.info(f"[WordTimingsPerf] Cache set took: {(perf_cache_set-perf_pack)*1000:.1f}ms")
+
         self.operations_count += 1
-        
+
+        perf_end = time_module.perf_counter()
+        logger.info(f"[WordTimingsPerf] ⏱️ TOTAL get_word_timings for {track_id}:{voice_id}: {(perf_end-perf_start)*1000:.1f}ms ({len(all_words)} words)")
+
         return all_words
     
     async def consolidate_timing_shards(self, track_id: str, voice_id: str, db: Optional[Session] = None) -> bool:

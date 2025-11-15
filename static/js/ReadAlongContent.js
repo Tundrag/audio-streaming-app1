@@ -32,9 +32,12 @@ class ReadAlongContent {
 
         // Auto-navigation with race protection
         this.autoNavigating = false;
+        this._pageLoading = false;
         this.lastNavigationCheck = 0;
         this.navigationThrottle = 2000;
         this._navToken = 0;
+        this._seekStabilizationTimer = null;
+        this._lastSeekTime = 0;
 
         // Real user scrolling detection
         this.userScrolling = false;
@@ -89,6 +92,12 @@ class ReadAlongContent {
     }
 
     clearState() {
+
+        // Clean up seek debounce timer
+        if (this._seekStabilizationTimer) {
+            clearTimeout(this._seekStabilizationTimer);
+            this._seekStabilizationTimer = null;
+        }
 
         // Text and mapping
         this.sourceText = '';
@@ -178,6 +187,14 @@ class ReadAlongContent {
 
     async loadReadAlongData() {
         const voiceId = this.getCurrentVoice() || this.core.voiceId;
+        if (!voiceId) {
+            const err = new Error('No voice available for read-along request');
+            err.isVoiceMissing = true;
+            console.warn('[ReadAlong][Content] Aborting fetch: missing voiceId', {
+                trackId: this.core.trackId
+            });
+            throw err;
+        }
         let url = `/api/tracks/${encodeURIComponent(this.core.trackId)}/read-along/${encodeURIComponent(voiceId)}`;
 
         if (this.core.pagingMode === 'paged') {
@@ -193,9 +210,28 @@ class ReadAlongContent {
 
 
         try {
-            const response = await fetch(url, { 
+            console.log('[ReadAlong][Content] Fetching data', {
+                trackId: this.core.trackId,
+                voiceId,
+                pagingMode: this.core.pagingMode,
+                page: this.core.currentPage,
+                pageSize: this.core.pageSize,
+                url
+            });
+
+            console.log('[ReadAlong][Content] NETWORK REQUEST STARTING:', url);
+            const fetchStart = performance.now();
+            const response = await fetch(url, {
                 credentials: 'include',
                 cache: 'no-store' // Force fresh data
+            });
+            const fetchEnd = performance.now();
+            console.log('[ReadAlong][Content] NETWORK REQUEST COMPLETED in', (fetchEnd - fetchStart).toFixed(0) + 'ms');
+            console.log('[ReadAlong][Content] Response received', {
+                status: response.status,
+                ok: response.ok,
+                contentType: response.headers.get('content-type'),
+                url
             });
 
             if (!response.ok) {
@@ -242,13 +278,34 @@ class ReadAlongContent {
 
 
             if (!data || (!data.sourceText && !data.wordTimings?.length)) {
+                console.warn('[ReadAlong][Content] Empty payload received', {
+                    trackId: this.core.trackId,
+                    voiceId,
+                    raw: data,
+                    responseText
+                });
                 throw new Error('No content in server response');
             }
+            
+            // Handle empty arrays - [] is truthy but useless, must check length
+            const tokens = (data.tokens && data.tokens.length > 0) ? data.tokens :
+                          (data.mappedTokens && data.mappedTokens.length > 0) ? data.mappedTokens :
+                          this._convertWordTimingsToTokens(data.wordTimings);
+
+            console.log('[ReadAlong][Content] Token resolution:', {
+                hasDataTokens: !!data.tokens,
+                dataTokensLength: data.tokens?.length || 0,
+                hasMappedTokens: !!data.mappedTokens,
+                mappedTokensLength: data.mappedTokens?.length || 0,
+                wordTimingsLength: data.wordTimings?.length || 0,
+                finalTokensLength: tokens?.length || 0,
+                usedFallbackConversion: (!data.tokens?.length && !data.mappedTokens?.length && tokens?.length > 0)
+            });
 
             return {
                 sourceText: data.sourceText || this._reconstructTextFromWordTimings(data.wordTimings),
-                mappedTokens: data.mappedTokens || this._convertWordTimingsToTokens(data.wordTimings),
-                wordTimings: data.wordTimings || [],
+                mappedTokens: tokens,
+                wordTimings: data.words || data.wordTimings || [],
                 totalWords: data.total_words || data.totalWords || data.wordTimings?.length || 0,
                 total_pages: data.total_pages || 1,
                 voiceId: voiceId,
@@ -340,7 +397,7 @@ class ReadAlongContent {
             const firstWordIdx = filtered.findIndex(t => t?.type === 'word' && t.hasTimings);
             if (firstWordIdx > 0) {
                 // Optionally keep one opening quote just before first word
-                const keepOpeners = new Set(['"', '“', '‘', '«', '(', '[']);
+                const keepOpeners = new Set(['"', '\u201C', '\u2018', '\u00AB', '(', '[']);
                 const prev = filtered[firstWordIdx - 1];
                 const startIdx = (prev && prev.type === 'punctuation' && keepOpeners.has(prev.text)) ? (firstWordIdx - 1) : firstWordIdx;
                 return filtered.slice(startIdx);
@@ -515,7 +572,7 @@ class ReadAlongContent {
 
     findCurrentWordByPreciseTiming(currentTime, shouldLog = true) {
         if (!this.preciseWordTimings.length) {
-            if (shouldLog) console.log('ReadAlong: No word timings available');
+            // Removed spam log: "ReadAlong: No word timings available"
             return null;
         }
 
@@ -547,6 +604,7 @@ class ReadAlongContent {
     updateSentenceHighlighting() {
         if (!this.core.player?.audio || !this.core.highlightingActive) return;
         if (this.core.player.audio.paused) return;
+        if (this._pageLoading) return; // Skip highlighting during page transitions
 
         const currentTime = this.getCurrentAudioTime();
 
@@ -554,8 +612,8 @@ class ReadAlongContent {
         const timeDiff = Math.abs(currentTime - this.lastAudioTime);
         const shouldLog = !this.lastLogTime || (now - this.lastLogTime) > 100 || timeDiff > 0.05;
 
-        // Paging-aware auto-nav (throttled)
-        if (this.core.pagingMode === 'paged' && this.core.totalPages > 1) {
+        // Paging-aware auto-nav (throttled, skip if page loading)
+        if (this.core.pagingMode === 'paged' && this.core.totalPages > 1 && !this._pageLoading) {
             if (now - this.lastNavigationCheck > this.navigationThrottle) {
                 this.lastNavigationCheck = now;
                 this.checkAndNavigateToCorrectPage(currentTime);
@@ -834,28 +892,56 @@ class ReadAlongContent {
     // === Auto page navigation ===
 
     async checkAndNavigateToCorrectPage(currentTime) {
-        if (this.autoNavigating || this.core.pagingMode !== 'paged') return false;
+        if (this.autoNavigating) {
+            console.log('[ReadAlong][PageNav] Skipped - already navigating');
+            return false;
+        }
+        if (this.core.pagingMode !== 'paged') return false;
+
+        // Cancel any pending seek stabilization timer
+        if (this._seekStabilizationTimer) {
+            clearTimeout(this._seekStabilizationTimer);
+            this._seekStabilizationTimer = null;
+        }
 
         this.autoNavigating = true;
+        this._pageLoading = true; // Pause highlighting during page load
+
         // ✅ Use the provided time, not the stale audio time
         const reqAt = (typeof currentTime === 'number') ? currentTime : this.getCurrentAudioTime(false);
+        const startTime = performance.now();
+
+        console.log('[ReadAlong][PageNav] START check for time:', reqAt.toFixed(1) + 's', 'currentPage:', this.core.currentPage);
 
         try {
             const voiceId = this.getCurrentVoice() || this.core.voiceId;
-            const response = await fetch(
-                `/api/tracks/${encodeURIComponent(this.core.trackId)}/page-info?time=${reqAt}&voice_id=${encodeURIComponent(voiceId)}&page_size=${this.core.pageSize}`,
-                { credentials: 'include' }
-            );
+            const pageInfoUrl = `/api/tracks/${encodeURIComponent(this.core.trackId)}/page-info?time=${reqAt}&voice_id=${encodeURIComponent(voiceId)}&page_size=${this.core.pageSize}`;
+
+            console.log('[ReadAlong][PageNav] Making fetch to:', pageInfoUrl);
+            const fetchStart = performance.now();
+            const response = await fetch(pageInfoUrl, { credentials: 'include' });
+            const fetchEnd = performance.now();
+            console.log('[ReadAlong][PageNav] Fetch completed in', (fetchEnd - fetchStart).toFixed(0) + 'ms', 'status:', response.status);
 
             if (!response.ok) {
+                console.log('[ReadAlong][PageNav] ABORT - API error:', response.status);
                 return false;
             }
 
             const pageInfo = await response.json();
+            const apiTime = performance.now() - startTime;
 
             // ✅ Stale check vs the same reference time
-            const nowT = (typeof currentTime === 'number') ? currentTime : this.getCurrentAudioTime(false);
-            if (Math.abs(nowT - reqAt) > 1.0) return false;
+            const nowT = this.getCurrentAudioTime(false);
+            const drift = Math.abs(nowT - reqAt);
+
+            console.log('[ReadAlong][PageNav] Got page info in', apiTime.toFixed(0) + 'ms:',
+                       'targetPage=' + pageInfo.current_page, 'drift=' + drift.toFixed(2) + 's');
+
+            if (drift > 2.0) {
+                console.log('[ReadAlong][PageNav] ABORT - audio drifted too much (' + drift.toFixed(1) + 's > 2.0s)');
+                return false; // Too much time passed, abort
+            }
 
             const targetPage = pageInfo.current_page;
 
@@ -863,16 +949,41 @@ class ReadAlongContent {
                 targetPage !== this.core.currentPage &&
                 targetPage >= 0 &&
                 targetPage < pageInfo.total_pages) {
+
+                console.log('[ReadAlong][PageNav] Loading page', targetPage, '(was', this.core.currentPage + ')');
                 this.core.currentPage = targetPage;
+
+                const loadStart = performance.now();
                 await this.loadContent(); // will rebuild DOM
+                const loadTime = performance.now() - loadStart;
+
+                console.log('[ReadAlong][PageNav] Page', targetPage, 'loaded in', loadTime.toFixed(0) + 'ms');
+
+                this._pageLoading = false; // Re-enable highlighting
+
+                // Force immediate highlight update after page load
+                const audioTime = this.getCurrentAudioTime(false);
+                this._forceHighlightAtTime(audioTime);
+
+                const totalTime = performance.now() - startTime;
+                console.log('[ReadAlong][PageNav] COMPLETE in', totalTime.toFixed(0) + 'ms - now on page', targetPage);
+
                 return true; // ✅ tell caller we changed pages
+            } else {
+                console.log('[ReadAlong][PageNav] No page change needed (targetPage=' + targetPage + ', current=' + this.core.currentPage + ')');
             }
 
             return false;
         } catch (error) {
+            console.log('[ReadAlong][PageNav] ERROR:', error.message);
             return false;
         } finally {
-            setTimeout(() => { this.autoNavigating = false; }, 300);
+            this._pageLoading = false;
+            const finalTime = performance.now() - startTime;
+            setTimeout(() => {
+                this.autoNavigating = false;
+                console.log('[ReadAlong][PageNav] Lock released after', (finalTime + 300).toFixed(0) + 'ms total');
+            }, 300);
         }
     }
 

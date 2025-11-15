@@ -441,8 +441,6 @@ createAlbumElement(album) {
     const escapedTitle = this.escapeForAttribute(album.title);
     const escapedId = this.escapeForAttribute(album.id);
 
-    // Debug: Log album visibility status
-    console.log(`[Collection] Creating card for album "${album.title}", visibility_status:`, album.visibility_status);
 
     // Visibility badge HTML - always show full text for albums (collections), even on mobile
     const badgeTitle = album.visibility_status === 'hidden_from_all' ? 'Hidden from All' : 'Hidden from Users';

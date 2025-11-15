@@ -1,6 +1,7 @@
 from redis_state.config import redis_client, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
 
 
+from authorization_service import AuthorizationService
 from sync.sync_service import PatreonSyncService
 from sync.sync_worker import PatreonSyncWorker
 from models import Campaign  # Import Campaign model
@@ -143,11 +144,10 @@ from sqlalchemy.exc import SQLAlchemyError
 
 # Model imports
 from models import (
-    BookRequest, 
+    BookRequest,
     BookRequestStatus,
-    User, 
-    UserRole, 
-    Permission, 
+    User,
+    UserRole,
     PatreonTier,
     CampaignTier,
     UserAlbumManagement,
@@ -171,9 +171,21 @@ from models import (
     PlatformType,
     AvailableVoice,
     TTSTrackMeta,      # ← Add this for bulk_update_tier_voices
-    TTSTextSegment,    # ← Add this if using text segments  
+    TTSTextSegment,    # ← Add this if using text segments
     TTSWordTiming      # ← Add this if using word timings
 )
+
+# Permission system imports
+from permissions import (
+    Permission,
+    get_user_permissions,
+    get_user_permissions_dict,
+    get_user_permission_flags,
+    check_permission,
+    verify_role_permission,
+    get_role_permissions_mapping
+)
+
 # Local application imports
 from auth import login_required
 from kofi_routes import router as kofi_router
@@ -850,18 +862,8 @@ class TrackRename(BaseModel):
     visibility_status: Optional[str] = None
 
 
-ROLE_PERMISSIONS = {
-    UserRole.CREATOR: Permission.ALL,  # Creators have all permissions including download
-    UserRole.TEAM: Permission.TEAM_ACCESS,  # Team members have team access including download
-    UserRole.PATREON: Permission.VIEW | Permission.DOWNLOAD  # Patreon members can view and download
-}
-
-
-TIER_PERMISSIONS = {
-    PatreonTier.BRONZE: Permission.VIEW,
-    PatreonTier.SILVER: Permission.VIEW,
-    PatreonTier.GOLD: Permission.VIEW
-}
+# Role-based permissions (now imported from permissions.py)
+ROLE_PERMISSIONS = get_role_permissions_mapping()
 
 def is_ajax_request(request: Request) -> bool:
     """Check if the request is an AJAX request"""
@@ -1210,342 +1212,10 @@ async def periodic_document_cleanup():
             await asyncio.sleep(300)
 
 
-def get_user_permissions(user: User) -> Dict:
-    """
-    Get detailed permissions based on user role - FIXED: Proper Guest Trial handling
-    """
-    from models import UserTier, CampaignTier  # Import here to avoid circular imports
-    from datetime import datetime, timezone  # Import datetime
-    
-    logger.info(f"Getting permissions for user {user.email} (creator: {user.is_creator}, team: {user.is_team}, patreon: {user.is_patreon}, kofi: {user.is_kofi}, guest_trial: {user.is_guest_trial})")
-    
-    # Base permissions structure
-    permissions = {
-        "can_view": False,
-        "can_create": False,
-        "can_rename": False,
-        "can_delete": False,
-        "can_delete_albums": False,
-        "can_delete_tracks": False,
-        "can_download": False,
-        "downloads_blocked": False,
-        "is_creator": user.is_creator,
-        "is_team": user.is_team,
-        "is_patreon": user.is_patreon,
-        "is_kofi": user.is_kofi,
-        "is_guest_trial": user.is_guest_trial
-    }
-    
-    # Creator permissions
-    if user.is_creator:
-        permissions.update({
-            "can_view": True,
-            "can_create": True,
-            "can_rename": True,
-            "can_delete": True,
-            "can_delete_albums": True,
-            "can_delete_tracks": True,
-            "can_manage_team": True,
-            "can_download": True,
-            "role_type": "creator"
-        })
-        logger.info(f"Set creator permissions for {user.email}")
-        return permissions
-    
-    # ✅ FIXED: Guest Trial permissions - Read from tier association
-    if user.is_guest_trial and user.role == UserRole.GUEST:
-        logger.info(f"Processing guest trial user: {user.email}")
-        
-        # Check if trial is still active
-        if not user.trial_active:
-            logger.info(f"Guest trial expired for {user.email}")
-            permissions.update({
-                "can_view": True,
-                "can_create": False,
-                "can_rename": False,
-                "can_delete": False,
-                "can_delete_albums": False,
-                "can_delete_tracks": False,
-                "can_download": False,
-                "downloads_blocked": True,
-                "role_type": "expired_guest_trial",
-                "trial_expired": True,
-                "album_downloads_allowed": 0,
-                "track_downloads_allowed": 0,
-                "book_requests_allowed": 0,
-                "max_sessions": 1
-            })
-            return permissions
-        
-        # ✅ Active trial - get benefits from tier association (NOT stored data)
-        from sqlalchemy.orm import sessionmaker
-        from database import engine
-        
-        # Get database session (this is a hack but needed for the query)
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        db = SessionLocal()
-        
-        try:
-            # Debug: Log what we're looking for
-            logger.info(f"Looking for UserTier associations for guest trial user {user.id}")
-            
-            # Find any active UserTier association for this user
-            user_tier = db.query(UserTier).filter(
-                and_(
-                    UserTier.user_id == user.id,
-                    UserTier.is_active == True
-                )
-            ).first()
-            
-            tier = None
-            if user_tier:
-                logger.info(f"Found UserTier association: user_id={user_tier.user_id}, tier_id={user_tier.tier_id}")
-                
-                # Get the actual tier using tier_id
-                tier = db.query(CampaignTier).filter(
-                    CampaignTier.id == user_tier.tier_id
-                ).first()
-                
-                if tier:
-                    logger.info(f"Found associated tier: {tier.title} (ID: {tier.id}, platform: {tier.platform_type})")
-                    
-                    # Check if this is the Guest Trial tier
-                    if tier.title == "Guest Trial" and tier.platform_type == "KOFI":
-                        logger.info(f"Confirmed Guest Trial tier for user {user.email}")
-                    else:
-                        logger.warning(f"User {user.email} has different tier: {tier.title} (platform: {tier.platform_type})")
-                else:
-                    logger.error(f"Could not find CampaignTier with ID {user_tier.tier_id}")
-                    tier = None
-            else:
-                logger.warning(f"No active UserTier association found for guest trial user {user.email} (ID: {user.id})")
-                
-                # Try to find Guest Trial tier and create association
-                guest_tier = db.query(CampaignTier).filter(
-                    and_(
-                        CampaignTier.creator_id == user.created_by,
-                        CampaignTier.title == "Guest Trial",
-                        CampaignTier.platform_type == "KOFI",
-                        CampaignTier.is_active == True
-                    )
-                ).first()
-                
-                if guest_tier:
-                    logger.info(f"Found Guest Trial tier {guest_tier.id}, creating association for user {user.email}")
-                    
-                    # Create missing UserTier association
-                    user_tier_association = UserTier(
-                        user_id=user.id,
-                        tier_id=guest_tier.id,
-                        joined_at=user.trial_started_at or datetime.now(timezone.utc),
-                        expires_at=user.trial_expires_at,
-                        is_active=True,
-                        payment_status='guest_trial'
-                    )
-                    db.add(user_tier_association)
-                    db.commit()
-                    
-                    tier = guest_tier
-                    logger.info(f"✅ Created missing UserTier association for guest trial user {user.email}")
-                else:
-                    logger.error(f"No Guest Trial tier found for creator {user.created_by}")
-                    tier = None
-            
-            if tier:
-                # Get usage from user data (reset monthly)
-                tier_data = user.patreon_tier_data or {}
-                album_used = tier_data.get('album_downloads_used', 0)
-                track_used = tier_data.get('track_downloads_used', 0)
-                book_used = tier_data.get('book_requests_used', 0)
-                
-                permissions.update({
-                    "can_view": True,
-                    "can_create": False,
-                    "can_rename": False,
-                    "can_delete": False,
-                    "can_delete_albums": False,
-                    "can_delete_tracks": False,
-                    "can_download": (tier.album_downloads_allowed > 0 or tier.track_downloads_allowed > 0),
-                    "downloads_blocked": False,
-                    "role_type": "guest_trial",
-                    "trial_active": True,
-                    "trial_expires_at": user.trial_expires_at.isoformat() if user.trial_expires_at else None,
-                    "trial_hours_remaining": user.trial_hours_remaining,
-                    
-                    # ✅ Benefits from tier (NOT stored in user data)
-                    "album_downloads_allowed": tier.album_downloads_allowed,
-                    "track_downloads_allowed": tier.track_downloads_allowed,
-                    "book_requests_allowed": tier.book_requests_allowed,
-                    "chapters_allowed_per_book_request": getattr(tier, 'chapters_allowed_per_book_request', 0),
-                    "max_sessions": tier.max_sessions,
-                    
-                    # Usage tracking (from user data)
-                    "album_downloads_used": album_used,
-                    "track_downloads_used": track_used,
-                    "book_requests_used": book_used,
-                    "album_downloads_remaining": max(0, tier.album_downloads_allowed - album_used),
-                    "track_downloads_remaining": max(0, tier.track_downloads_allowed - track_used),
-                    "book_requests_remaining": max(0, tier.book_requests_allowed - book_used)
-                })
-                
-                logger.info(f"✅ Guest trial permissions set from tier: {tier.title} (ID: {tier.id}) - "
-                           f"Albums: {tier.album_downloads_allowed} (used: {album_used}), "
-                           f"Tracks: {tier.track_downloads_allowed} (used: {track_used}), "
-                           f"Books: {tier.book_requests_allowed} (used: {book_used})")
-                
-                return permissions
-            else:
-                logger.warning(f"No Guest Trial tier found for user {user.email}")
-                # Fallback to minimal permissions
-                permissions.update({
-                    "can_view": True,
-                    "role_type": "guest_trial_no_tier",
-                    "album_downloads_allowed": 0,
-                    "track_downloads_allowed": 0,
-                    "book_requests_allowed": 0,
-                    "max_sessions": 1
-                })
-                return permissions
-                
-        finally:
-            db.close()
-        
-    # Team member permissions
-    if user.is_team:
-        tier_data = user.patreon_tier_data or {}
-        album_downloads = tier_data.get('album_downloads_allowed', 0)
-        track_downloads = tier_data.get('track_downloads_allowed', 0)
-        
-        # INDIVIDUAL DELETION PERMISSIONS FOR ALBUMS
-        album_deletions_allowed = tier_data.get('album_deletions_allowed', 0)
-        album_deletions_used = tier_data.get('album_deletions_used', 0)
-        
-        # INDIVIDUAL DELETION PERMISSIONS FOR TRACKS
-        track_deletions_allowed = tier_data.get('track_deletions_allowed', 0)
-        track_deletions_used = tier_data.get('track_deletions_used', 0)
-        
-        # Check if 24-hour period has reset
-        deletion_start = tier_data.get('deletion_period_start')
-        if deletion_start and (album_deletions_allowed > 0 or track_deletions_allowed > 0):
-            try:
-                start_time = datetime.fromisoformat(deletion_start.replace('Z', '+00:00'))
-                if datetime.now(timezone.utc) >= start_time + timedelta(hours=24):
-                    pass
-            except (ValueError, TypeError):
-                pass
-        
-        can_delete_albums = album_deletions_allowed > 0 and album_deletions_used < album_deletions_allowed
-        can_delete_tracks = track_deletions_allowed > 0 and track_deletions_used < track_deletions_allowed
-        
-        permissions.update({
-            "can_view": True,
-            "can_create": True,
-            "can_rename": True,
-            "can_delete": can_delete_albums or can_delete_tracks,
-            "can_delete_albums": can_delete_albums,
-            "can_delete_tracks": can_delete_tracks,
-            "can_download": album_downloads >= 0 or track_downloads >= 0,
-            "creator_id": user.created_by,
-            "role_type": "team",
-            "album_downloads": album_downloads,
-            "track_downloads": track_downloads,
-            "album_deletions_allowed": album_deletions_allowed,
-            "album_deletions_used": album_deletions_used,
-            "album_deletions_remaining": max(0, album_deletions_allowed - album_deletions_used),
-            "track_deletions_allowed": track_deletions_allowed,
-            "track_deletions_used": track_deletions_used,
-            "track_deletions_remaining": max(0, track_deletions_allowed - track_deletions_used)
-        })
-        return permissions
-        
-    # Patreon member permissions
-    if user.is_patreon:
-        if user.patreon_tier_data:
-            logger.info(f"Patreon tier data for {user.email}: {user.patreon_tier_data}")
-            
-        album_downloads = user.patreon_tier_data.get('album_downloads_allowed', 0) if user.patreon_tier_data else 0
-        track_downloads = user.patreon_tier_data.get('track_downloads_allowed', 0) if user.patreon_tier_data else 0
-        
-        logger.info(
-            f"Patron {user.email} download limits: "
-            f"Albums={album_downloads}, Tracks={track_downloads}"
-        )
-        
-        permissions.update({
-            "can_view": True,
-            "can_create": False,
-            "can_rename": False,
-            "can_delete": False,
-            "can_delete_albums": False,
-            "can_delete_tracks": False,
-            "can_download": album_downloads > 0 or track_downloads > 0,
-            "tier_info": user.get_tier_info(),
-            "role_type": "patreon",
-            "album_downloads": album_downloads,
-            "track_downloads": track_downloads
-        })
-        logger.info(f"Set patreon permissions for {user.email}: {permissions}")
-        return permissions
-    
-    # Ko‑fi member permissions
-    if user.is_kofi:
-        if user.patreon_tier_data:
-            logger.info(f"Ko-fi tier data for {user.email}: {user.patreon_tier_data}")
-            
-        album_downloads = user.patreon_tier_data.get('album_downloads_allowed', 0) if user.patreon_tier_data else 0
-        track_downloads = user.patreon_tier_data.get('track_downloads_allowed', 0) if user.patreon_tier_data else 0
-        book_requests = user.patreon_tier_data.get('book_requests_allowed', 0) if user.patreon_tier_data else 0
-
-        logger.info(
-            f"Ko-fi user {user.email} download limits: "
-            f"Albums={album_downloads}, Tracks={track_downloads}"
-        )
-        
-        permissions.update({
-            "can_view": True,
-            "can_create": False,
-            "can_rename": False,
-            "can_delete": False,
-            "can_delete_albums": False,
-            "can_delete_tracks": False,
-            "can_download": album_downloads > 0 or track_downloads > 0,
-            "tier_info": user.get_tier_info(),
-            "role_type": "kofi",
-            "album_downloads": album_downloads,
-            "track_downloads": track_downloads,
-            "book_requests": book_requests
-        })
-        logger.info(f"Set Ko-fi permissions for {user.email}: {permissions}")
-        return permissions
-    
-    # If no special role is detected, return base permissions with role_type 'unknown'
-    permissions["role_type"] = "unknown"
-    logger.info(f"No special permissions for {user.email}, using base permissions: {permissions}")
-    return permissions
-
-def verify_role_permission(allowed_roles: List[str]):
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(
-            *args,
-            current_user: User = Depends(login_required),
-            **kwargs
-        ):
-            permissions = get_user_permissions(current_user)
-
-            if permissions["role_type"] not in allowed_roles:
-                raise HTTPException(
-                    status_code=403,
-                    detail={
-                        "message": "Access denied",
-                        "required_roles": allowed_roles,
-                        "current_role": permissions["role_type"]
-                    }
-                )
-
-            return await func(*args, current_user=current_user, **kwargs)
-        return wrapper
-    return decorator
+# Permission functions now imported from permissions.py
+# See permissions.py for:
+# - get_user_permissions(user) -> Dict
+# - verify_role_permission(allowed_roles)
 
 
 
@@ -1599,50 +1269,11 @@ templates.env.globals['url_for'] = cache_busted_url_for
 templates.env.filters['url_for'] = cache_busted_url_for
 templates.env.globals['APP_VERSION'] = APP_VERSION  # Make APP_VERSION available in templates
 
-def get_user_permissions_func(user: User) -> Permission:
-    """Get permissions for a given user based on role and tier"""
-    # First check role-based permissions
-    base_permissions = ROLE_PERMISSIONS.get(user.role, Permission.NONE)
-
-    # For Patreon members, add tier-based permissions
-    if user.is_patreon and hasattr(user, 'patreon_tier_id'):
-        tier = PatreonTier(user.patreon_tier_id)
-        base_permissions |= TIER_PERMISSIONS.get(tier, Permission.NONE)
-
-    return base_permissions
-
-
-
-
-
-def verify_patreon_access(user: User, required_tier: PatreonTier) -> bool:
-    """Verify if a Patreon user has access to content requiring a specific tier"""
-    if not user.is_patreon or not user.patreon_tier_id:
-        return False
-
-    try:
-        user_tier = PatreonTier(user.patreon_tier_id)
-        return list(PatreonTier).index(user_tier) >= list(PatreonTier).index(required_tier)
-    except ValueError:
-        return False
-
-
-def check_permission(user: User, required_permission: Permission):
-    """Check if user has the required permission"""
-    if not user:
-        raise HTTPException(
-            status_code=403,
-            detail="Authentication required"
-        )
-
-    # Get permissions
-    permissions = get_user_permissions_func(user)
-
-    if not (permissions & required_permission):
-        raise HTTPException(
-            status_code=403,
-            detail="You don't have permission to perform this action"
-        )
+# Additional permission functions now imported from permissions.py
+# See permissions.py for:
+# - get_user_permission_flags(user) -> Permission
+# - get_user_permissions_dict(user) -> dict
+# - check_permission(user, required_permission)
 
 class EventLoopMonitor:
     def __init__(self):
@@ -2689,7 +2320,7 @@ async def home(
                 "total_in_progress": total_in_progress,
                 "popular_tracks": [],  # Popular tracks are loaded via API
                 "show_all_sections": show_all_sections,  # New flag
-                "permissions": get_user_permissions(current_user)
+                "permissions": get_user_permissions_dict(current_user)
             }
         )
     except Exception as e:
@@ -2959,7 +2590,7 @@ async def support_page(
                 "request": request,
                 "user": current_user,
                 "tiers": processed_tiers,
-                "permissions": get_user_permissions(current_user)
+                "permissions": get_user_permissions_dict(current_user)
             }
         )
         
@@ -3901,6 +3532,7 @@ async def end_stream(
 @app.get("/api/tracks/{track_id}/check-access")
 async def check_track_access(
     track_id: str,
+    request: Request,
     current_user: User = Depends(login_required),
     db: Session = Depends(get_db)
 ):
@@ -3914,12 +3546,27 @@ async def check_track_access(
         if not track:
             raise HTTPException(status_code=404, detail="Track not found")
             
+        # Get session ID for grant token
+        session_id = request.cookies.get("session_id")
+
         # Creators and team members always have access
         if current_user.is_creator or current_user.is_team:
+            # Generate grant token for creators/team
+            grant_token = None
+            if session_id:
+                grant_token = AuthorizationService.create_grant_token(
+                    session_id=session_id,
+                    track_id=track_id,
+                    voice_id=None,  # Will be specified per-voice for TTS tracks
+                    content_version=track.content_version or 1,
+                    user_id=current_user.id
+                )
+
             return JSONResponse({
                 "status": "ok",
                 "has_access": True,
-                "reason": "creator_access"
+                "reason": "creator_access",
+                "grant_token": grant_token
             })
             
         # Get album restrictions
@@ -3928,10 +3575,22 @@ async def check_track_access(
         
         # If no restrictions or not explicitly restricted, grant access
         if not restrictions or restrictions.get("is_restricted") is not True:
+            # Generate grant token for public access
+            grant_token = None
+            if session_id:
+                grant_token = AuthorizationService.create_grant_token(
+                    session_id=session_id,
+                    track_id=track_id,
+                    voice_id=None,
+                    content_version=track.content_version or 1,
+                    user_id=current_user.id
+                )
+
             return JSONResponse({
                 "status": "ok",
                 "has_access": True,
-                "reason": "public_access"
+                "reason": "public_access",
+                "grant_token": grant_token
             })
         
         # Get required tier name for message
@@ -3952,10 +3611,23 @@ async def check_track_access(
             # Simple amount check for all platforms (including guest trials)
             if user_amount >= required_amount:
                 logger.info(f"User {current_user.email} meets tier amount criteria for track - granted access")
+
+                # Generate grant token for tier access
+                grant_token = None
+                if session_id:
+                    grant_token = AuthorizationService.create_grant_token(
+                        session_id=session_id,
+                        track_id=track_id,
+                        voice_id=None,
+                        content_version=track.content_version or 1,
+                        user_id=current_user.id
+                    )
+
                 return JSONResponse({
                     "status": "ok",
                     "has_access": True,
-                    "reason": "tier_access"
+                    "reason": "tier_access",
+                    "grant_token": grant_token
                 })
             
             # Special case for Ko-fi users with donations (not applicable to guest trials)
@@ -3965,10 +3637,23 @@ async def check_track_access(
                 
                 if total_amount >= required_amount:
                     logger.info(f"Ko-fi user {current_user.email} meets criteria with donations for track - granted access")
+
+                    # Generate grant token for Ko-fi donation access
+                    grant_token = None
+                    if session_id:
+                        grant_token = AuthorizationService.create_grant_token(
+                            session_id=session_id,
+                            track_id=track_id,
+                            voice_id=None,
+                            content_version=track.content_version or 1,
+                            user_id=current_user.id
+                        )
+
                     return JSONResponse({
                         "status": "ok",
                         "has_access": True,
-                        "reason": "kofi_donation_access"
+                        "reason": "kofi_donation_access",
+                        "grant_token": grant_token
                     })
         
         # Access denied with specific tier message
@@ -5122,7 +4807,7 @@ async def collection(
                 "request": request,
                 "user": current_user,
                 "albums": processed_albums,
-                "permissions": get_user_permissions(current_user),
+                "permissions": get_user_permissions_dict(current_user),
                 "available_tiers": available_tiers,
                 "pagination": {
                     "page": page,
@@ -5436,7 +5121,7 @@ async def view_album(
             "request": request,
             "album": album_data,
             "user": current_user,
-            "permissions": get_user_permissions(current_user)
+            "permissions": get_user_permissions_dict(current_user)
         }
 
         # Final check before rendering
@@ -5509,7 +5194,7 @@ async def get_collection_data(
         return {
             "success": True,
             "config": {
-                "permissions": get_user_permissions(current_user),
+                "permissions": get_user_permissions_dict(current_user),
                 "available_tiers": available_tiers,
                 "user": {
                     "id": current_user.id,
@@ -9112,7 +8797,7 @@ async def my_albums_page(
                 "albums": collection,
                 "total_count": len(collection),
                 "favorite_count": favorite_count,
-                "permissions": get_user_permissions(current_user)
+                "permissions": get_user_permissions_dict(current_user)
             }
         )
     except Exception as e:
@@ -9150,7 +8835,7 @@ async def continue_listening_page(
                 "request": request,
                 "user": current_user,
                 "tracks": tracks,
-                "permissions": get_user_permissions(current_user)
+                "permissions": get_user_permissions_dict(current_user)
             }
         )
     except Exception as e:
@@ -9515,7 +9200,7 @@ async def album_catalog(
                 "request": request,
                 "user": current_user,
                 "albums_by_letter": albums_by_letter,
-                "permissions": get_user_permissions(current_user)
+                "permissions": get_user_permissions_dict(current_user)
             }
         )
         
@@ -9579,7 +9264,7 @@ async def api_album_catalog(
                 "is_creator": current_user.is_creator,
                 "is_team": current_user.is_team
             },
-            "permissions": get_user_permissions(current_user)
+            "permissions": get_user_permissions_dict(current_user)
         }
         
     except Exception as e:
@@ -10408,7 +10093,7 @@ async def my_benefits_page(
                 "request": request,
                 "user": current_user,
                 "benefits": benefits_info,
-                "permissions": get_user_permissions(current_user)
+                "permissions": get_user_permissions_dict(current_user)
             }
         )
     except Exception as e:
@@ -11586,7 +11271,7 @@ async def benefits_page(
             {
                 "request": request,
                 "user": current_user,
-                "permissions": get_user_permissions(current_user),
+                "permissions": get_user_permissions_dict(current_user),
                 "tiers": tiers,
                 "kofi_users_count": kofi_users_count,
                 "patreon_users_count": patreon_users_count,
@@ -12006,7 +11691,7 @@ async def statistics_page(
                     "user": current_user,
                     "monthly_stats": [],
                     "total_stats": {"albums": 0, "tracks": 0, "book_requests": 0, "total_users": 0},
-                    "permissions": get_user_permissions(current_user)
+                    "permissions": get_user_permissions_dict(current_user)
                 }
             )
 
@@ -12191,7 +11876,7 @@ async def statistics_page(
                 "user": current_user,
                 "monthly_stats": monthly_stats,
                 "total_stats": total_stats,
-                "permissions": get_user_permissions(current_user)
+                "permissions": get_user_permissions_dict(current_user)
             }
         )
 
@@ -12274,7 +11959,7 @@ async def creator_pin_management_page(
             {
                 "request": request,
                 "user": current_user,
-                "permissions": get_user_permissions(current_user),
+                "permissions": get_user_permissions_dict(current_user),
                 "current_pin": current_user.creator_pin,
                 "pin_history": history,
                 "scheduled_rotation": scheduled_rotation.scheduled_for.isoformat() if scheduled_rotation else None

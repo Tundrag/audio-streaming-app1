@@ -9,6 +9,7 @@ import uuid
 import logging
 import subprocess
 import anyio
+import inspect
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any, AsyncGenerator, Generator, Set
 from sqlalchemy.orm import Session
@@ -1376,6 +1377,13 @@ class EnhancedVoiceAwareTTSService:
                     t0 = time.time()
 
                     # Keep the exact casing that works in your 7.2.1 env
+                    if attempt == 0:
+                        logger.info(
+                            "Edge TTS runtime: version=%s signature=%s",
+                            getattr(edge_tts, "__version__", "unknown"),
+                            inspect.signature(edge_tts.Communicate)
+                        )
+
                     communicate = edge_tts.Communicate(
                         chunk_text.strip(),
                         voice,

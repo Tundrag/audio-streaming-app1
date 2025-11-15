@@ -245,9 +245,9 @@ class ReadAlongService:
         start_idx, end_idx_ex = page_plan[page]
         page_words = word_timings[start_idx:end_idx_ex]
 
-        # Check cache
-        cache_key = f"{track_id}:{voice_id}:{page_size}:{page}"
-        cached = self.page_cache.get(cache_key)
+        # Check cache with proper version control from database
+        cache_key = await get_page_cache_key(track_id, voice_id, page, page_size, db)
+        cached = await get_cached_page(cache_key)
         if cached:
             payload = self._build_page_payload(track_id, voice_id, page, page_size, total_words, total_pages, page_words, cached["sourceText"], cached["mappedTokens"], start_idx, end_idx_ex)
             payload["status"] = "success"
@@ -259,15 +259,51 @@ class ReadAlongService:
         span_key = f"{track_id}:{voice_id}"
         spans = self.spans_cache.get(span_key)
         if spans is None:
-            spans = await run_in_threadpool(self._build_word_char_spans_robust, word_timings, original_text)
-            self.spans_cache.set(span_key, spans)
+            try:
+                spans = await run_in_threadpool(self._build_word_char_spans_robust, word_timings, original_text)
+                self.spans_cache.set(span_key, spans)
+            except Exception as e:
+                logger.error(f"Failed to build word spans for {track_id}: {e}", exc_info=True)
+                spans = []
 
-        page_text_segment, seg_start_char, seg_end_char = await run_in_threadpool(self._extract_text_segment_precise, original_text, spans, start_idx, end_idx_ex)
+        try:
+            page_text_segment, seg_start_char, seg_end_char = await run_in_threadpool(
+                self._extract_text_segment_precise, original_text, spans, start_idx, end_idx_ex
+            )
+            if not page_text_segment:
+                logger.warning(
+                    f"Page {page}: _extract_text_segment_precise returned empty string. "
+                    f"original_text length: {len(original_text)}, "
+                    f"spans length: {len(spans)}, "
+                    f"start_idx: {start_idx}, end_idx: {end_idx_ex}, "
+                    f"span range: {spans[start_idx] if start_idx < len(spans) else 'N/A'} to {spans[end_idx_ex-1] if end_idx_ex <= len(spans) else 'N/A'}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to extract text segment for page {page}: {e}", exc_info=True)
+            page_text_segment = ""
+            seg_start_char = seg_end_char = 0
 
-        async with self._cpu_sem:
-            page_tokens = await run_in_threadpool(self._tokens_from_spans, original_text, spans, page_words, start_idx, seg_start_char, seg_end_char)
+        try:
+            async with self._cpu_sem:
+                page_tokens = await run_in_threadpool(
+                    self._tokens_from_spans, original_text, spans, page_words, start_idx, seg_start_char, seg_end_char
+                )
+            if not page_tokens:
+                logger.warning(
+                    f"Page {page}: _tokens_from_spans returned empty array. "
+                    f"seg_start_char: {seg_start_char}, seg_end_char: {seg_end_char}, "
+                    f"page_words length: {len(page_words)}, "
+                    f"spans length: {len(spans)}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to build tokens for page {page}: {e}", exc_info=True)
+            page_tokens = []
 
-        self.page_cache.set(cache_key, {"sourceText": page_text_segment, "mappedTokens": page_tokens})
+        # Only cache if we successfully generated text data
+        if page_text_segment or page_tokens:
+            await set_cached_page(cache_key, {"sourceText": page_text_segment, "mappedTokens": page_tokens})
+        else:
+            logger.warning(f"Skipping service cache for page {page} - text processing produced no data")
 
         return self._build_page_payload(track_id, voice_id, page, page_size, total_words, total_pages, page_words, page_text_segment, page_tokens, start_idx, end_idx_ex)
 
@@ -439,6 +475,9 @@ class ReadAlongService:
         L = len(lookup)
         
         successful_maps = 0
+        MAX_BACKTRACK_CHARS = 200
+        MAX_GLOBAL_SEARCH_FWD_CHARS = 20000
+        MAX_FORWARD_JUMP_CHARS = 5000
 
         for i, wd in enumerate(word_timings):
             w = (wd.get("word") or "").strip()
@@ -447,6 +486,7 @@ class ReadAlongService:
             lw = self._normalize_lookup_text(w).lower()
             if not lw:
                 continue
+            requires_boundary = any(ch.isalnum() for ch in lw)
 
             # Try sequential search from last position
             found = lookup.find(lw, pos)
@@ -455,7 +495,17 @@ class ReadAlongService:
                 end = found + len(lw)
                 prev_ch = lookup[start - 1] if start > 0 else None
                 next_ch = lookup[end] if end < L else None
-                if self._is_boundary_char(prev_ch) and self._is_boundary_char(next_ch):
+                boundary_ok = (
+                    not requires_boundary
+                    or (self._is_boundary_char(prev_ch) and self._is_boundary_char(next_ch))
+                )
+                if (
+                    boundary_ok
+                    and (
+                        successful_maps == 0
+                        or start - pos <= MAX_FORWARD_JUMP_CHARS
+                    )
+                ):
                     spans[i] = (start, end)
                     pos = end
                     successful_maps += 1
@@ -470,7 +520,18 @@ class ReadAlongService:
                 end = found + len(lw)
                 prev_ch = lookup[start - 1] if start > 0 else None
                 next_ch = lookup[end] if end < L else None
-                if self._is_boundary_char(prev_ch) and self._is_boundary_char(next_ch):
+                boundary_ok = (
+                    not requires_boundary
+                    or (self._is_boundary_char(prev_ch) and self._is_boundary_char(next_ch))
+                )
+                if (
+                    boundary_ok
+                    and start >= max(0, pos - MAX_BACKTRACK_CHARS)
+                    and (
+                        successful_maps == 0
+                        or start - pos <= MAX_FORWARD_JUMP_CHARS
+                    )
+                ):
                     spans[i] = (start, end)
                     pos = end
                     successful_maps += 1
@@ -479,18 +540,35 @@ class ReadAlongService:
                 if found >= search_end:
                     break
             else:
-                # Global fallback search
-                found = lookup.find(lw)
+                # Global fallback search constrained to avoid large jumps that corrupt ordering
+                fallback_start = max(0, pos - MAX_BACKTRACK_CHARS)
+                fallback_end = min(L, pos + MAX_GLOBAL_SEARCH_FWD_CHARS)
+                found = lookup.find(lw, fallback_start)
                 while found != -1:
                     start = found
                     end = found + len(lw)
                     prev_ch = lookup[start - 1] if start > 0 else None
                     next_ch = lookup[end] if end < L else None
-                    if self._is_boundary_char(prev_ch) and self._is_boundary_char(next_ch):
+                    boundary_ok = (
+                        not requires_boundary
+                        or (self._is_boundary_char(prev_ch) and self._is_boundary_char(next_ch))
+                    )
+                    if (
+                        start >= max(0, pos - MAX_BACKTRACK_CHARS)
+                        and start <= fallback_end
+                        and (
+                            successful_maps == 0
+                            or start - pos <= MAX_FORWARD_JUMP_CHARS
+                        )
+                        and boundary_ok
+                    ):
                         spans[i] = (start, end)
+                        pos = end
                         successful_maps += 1
                         break
                     found = lookup.find(lw, found + 1)
+                    if found > fallback_end:
+                        break
 
         success_rate = (successful_maps / n * 100) if n > 0 else 0
         if success_rate < 95:
@@ -520,7 +598,16 @@ class ReadAlongService:
         try:
             seg_start = spans[s_idx][0]
             seg_end = spans[e_idx][1]
-            
+
+            # Safety check: spans must be in order
+            if seg_end <= seg_start:
+                logger.error(
+                    f"Corrupted spans detected: seg_end ({seg_end}) <= seg_start ({seg_start}). "
+                    f"Word range {start_word_idx}-{end_word_idx_ex}, span indices {s_idx}-{e_idx}. "
+                    f"This indicates word timings don't match the current text. TTS needs regeneration."
+                )
+                return "", 0, 0
+
             # Find natural sentence start
             natural_start = seg_start
             if seg_start > 0:
@@ -891,12 +978,28 @@ async def get_read_along_data(
         
         # Record miss with timing
         await record_cache_miss(recompute_ms)
-        
-        # Cache the result
-        try:
-            await set_cached_page(cache_key, page_data)
-        except Exception as e:
-            logger.warning(f"Failed to cache page: {e}")
+
+        # Validate before caching - don't cache incomplete responses
+        has_word_timings = page_data.get("wordTimings") and len(page_data["wordTimings"]) > 0
+        has_text_data = (page_data.get("sourceText") and len(page_data["sourceText"]) > 0) or \
+                       (page_data.get("mappedTokens") and len(page_data["mappedTokens"]) > 0)
+
+        if has_word_timings and not has_text_data:
+            logger.warning(
+                f"Not caching page {page} - has wordTimings but missing text data. "
+                f"sourceText length: {len(page_data.get('sourceText', ''))}, "
+                f"mappedTokens length: {len(page_data.get('mappedTokens', []))}, "
+                f"wordTimings length: {len(page_data.get('wordTimings', []))}"
+            )
+        elif has_word_timings and has_text_data:
+            # Only cache valid complete responses
+            try:
+                await set_cached_page(cache_key, page_data)
+                logger.info(f"Cached page {page} with {len(page_data['wordTimings'])} words")
+            except Exception as e:
+                logger.warning(f"Failed to cache page: {e}")
+        else:
+            logger.debug(f"Not caching page {page} - insufficient data")
     
     await cleanup_page_lock(cache_key)
     

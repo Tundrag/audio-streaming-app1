@@ -12,8 +12,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from models import User, Track, Album, CampaignTier
-from permissions import check_tier_access
-from redis_config import get_redis_client
+from redis_config import redis_client
 
 # Secret for signing tokens (in production, use env variable)
 import os
@@ -38,19 +37,47 @@ class AuthorizationService:
         Returns:
             (has_access: bool, error_message: Optional[str])
         """
-        # Check tier access on track (which also checks album)
-        has_access, error_msg = check_tier_access(track, user)
+        # Creator and team bypass all restrictions
+        if user.is_creator or user.is_team:
+            return True, None
 
-        if not has_access:
-            return False, error_msg
+        # Get album restrictions
+        album = track.album
+        if not album:
+            return True, None
 
-        # If voice-specific access check is needed
-        if voice_id and track.track_type == 'tts':
-            # Voice access check is handled by check_tier_access
-            # Future: add voice-specific tier restrictions here
-            pass
+        restrictions = album.tier_restrictions
 
-        return True, None
+        # If no restrictions or not explicitly restricted, grant access
+        if not restrictions or restrictions.get("is_restricted") is not True:
+            return True, None
+
+        # Get required tier info for error message
+        required_tier = restrictions.get("minimum_tier", "").strip()
+        tier_message = f"the {required_tier} tier or above" if required_tier else "a higher tier subscription"
+
+        # Get user's tier data
+        tier_data = user.patreon_tier_data if user.patreon_tier_data else {}
+        user_amount = tier_data.get("amount_cents", 0)
+        required_amount = restrictions.get("minimum_tier_amount", 0)
+
+        # Check Patreon, Ko-fi, and guest trial users
+        if (user.is_patreon or user.is_kofi or user.is_guest_trial) and tier_data:
+            # Simple amount check
+            if user_amount >= required_amount:
+                return True, None
+
+            # Special case for Ko-fi users with donations
+            if user.is_kofi and tier_data.get('has_donations', False):
+                donation_amount = tier_data.get('donation_amount_cents', 0)
+                total_amount = user_amount + donation_amount
+
+                if total_amount >= required_amount:
+                    return True, None
+
+        # Access denied
+        error_msg = f"This content requires {tier_message}"
+        return False, error_msg
 
     @staticmethod
     def create_grant_token(
@@ -171,12 +198,11 @@ class AuthorizationService:
         Value: content_version
         """
         try:
-            redis = get_redis_client()
-            if not redis:
+            if not redis_client:
                 return
 
             key = f"grant:{session_id}:{track_id}:{voice_id or 'default'}"
-            redis.setex(key, ttl, str(content_version))
+            redis_client.setex(key, ttl, str(content_version))
         except Exception:
             # Redis failure is not fatal - we can still use tokens
             pass

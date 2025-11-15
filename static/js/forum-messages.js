@@ -77,7 +77,6 @@ class ForumMessages extends ForumCore {
         };
         
         document.addEventListener('keydown', this.enterKeyHandler);
-        console.log('✅ Enter key handling initialized');
     }
 
     // ================== MESSAGE RENDERING ==================
@@ -348,7 +347,6 @@ class ForumMessages extends ForumCore {
     handleNewMessage(message) {
         if (this.currentView === 'discussion' && this.currentThread) {
             if (this.messages.find(m => m.id === message.id)) {
-                console.log('📋 Duplicate message detected, skipping:', message.id);
                 return;
             }
             
@@ -1228,13 +1226,11 @@ class ForumMessages extends ForumCore {
         if (!content) return false;
         
         if (this.isSendingMessage) {
-            console.log('🚫 Already sending message, ignoring duplicate request');
             return false;
         }
         
         const now = Date.now();
         if (content === this.lastSentMessage && now - this.lastSentTime < 1000) {
-            console.log('🚫 Duplicate message detected, ignoring');
             return false;
         }
         
@@ -1256,7 +1252,6 @@ class ForumMessages extends ForumCore {
         this.sendTypingIndicator(false);
         
         try {
-            console.log('📤 Sending message:', content);
             
             const response = await fetch(`/api/forum/threads/${this.currentThread.id}/messages`, {
                 method: 'POST',
@@ -1269,7 +1264,6 @@ class ForumMessages extends ForumCore {
                 throw new Error(errorData.detail || 'Failed to send message');
             }
 
-            console.log('✅ Message sent successfully');
             
             this.hideMentionAutocomplete();
             this.clearNewMessagesCount();
@@ -1311,7 +1305,6 @@ class ForumMessages extends ForumCore {
             }
         });
         
-        console.log('✅ Send button initialized');
     }
 
     // ================== WEBSOCKET HANDLERS ==================

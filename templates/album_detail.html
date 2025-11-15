@@ -298,13 +298,6 @@ window.userPermissions = {
     is_team: {{ permissions.is_team|tojson }}
 };
 
-// Debug: Log visibility status from server-side data
-console.log('[Template] window.albumTracks loaded, count:', window.albumTracks ? window.albumTracks.length : 0);
-if (window.albumTracks) {
-    window.albumTracks.forEach((track, idx) => {
-        console.log(`[Template] Track ${idx + 1}: "${track.title}" - visibility_status:`, track.visibility_status);
-    });
-}
 
 // Album Listens Counter - Dynamic updates
 window.AlbumListensManager = (function() {
@@ -332,7 +325,6 @@ window.AlbumListensManager = (function() {
         listensElement.setAttribute('data-full-count', fullCount);
         listensElement.setAttribute('title', fullCount.toLocaleString() + ' total listens');
         listensElement.textContent = abbreviateNumber(fullCount) + ' listens';
-        console.log('🔄 Updated album listens to:', fullCount);
     }
 
     // Fetch fresh count from server
@@ -351,7 +343,6 @@ window.AlbumListensManager = (function() {
 
     // Initial display
     const initialCount = parseInt(listensElement.getAttribute('data-full-count')) || 0;
-    console.log('📊 Album total plays (initial):', initialCount);
     updateDisplay(initialCount);
 
     // Return public API
@@ -362,18 +353,6 @@ window.AlbumListensManager = (function() {
     };
 })();
 
-// Debug: Check DOM for visibility badges before AlbumDetails.js loads
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('[Template DOM Ready] Checking for visibility badges in DOM...');
-    const badges = document.querySelectorAll('.track-visibility-badge');
-    console.log('[Template DOM Ready] Found', badges.length, 'visibility badges');
-    badges.forEach((badge, idx) => {
-        console.log(`[Template DOM Ready] Badge ${idx + 1}:`, badge.className, 'title:', badge.title, 'parent:', badge.parentElement?.className);
-    });
-
-    const trackItems = document.querySelectorAll('.track-item');
-    console.log('[Template DOM Ready] Total track items:', trackItems.length);
-});
 </script>
 <script src="{{ url_for('static', path='/js/AlbumDetails.js') }}"></script>
 <script src="{{ url_for('static', path='/js/AudioUpload.js') }}"></script>

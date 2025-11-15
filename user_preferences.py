@@ -89,14 +89,26 @@ async def get_track_voice_preference(
     Get voice preference for a specific track.
 
     Priority:
-    1. User's favorite (hearted) voice if it's cached for this track
-    2. Track-specific preference (non-favorited selection)
+    1. Track-specific preference (non-favorited selection) - HIGHEST PRIORITY
+    2. User's favorite (hearted) voice if it's cached for this track
     3. None (frontend will use track default)
     """
     try:
-        favorite_voice = current_user.preferred_voice
+        # ✅ FIX: Check track-specific preference FIRST (highest priority)
+        track_pref = db.query(UserTrackVoicePreference).filter(
+            UserTrackVoicePreference.user_id == current_user.id,
+            UserTrackVoicePreference.track_id == track_id
+        ).first()
 
-        # Check if favorite is cached for this track
+        if track_pref:
+            return {
+                "voice_id": track_pref.voice_id,
+                "is_favorite": False,
+                "source": "track_specific"
+            }
+
+        # Check if favorite is cached for this track (fallback if no track-specific)
+        favorite_voice = current_user.preferred_voice
         if favorite_voice:
             # Import here to avoid circular dependency
             from enhanced_tts_api_voice import get_generated_voices_for_track
@@ -109,19 +121,6 @@ async def get_track_voice_preference(
                     "is_favorite": True,
                     "source": "favorite"
                 }
-
-        # Check track-specific preference
-        track_pref = db.query(UserTrackVoicePreference).filter(
-            UserTrackVoicePreference.user_id == current_user.id,
-            UserTrackVoicePreference.track_id == track_id
-        ).first()
-
-        if track_pref:
-            return {
-                "voice_id": track_pref.voice_id,
-                "is_favorite": False,
-                "source": "track_specific"
-            }
 
         # No preference
         return {
@@ -181,15 +180,8 @@ async def update_track_voice_preference(
             }
         else:
             # 🎵 Track-specific selection (no heart)
-            # Only save if it's not already the favorite
-            if current_user.preferred_voice == voice_id:
-                # User is selecting their favorite without heart - keep it as favorite
-                return {
-                    "voice_id": voice_id,
-                    "is_favorite": True,
-                    "source": "favorite",
-                    "message": "This is your favorite voice"
-                }
+            # ✅ FIX: ALWAYS save track-specific preference, even if it matches global favorite
+            # This allows explicit track-specific overrides that persist even if global favorite changes
 
             # Upsert track-specific preference
             track_pref = db.query(UserTrackVoicePreference).filter(
@@ -213,11 +205,15 @@ async def update_track_voice_preference(
 
             logger.info(f"User {current_user.id} set track-specific voice for {track_id}: {voice_id}")
 
+            # Note if it matches global favorite
+            matches_favorite = (current_user.preferred_voice == voice_id)
+            message = "Set for this track only" if not matches_favorite else "Set for this track only (same as your favorite)"
+
             return {
                 "voice_id": voice_id,
                 "is_favorite": False,
                 "source": "track_specific",
-                "message": f"Set for this track only"
+                "message": message
             }
 
     except HTTPException:

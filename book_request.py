@@ -278,10 +278,11 @@ async def book_request_websocket(
         await websocket.accept()
 
         # Connect to book request WebSocket using centralized manager
+        metadata = {k: v for k, v in user_info.items() if k != 'user_id'}
         await book_request_ws_manager.connect(
             websocket,
             user_id=str(user_info['user_id']),
-            **user_info  # Pass user info as metadata
+            **metadata
         )
 
         # Send initial data (already fetched)

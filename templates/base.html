@@ -1197,6 +1197,29 @@ body:has(#broadcastBanner[style*="display: flex"]) .container {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Connection indicator animations */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
 .modal-header, .coming-soon-modal-header {
     display: flex;
     align-items: center;
@@ -1927,22 +1950,22 @@ html {
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Scripts with defer for optimal loading performance -->
+    <script defer src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-    <!-- ✅ ALWAYS load persistent-player and voice-extension (needed for both mini-player AND player page) -->
-    <script src="{{ url_for('static', path='/js/tts-status-channel.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/persistent-player.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/voice-extension.js') }}"></script>
+    <!-- Core player scripts (defer maintains execution order while allowing parallel download) -->
+    <script defer src="{{ url_for('static', path='/js/tts-status-channel.js') }}"></script>
+    <script defer src="{{ url_for('static', path='/js/persistent-player.js') }}"></script>
+    <script defer src="{{ url_for('static', path='/js/voice-extension.js') }}"></script>
 
     {% if not self.is_player_page() %}
-    <script src="{{ url_for('static', path='/js/quick-reply-manager.js') }}"></script>
+    <script defer src="{{ url_for('static', path='/js/quick-reply-manager.js') }}"></script>
     {% endif %}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', path='/js/notification-badges.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/book-request-websocket.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/forum-notification-manager.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/broadcast-websocket-manager.js') }}"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script defer src="{{ url_for('static', path='/js/notification-badges.js') }}"></script>
+    <script defer src="{{ url_for('static', path='/js/book-request-websocket.js') }}"></script>
+    <script defer src="{{ url_for('static', path='/js/forum-notification-manager.js') }}"></script>
+    <script defer src="{{ url_for('static', path='/js/broadcast-websocket-manager.js') }}"></script>
 
     <!-- Activity Logs Notification Badge Handler -->
     {% if user and (user.is_creator or user.is_team) %}

@@ -21,7 +21,16 @@ from pathlib import Path
 from voice_cache_manager import voice_cache_manager
 from text_storage_service import text_storage_service, TextStorageError
 from database import get_async_db, async_engine
-from models import Album, Track, User, TTSTrackMeta, AvailableVoice, CampaignTier
+from models import (
+    Album,
+    Track,
+    User,
+    TTSTrackMeta,
+    AvailableVoice,
+    CampaignTier,
+    TTSTextSegment,
+    TTSVoiceSegment,
+)
 from auth import login_required
 from enhanced_tts_voice_service import enhanced_voice_tts_service
 from storage import storage
@@ -104,19 +113,43 @@ async def get_voice_details(db: AsyncSession) -> Dict[str, str]:
         return {}
 
 async def get_generated_voices_for_track(track_id: str) -> List[str]:
+    """
+    Return the list of generated voices for a track.
+
+    Primary source: database (distinct voice IDs from ready segments).
+    Fallback: filesystem scan (legacy behaviour) only if DB returns nothing.
+    """
+    try:
+        async for db in get_async_db():
+            result = await db.execute(
+                select(TTSVoiceSegment.voice_id)
+                .join(TTSTextSegment, TTSTextSegment.id == TTSVoiceSegment.text_segment_id)
+                .where(
+                    TTSTextSegment.track_id == track_id,
+                    TTSVoiceSegment.status == 'ready'
+                )
+                .distinct()
+            )
+            voices = [row[0] for row in result.all()]
+            if voices:
+                return voices
+    except Exception as e:
+        logger.error(f"[Voices] DB lookup failed for {track_id}: {e}")
+
+    # Fallback to filesystem (slower, but keeps legacy behaviour)
     if not (stream_manager and hasattr(stream_manager, 'segment_dir')):
         return []
-    
+
     track_dir = stream_manager.segment_dir / track_id
     if not await aexists(track_dir):
         return []
-    
+
     voices = []
     voice_dirs = await aglob(track_dir, "voice-*")
     for voice_dir in voice_dirs:
         if await aexists(voice_dir / "master.m3u8"):
             voices.append(voice_dir.name.replace("voice-", ""))
-    
+
     return voices
 
 def check_album_access(user: User, album: Album) -> bool:
@@ -2266,8 +2299,8 @@ async def update_tts_track_content(
         if not await _acquire_generation_lock_atomic(track_id, 'tts_regeneration', voice_id=voice_to_use):
             raise HTTPException(status_code=202, detail=f"Voice {voice_to_use} is currently being regenerated. Please wait.")
 
-        # Update content_version in the SAME session
-        track.content_version = (track.content_version or 0) + 1
+        # NOTE: content_version is incremented by background worker AFTER TTS completes successfully
+        # (background_preparation.py:522) to prevent cache corruption from using new text with old timings
 
         try:
             if title_changed and not text_changed:

@@ -2,7 +2,7 @@
 import re
 from fastapi import APIRouter, Depends, HTTPException, Form, Request, Response, BackgroundTasks
 from sqlalchemy import and_, or_, desc, func, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional, Dict, Any, Set
 from datetime import datetime, timezone
 from fastapi import WebSocket, WebSocketDisconnect, Query
@@ -768,40 +768,54 @@ async def get_track_comments(
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
     
-    # Get comments for this track
+    # Fetch comments with author info eagerly loaded to avoid N+1 queries
     comments = (
         db.query(Comment)
+        .options(joinedload(Comment.user))
         .filter(Comment.track_id == track_id)
         .order_by(Comment.created_at.desc())
         .all()
     )
-    
+
+    if not comments:
+        return []
+
+    comment_ids = [comment.id for comment in comments]
+
+    # Aggregate like counts in a single query
+    like_counts = {
+        comment_id: count
+        for comment_id, count in (
+            db.query(CommentLike.comment_id, func.count(CommentLike.id))
+            .filter(CommentLike.comment_id.in_(comment_ids))
+            .group_by(CommentLike.comment_id)
+            .all()
+        )
+    }
+
+    # Determine which comments the current user liked
+    user_likes = {
+        row.comment_id
+        for row in (
+            db.query(CommentLike.comment_id)
+            .filter(
+                CommentLike.comment_id.in_(comment_ids),
+                CommentLike.user_id == current_user.id
+            )
+            .all()
+        )
+    }
+
     # Format comments with user info and like status
     result = []
     for comment in comments:
-        # Get user info
-        user = db.query(User).filter(User.id == comment.user_id).first()
-        
-        # Check if current user has liked this comment
-        user_like = db.query(CommentLike).filter(
-            and_(
-                CommentLike.comment_id == comment.id,
-                CommentLike.user_id == current_user.id
-            )
-        ).first()
-        
-        # Count total likes
-        like_count = db.query(func.count(CommentLike.id)).filter(
-            CommentLike.comment_id == comment.id
-        ).scalar()
-        
-        # Format comment data
-        comment_data = {
+        user = comment.user
+        result.append({
             "id": comment.id,
             "user_id": comment.user_id,
             "username": user.username if user else "Unknown User",
-            "author_is_creator": user.is_creator if user else False,
-            "author_is_team": user.is_team if user else False,
+            "author_is_creator": bool(user.is_creator) if user else False,
+            "author_is_team": bool(user.is_team) if user else False,
             "track_id": str(comment.track_id),
             "parent_id": comment.parent_id,
             "content": comment.content,
@@ -809,11 +823,9 @@ async def get_track_comments(
             "is_edited": comment.is_edited,
             "created_at": comment.created_at.isoformat() if comment.created_at else None,
             "last_edited_at": comment.last_edited_at.isoformat() if comment.last_edited_at else None,
-            "user_has_liked": user_like is not None,
-            "like_count": like_count
-        }
-        
-        result.append(comment_data)
+            "user_has_liked": comment.id in user_likes,
+            "like_count": like_counts.get(comment.id, 0)
+        })
     
     return result
 

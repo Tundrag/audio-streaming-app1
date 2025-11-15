@@ -101,15 +101,8 @@ class PlatformType(enum.Enum):
     def __str__(self):
         return self.value
 
-class Permission(Flag):
-    NONE = 0
-    VIEW = auto()
-    CREATE = auto()
-    RENAME = auto()
-    DELETE = auto()
-    DOWNLOAD = auto()  # New permission added
-    ALL = VIEW | CREATE | RENAME | DELETE | DOWNLOAD
-    TEAM_ACCESS = VIEW | CREATE | RENAME | DOWNLOAD 
+# Permission class moved to permissions.py for centralized permission management
+# Import from permissions module if needed: from permissions import Permission
 
 class PatreonTier(PyEnum):
     BRONZE = "bronze"

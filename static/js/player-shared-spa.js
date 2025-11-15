@@ -111,9 +111,7 @@ export class PlayerController {
         : `/player/${encodeURIComponent(this.trackId)}`;
 
       // Fetch the player page HTML from server to extract data
-      console.log(`[PlayerPerf] Fetching player SSR HTML for ${this.trackId}...`);
       const response = await fetch(url);
-      console.log(`[PlayerPerf] SSR HTML fetch completed in ${(performance.now() - perfStart).toFixed(1)}ms`);
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -1027,8 +1025,6 @@ ${this.generateCustomTimerToast()}
         const currentVoice = this.trackData?.current_voice || null;
         const trackType = this.trackData?.track_type || this.trackType;
 
-        console.log(`[PlayerPerf] Triggering playTrack for ${this.trackId} (${trackType}/${currentVoice || 'default'})`);
-        const playStart = performance.now();
         window.persistentPlayer.playTrack(
           this.trackId,
           this.trackTitle,
@@ -1039,7 +1035,6 @@ ${this.generateCustomTimerToast()}
           trackType,
           this.albumId
         );
-        console.log(`[PlayerPerf] playTrack invoked in ${(performance.now() - playStart).toFixed(1)}ms`);
       }
 
       this.setupPlayerControls();
@@ -1048,10 +1043,7 @@ ${this.generateCustomTimerToast()}
       this.setupTrackNavigation();
       this.setupVoiceAwareDownload();
       this.setupSleepTimer();
-
-      // ✅ Update page title after data is loaded (for SPA mode)
       this.updateHeaderTitle();
-      console.log(`[PlayerPerf] initAudioPlayer completed in ${(performance.now() - initStart).toFixed(1)}ms`);
     });
   }
 
@@ -1079,6 +1071,54 @@ ${this.generateCustomTimerToast()}
       forwardBtn: document.getElementById('forwardBtn'),
       rewind30Btn: document.getElementById('rewind30Btn'),
       forward30Btn: document.getElementById('forward30Btn')
+    };
+
+    // Multi-tap handler for play button speed control
+    const tapHandler = {
+      tapCount: 0,
+      tapTimer: null,
+      tapWindow: 300, // ms between taps
+
+      registerTap(callback) {
+        this.tapCount++;
+
+        // Clear existing timer
+        if (this.tapTimer) {
+          clearTimeout(this.tapTimer);
+        }
+
+        // Wait for tap window to complete
+        this.tapTimer = setTimeout(() => {
+          callback(this.tapCount);
+          this.tapCount = 0;
+        }, this.tapWindow);
+      },
+
+      adjustSpeed(direction) {
+        if (!window.persistentPlayer?.audio) return;
+
+        const currentSpeed = window.persistentPlayer.audio.playbackRate;
+        const increment = 0.25;
+        const minSpeed = 0.25;
+        const maxSpeed = 3.0;
+
+        let newSpeed;
+        if (direction === 'increase') {
+          newSpeed = Math.min(maxSpeed, currentSpeed + increment);
+        } else {
+          newSpeed = Math.max(minSpeed, currentSpeed - increment);
+        }
+
+        if (newSpeed !== currentSpeed) {
+          window.persistentPlayer.setPlaybackSpeed(newSpeed);
+          const icon = direction === 'increase' ? '⏩' : '⏪';
+          window.persistentPlayer.showToast(`${icon} Speed: ${newSpeed}x`, 'info', 1500);
+        } else {
+          const icon = direction === 'increase' ? '🚀' : '🐌';
+          const limit = direction === 'increase' ? 'Max' : 'Min';
+          window.persistentPlayer.showToast(`${icon} ${limit} speed: ${newSpeed}x`, 'info', 1500);
+        }
+      }
     };
 
     // Play/Pause with long-press for auto-play toggle
@@ -1122,7 +1162,18 @@ ${this.generateCustomTimerToast()}
 
       const handleClick = () => {
         if (!isLongPress) {
-          window.persistentPlayer.togglePlay();
+          tapHandler.registerTap((count) => {
+            if (count === 2) {
+              // Double-tap: increase speed
+              tapHandler.adjustSpeed('increase');
+            } else if (count === 3) {
+              // Triple-tap: decrease speed
+              tapHandler.adjustSpeed('decrease');
+            } else {
+              // Single tap: play/pause
+              window.persistentPlayer.togglePlay();
+            }
+          });
         }
         isLongPress = false;
       };
@@ -1447,6 +1498,27 @@ ${this.generateCustomTimerToast()}
         }
 
         this.showToast(`Playback speed set to ${speed}x`);
+      });
+    });
+
+    // Listen for playback speed changes from gestures or other sources
+    document.addEventListener('playbackSpeedChanged', (e) => {
+      const speed = e.detail.speed;
+
+      // Update speed display badge
+      if (speedDisplay) {
+        if (speed !== 1.0) {
+          speedDisplay.textContent = `${speed}x`;
+          speedDisplay.classList.add('active');
+        } else {
+          speedDisplay.textContent = '';
+          speedDisplay.classList.remove('active');
+        }
+      }
+
+      // Update active speed option in menu
+      document.querySelectorAll('.speed-option').forEach(opt => {
+        opt.classList.toggle('active', parseFloat(opt.dataset.speed) === speed);
       });
     });
   }
@@ -2108,15 +2180,31 @@ function showAutoPlayTooltip() {
   const offIconColor = isDarkTheme ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
 
   tooltip.innerHTML = `
-    <h3><i class="fas fa-info-circle"></i> Auto-Play</h3>
-    <p>Automatically plays the next track when the current one ends.</p>
-    <div class="tooltip-instruction">
-      <i class="fas fa-hand-pointer"></i> <strong>Long press</strong> the play button (hold 0.5s) to toggle
+    <h3><i class="fas fa-info-circle"></i> Play Button Controls</h3>
+
+    <div class="tooltip-section">
+      <div class="tooltip-instruction">
+        <i class="fas fa-hand-pointer"></i> <strong>Single tap:</strong> Play/Pause
+      </div>
+      <div class="tooltip-instruction">
+        <i class="fas fa-hand-pointer"></i> <strong>Double-tap:</strong> Increase speed ⏩
+      </div>
+      <div class="tooltip-instruction">
+        <i class="fas fa-hand-pointer"></i> <strong>Triple-tap:</strong> Decrease speed ⏪
+      </div>
+      <div class="tooltip-instruction">
+        <i class="fas fa-hand-pointer"></i> <strong>Long press (0.5s):</strong> Toggle Auto-play
+      </div>
     </div>
-    <p class="tooltip-status-indicators">
-      <i class="fas fa-circle" style="color: ${offIconColor}; font-size: 6px;"></i> Off: Gray &nbsp;
-      <i class="fas fa-circle" style="color: #4A90E2; font-size: 6px;"></i> On: Blue spin
-    </p>
+
+    <div class="tooltip-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(128,128,128,0.2);">
+      <p style="margin: 0 0 8px 0; font-size: 13px; opacity: 0.9;"><strong>Auto-Play Status:</strong></p>
+      <p class="tooltip-status-indicators" style="margin: 0;">
+        <i class="fas fa-circle" style="color: ${offIconColor}; font-size: 6px;"></i> Off: Gray &nbsp;
+        <i class="fas fa-circle" style="color: #4A90E2; font-size: 6px;"></i> On: Blue arrows
+      </p>
+    </div>
+
     <button class="tooltip-close-btn">Got it!</button>
   `;
 

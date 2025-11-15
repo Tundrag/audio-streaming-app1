@@ -61,13 +61,11 @@ class EnhancedForumSPA extends ForumMessages {
                 });
         }
 
-        console.log('🔔 Browser notifications initialized');
     }
 
     updateNotificationPermission() {
         if ('Notification' in window) {
             this.notificationPermission = Notification.permission;
-            console.log(`🔔 Notification permission: ${this.notificationPermission}`);
         }
     }
 
@@ -243,18 +241,11 @@ class EnhancedForumSPA extends ForumMessages {
 
     showBrowserNotification(options) {
         if (!this.canShowBrowserNotifications()) {
-            console.log('🔔 Cannot show browser notification:', {
-                hasNotification: 'Notification' in window,
-                permission: Notification.permission,
-                enabled: this.browserNotificationSettings.enabled,
-                hidden: document.hidden
-            });
             return null;
         }
 
         // Limit concurrent notifications
         if (this.activeNotifications.size >= this.browserNotificationSettings.maxConcurrent) {
-            console.log('🔔 Max concurrent notifications reached');
             return null;
         }
 
@@ -303,7 +294,6 @@ class EnhancedForumSPA extends ForumMessages {
                 console.error('Browser notification error');
             };
 
-            console.log('🔔 Browser notification shown:', options.title);
             return notification;
 
         } catch (error) {
@@ -1034,7 +1024,6 @@ class EnhancedForumSPA extends ForumMessages {
         this.browserNotificationSettings[settingName] = newState;
         this.saveBrowserNotificationSettings();
         
-        console.log(`🔔 ${settingName} ${newState ? 'enabled' : 'disabled'}`);
     }
 
     updateBrowserNotificationTimer(seconds) {
@@ -1606,7 +1595,6 @@ class EnhancedForumSPA extends ForumMessages {
             
             // The thread will be added via WebSocket broadcast automatically
             // Just make sure we're ready to receive it
-            console.log('✅ Thread creation successful, waiting for WebSocket broadcast...');
             
             return true;
         } catch (error) {

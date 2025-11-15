@@ -29,7 +29,6 @@ class ForumWebSocketManager {
         this.manualDisconnect = false;
         this.connectionTimeout = null;
         
-        console.log('🔌 ForumWebSocketManager initialized');
     }
 
     // ================== DEBUG TOOLS ==================
@@ -38,19 +37,9 @@ class ForumWebSocketManager {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             window.wsDebug = {
                 status: () => {
-                    console.log('🔍 WebSocket Debug Status:', {
-                        connectionState: this.connectionState,
-                        reconnectAttempts: this.reconnectAttempts,
-                        hasGlobalWS: !!this.globalWebsocket,
-                        wsReadyState: this.globalWebsocket?.readyState,
-                        connectionId: this.connectionId,
-                        lastHeartbeat: this.lastHeartbeat,
-                        manualDisconnect: this.manualDisconnect
-                    });
                     return this.connectionState;
                 },
                 forceReconnect: () => {
-                    console.log('🔄 Forcing WebSocket reconnection...');
                     this.manualDisconnect = false;
                     this.disconnectGlobalWebSocket();
                     setTimeout(() => this.connectGlobalWebSocket(), 1000);
@@ -60,11 +49,9 @@ class ForumWebSocketManager {
                         console.log('🧪 Testing WebSocket connection...');
                         this.sendHeartbeat();
                     } else {
-                        console.log('❌ WebSocket not connected');
                     }
                 }
             };
-            console.log('🛠️ Debug tools available: window.wsDebug.status(), .forceReconnect(), .testConnection()');
         }
     }
 
@@ -115,7 +102,6 @@ class ForumWebSocketManager {
     }
 
     handleGlobalWebSocketOpen() {
-        console.log(`✅ Global forum WebSocket connected (${this.connectionId})`);
         this.connectionInProgress = false;
         this.connectionState = 'connected';
         this.reconnectAttempts = 0;
@@ -132,7 +118,6 @@ class ForumWebSocketManager {
     }
 
     handleGlobalWebSocketMessage(data) {
-        console.log(`📨 Global WebSocket message (${this.connectionId}):`, data);
         
         const handlers = {
             'connected': () => {
@@ -162,7 +147,6 @@ class ForumWebSocketManager {
     }
 
     handleGlobalWebSocketClose(event) {
-        console.log(`❌ Global forum WebSocket disconnected (${this.connectionId}):`, event.code, event.reason);
         this.connectionInProgress = false;
         this.connectionState = 'disconnected';
         this.stopHeartbeat();
@@ -211,7 +195,6 @@ class ForumWebSocketManager {
         this.reconnectAttempts++;
         this.connectionState = 'reconnecting';
         
-        console.log(`🔄 Scheduling reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${this.reconnectDelay}ms`);
         
         setTimeout(() => {
             if (!this.manualDisconnect && this.connectionState === 'reconnecting') {
@@ -444,7 +427,6 @@ class ForumWebSocketManager {
     // ================== CLEANUP ==================
 
     destroy() {
-        console.log('🧹 Destroying ForumWebSocketManager');
         
         this.manualDisconnect = true;
         this.disconnectGlobalWebSocket();
@@ -454,6 +436,5 @@ class ForumWebSocketManager {
             delete window.wsDebug;
         }
         
-        console.log('🧹 ForumWebSocketManager cleaned up');
     }
 }

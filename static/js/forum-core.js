@@ -7,13 +7,11 @@ class ForumCore {
     constructor() {
         // Prevent multiple instances - reuse existing one
         if (window.forum instanceof ForumCore) {
-            console.log('🔄 ForumCore: Reusing existing SSR instance, updating container reference...');
             // ✅ CRITICAL: Update container reference to new SPA-inserted DOM
             window.forum.container = document.getElementById('forumSPA');
             if (!window.forum.container) {
                 console.error('🚨 ForumCore: #forumSPA not found when reusing instance!');
             } else {
-                console.log('✅ ForumCore: Container reference updated');
             }
             return window.forum;
         }
@@ -41,7 +39,6 @@ class ForumCore {
         
         // 🔥 NEW: Add unique instance ID for debugging
         this._instanceId = Date.now() + Math.random().toString(36).substr(2, 9);
-        console.log(`🆔 ForumCore instance created: ${this._instanceId}`);
         
         // Initialize WebSocket manager
         this.websockets = new ForumWebSocketManager(this);
@@ -58,38 +55,29 @@ class ForumCore {
 
     // Public method to wait for initialization to complete
     async waitForInit() {
-        console.log('⏳ ForumCore: waitForInit() called, has promise:', !!this._initPromise);
         if (this._initPromise) {
-            console.log('⏳ ForumCore: Waiting for init promise...');
             await this._initPromise;
-            console.log('✅ ForumCore: Init promise resolved!');
         } else {
-            console.warn('⚠️ ForumCore: No init promise found!');
         }
     }
 
     attachToExistingSingletons() {
-        console.log('🔗 ForumCore: Attaching to existing singletons...');
         
         // Update ForumThreadSettings if it exists
         if (window.forumThreadSettings) {
             window.forumThreadSettings.attachForum(this);
-            console.log('✅ ForumCore: Attached to ForumThreadSettings');
         }
         
         // Update any other singletons that might need the forum reference
         if (window.forumNotificationManager) {
             window.forumNotificationManager.forum = this;
-            console.log('✅ ForumCore: Attached to ForumNotificationManager');
         }
         
         if (window.enhancedForumNotificationManager) {
             // If the enhanced notification manager needs forum reference
-            console.log('✅ ForumCore: Enhanced notification manager detected');
         }
     }
     async init() {
-        console.log('🔧 ForumCore: Starting init()...');
         try {
             // ✅ CRITICAL: Verify container exists before proceeding
             if (!this.container) {
@@ -99,30 +87,21 @@ class ForumCore {
                 if (!this.container) {
                     throw new Error('#forumSPA container not found');
                 }
-                console.log('✅ ForumCore: Found #forumSPA on retry');
             }
 
-            console.log('📥 ForumCore: Loading threads...');
             await this.loadThreads(this.currentTab);
-            console.log('✅ ForumCore: Threads loaded');
 
-            console.log('🎨 ForumCore: Rendering threads view...');
             this.renderThreadsView();
-            console.log('✅ ForumCore: Threads rendered');
 
             // Connect to global WebSocket
-            console.log('🔌 ForumCore: Connecting to WebSocket...');
             this.websockets.connectGlobalWebSocket();
             this.websockets.setupDebugTools();
 
             // 🔥 NEW: Set up notification manager integration
-            console.log('🔔 ForumCore: Setting up notification manager...');
             this.setupNotificationManagerIntegration();
 
-            console.log('🎯 ForumCore: Handling quick reply target...');
             this.handleQuickReplyTarget();
 
-            console.log('✅ ForumCore: Init complete!');
 
         } catch (error) {
             console.error('❌ ForumCore: Error initializing forum:', error);
@@ -136,7 +115,6 @@ class ForumCore {
         // Wait for notification manager to be available
         const checkNotificationManager = () => {
             if (window.enhancedForumNotificationManager) {
-                console.log('🔔 Setting up notification manager integration');
                 
                 // Set up the back button update callback
                 window.enhancedForumNotificationManager.backButtonUpdateCallback = (count) => {
@@ -147,7 +125,6 @@ class ForumCore {
                 const initialCount = window.enhancedForumNotificationManager.getTotalUnreadCount();
                 this.updateBackButtonBadge(initialCount);
                 
-                console.log('✅ Notification manager integration complete');
             } else {
                 // Try again in a bit
                 setTimeout(checkNotificationManager, 500);
@@ -548,20 +525,16 @@ class ForumCore {
         if (window.enhancedForumNotificationManager && 
             typeof window.enhancedForumNotificationManager.getTotalUnreadCount === 'function') {
             const count = window.enhancedForumNotificationManager.getTotalUnreadCount();
-            console.log(`🔔 Getting forum count from enhancedForumNotificationManager: ${count}`);
             return count;
         }
         if (window.BadgeManager && 
             typeof window.BadgeManager.getForumNotificationCount === 'function') {
             const count = window.BadgeManager.getForumNotificationCount();
-            console.log(`🔔 Getting forum count from BadgeManager: ${count}`);
             return count;
         }
         if (typeof this.forumNotificationCount === 'number') {
-            console.log(`🔔 Using instance forum count: ${this.forumNotificationCount}`);
             return this.forumNotificationCount;
         }
-        console.log(`🔔 No forum notification count found, defaulting to 0`);
         return 0;
     }
 
@@ -620,7 +593,6 @@ class ForumCore {
     }
 
     async initializeNewThreadModal() {
-        console.log('🔧 Initializing new thread modal...');
         
         // Ensure thread settings is available and has tier data
         if (window.forumThreadSettings) {
@@ -643,10 +615,8 @@ class ForumCore {
                 // Add change event listener
                 tierSelect.onchange = (e) => {
                     window.forumThreadSettings.updateTierDescription(e.target.value, 'newThreadTierDescription');
-                    console.log('🎯 Tier selected for new thread:', e.target.value);
                 };
                 
-                console.log('✅ New thread modal tier selector initialized');
             }
         }
     }
@@ -701,7 +671,6 @@ class ForumCore {
             }
             
             const thread = await response.json();
-            console.log('✅ Thread created:', thread);
             
             this.hideModal('newThreadModal');
             this.showToast('Discussion created successfully!');
@@ -730,7 +699,6 @@ class ForumCore {
             }
             
             const result = await response.json();
-            console.log('✅ Follow status updated:', result);
             
             // Update current thread if viewing it
             if (this.currentThread && this.currentThread.id === threadId) {
@@ -768,7 +736,6 @@ class ForumCore {
                 throw new Error('Failed to delete thread');
             }
             
-            console.log('✅ Thread deleted');
             this.showToast('Thread deleted successfully');
             
             // Navigate back to threads list
@@ -785,7 +752,6 @@ class ForumCore {
         const badge = document.getElementById('forumBackBadge');
         if (!badge) return;
         
-        console.log(`🔔 Updating back button badge to: ${count}`);
         
         if (count > 0) {
             badge.textContent = count > 99 ? '99+' : count;
@@ -804,7 +770,6 @@ class ForumCore {
             window.enhancedForumNotificationManager.backButtonUpdateCallback = (count) => {
                 this.updateBackButtonBadge(count);
             };
-            console.log('🔔 Registered with enhancedForumNotificationManager for badge updates');
             
             // Force an initial update
             setTimeout(() => {
@@ -817,7 +782,6 @@ class ForumCore {
             window.BadgeManager.forumBackButtonCallback = (count) => {
                 this.updateBackButtonBadge(count);
             };
-            console.log('🔔 Registered with BadgeManager for badge updates');
         }
     }
 
@@ -893,7 +857,6 @@ class ForumCore {
 
     
     handleThreadDeleted(data) {
-        console.log('🗑️ Thread deleted:', data.thread_id);
         
         this.threads = this.threads.filter(t => t.id !== data.thread_id);
         
@@ -945,12 +908,10 @@ class ForumCore {
             window.BadgeManager.updateBadges(count);
         }
         
-        console.log(`🔔 Updated forum notification count to: ${count}`);
     }
 
     // 🔥 ENHANCED: Better thread entry handling
     onThreadEntered(threadId) {
-        console.log(`👁️ User entered thread ${threadId} - clearing thread-specific notifications`);
         
         // Notify the notification manager immediately
         if (window.enhancedForumNotificationManager && 
@@ -1014,7 +975,6 @@ class ForumCore {
             if (window.enhancedForumNotificationManager) {
                 window.enhancedForumNotificationManager.currentThreadId = threadId;
                 window.enhancedForumNotificationManager.isInForum = true;
-                console.log(`🎯 Set enhanced manager currentThreadId to ${threadId}`);
             }
 
             // 🔥 ENHANCED: Notify that user entered this thread with immediate UI update
@@ -1090,7 +1050,6 @@ class ForumCore {
         if (window.BadgeManager) {
             window.BadgeManager.forumBackButtonCallback = null;
         }
-        console.log('🔔 Unregistered from notification update callbacks');
     }
     // ================== SCROLL MANAGEMENT ==================
 
@@ -1285,7 +1244,6 @@ class ForumCore {
             return;
         }
         
-        console.log('✅ Scroll-to-load initialized for container:', container);
         
         let scrollTimeout;
         
@@ -1325,7 +1283,6 @@ class ForumCore {
                 return;
             }
             
-            console.log(`🔄 Loading ${olderMessages.length} older messages before ID ${oldestMessageId}`);
             
             this.messages = [...olderMessages, ...this.messages];
             
@@ -1336,7 +1293,6 @@ class ForumCore {
             const scrollDifference = newScrollHeight - currentScrollHeight;
             container.scrollTop = currentScrollTop + scrollDifference;
             
-            console.log(`✅ Loaded ${olderMessages.length} older messages, maintained scroll position`);
             
         } catch (error) {
             console.error('Error loading older messages:', error);
@@ -1403,7 +1359,6 @@ class ForumCore {
         // Destroy WebSocket manager
         this.websockets.destroy();
         
-        console.log('🧹 ForumCore cleaned up');
     }
 
     // ================== PLACEHOLDER METHODS (implemented in other modules) ==================

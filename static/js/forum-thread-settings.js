@@ -15,7 +15,6 @@ class ForumThreadSettings {
         this.init();
     }
     attachForum(forumInstance) {
-        console.log('🔗 ForumThreadSettings: Attaching new ForumCore instance');
         this.forum = forumInstance;
         
         // Optional: Re-initialize if needed when new forum attaches
@@ -25,7 +24,6 @@ class ForumThreadSettings {
     }
 
     async init() {
-        console.log('🔧 ForumThreadSettings: Initializing...');
         
         // Wait for ForumCore to be available
         if (window.forum) {
@@ -49,7 +47,6 @@ class ForumThreadSettings {
                     retries++;
                     setTimeout(retryInit, 100);
                 } else {
-                    console.log('⚠️ ForumThreadSettings: Giving up on initial attachment, will wait for ForumCore to attach us');
                 }
             };
             setTimeout(retryInit, 100);
@@ -72,12 +69,7 @@ class ForumThreadSettings {
             if (userTierResponse.ok) {
                 this.userTierInfo = await userTierResponse.json();
             }
-            
-            console.log('✅ Tier data loaded:', {
-                availableTiers: this.availableTiers.length,
-                userTierInfo: this.userTierInfo
-            });
-            
+
         } catch (error) {
             console.error('Error loading tier data:', error);
         }
@@ -93,12 +85,10 @@ class ForumThreadSettings {
                 const priceText = tier.amount_cents > 0 ? ` ($${(tier.amount_cents / 100).toFixed(2)}+)` : '';
                 // Ensure we use tier.id and not empty string
                 const tierValue = tier.id || '';
-                console.log('🎯 Rendering tier option:', { id: tier.id, title: tier.title, value: tierValue });
                 return `<option value="${tierValue}" ${selected}>${tier.title}${priceText}</option>`;
             }).join('');
         }
         
-        console.log('✅ Tier selector rendered with', this.availableTiers?.length || 0, 'tiers');
         return options;
     }
     renderTierBadge(tierInfo) {
@@ -125,7 +115,6 @@ class ForumThreadSettings {
             }
             
             const result = await response.json();
-            console.log('✅ Thread tier updated:', result);
             
             // Refresh thread info
             if (this.forum.currentThread && this.forum.currentThread.id === threadId) {
@@ -164,7 +153,6 @@ class ForumThreadSettings {
             this.attachForum(forumInstance);
         }
         
-        console.log('🔧 Opening thread settings modal...');
 
         // Check if we have a current thread to update (guard AFTER attaching)
         if (!this.forum?.currentThread) {
@@ -192,7 +180,6 @@ class ForumThreadSettings {
     }
     // Updated method to handle cases with or without current thread
     populateThreadSettingsModal() {
-        console.log('🔍 Populating modal with thread:', this.forum?.currentThread || 'No current thread');
         
         // Set tier selection - handle different possible data structures
         const tierSelect = document.getElementById('settingsTier');
@@ -218,7 +205,6 @@ class ForumThreadSettings {
                 }
             }
             
-            console.log('🔍 Setting tier select to:', currentTierId);
             
             // Set the select value (defaults to free if no tier)
             tierSelect.value = currentTierId || '';
@@ -249,7 +235,6 @@ class ForumThreadSettings {
             form.onsubmit = (e) => this.handleUpdateThread(e);
         }
         
-        console.log('✅ Modal populated successfully');
     }
 
     attachFormHandler() {
@@ -262,11 +247,9 @@ class ForumThreadSettings {
     updateTierDescription(tierId, descriptionId = 'tierDescription') {
         const descriptionEl = document.getElementById(descriptionId);
         if (!descriptionEl) {
-            console.warn('⚠️ Tier description element not found:', descriptionId);
             return;
         }
         
-        console.log('🔍 Updating tier description for:', tierId);
         
         if (!tierId || tierId === '') {
             descriptionEl.textContent = 'Anyone can access this discussion';
@@ -279,11 +262,9 @@ class ForumThreadSettings {
             const description = tier.description || `${tier.title} members and above can access`;
             descriptionEl.textContent = description;
             descriptionEl.className = 'tier-description restricted';
-            console.log('✅ Tier description updated:', description);
         } else {
             descriptionEl.textContent = 'Tier access required';
             descriptionEl.className = 'tier-description restricted';
-            console.warn('⚠️ Tier not found for ID:', tierId);
         }
     }
     // ================== THREAD MANAGEMENT ==================
@@ -320,7 +301,6 @@ class ForumThreadSettings {
                 throw new Error('Failed to update thread');
             }
             
-            console.log('✅ Thread updated');
             
             this.forum.hideModal('threadSettingsModal');
             this.forum.showToast('Thread settings updated successfully!');
@@ -342,7 +322,6 @@ class ForumThreadSettings {
     // ================== WEBSOCKET EVENT HANDLER ==================
 
     handleThreadUpdate(data) {
-        console.log('🔄 Thread update received:', data);
         
         if (this.forum.currentThread && this.forum.currentThread.id === data.thread_id) {
             // Update the local thread data with new settings
@@ -406,7 +385,6 @@ ForumCore.prototype.getThreadSettings = function() {
 // Initialize the thread settings module
 document.addEventListener('DOMContentLoaded', () => {
     window.forumThreadSettings = new ForumThreadSettings();
-    console.log('✅ Forum Thread Settings module loaded');
     
     // If forum already exists, attach immediately
     if (window.forum) {

@@ -9,11 +9,14 @@
 {% block page_css %}
 {{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/player.css') }}">
+
+<!-- Resource hints for critical HLS playlist -->
+<link rel="preconnect" href="{{ request.url.scheme }}://{{ request.url.netloc }}">
+<link rel="dns-prefetch" href="{{ request.url.scheme }}://{{ request.url.netloc }}">
 {% endblock %}
 
 {% block inline_css %}
 {{ super() }}
-<!-- ✅ Single source of truth: All player CSS in /static/css/player.css -->
 {% endblock %}
 
 {% block content %}
@@ -52,21 +55,17 @@
     "stream_config": {{ stream_config | tojson }}
 }
 </script>
-<!-- ✅ FIXED: Minimal global variables for backwards compatibility -->
+<!-- Minimal global variables (async to prevent blocking) -->
 <script>
-  // ✅ Keep these for backwards compatibility with existing code
+  // Backwards compatibility globals
   window.currentTrackId = {{ track.id | tojson }};
   window.currentTrackTitle = {{ track.title | tojson }};
   window.currentAlbumTitle = {{ album.title | tojson }};
   window.currentAlbumCoverPath = {{ album.cover_path | tojson }};
   window.currentTrackFilePath = {{ track.file_path | tojson }};
   window.currentAlbumId = {{ album.id | tojson }};
-  
-  // ✅ FIXED: Track info for voice extension
   window.currentTrackType = {{ track.track_type | tojson }};
-  // ✅ REMOVED: Don't set global currentVoice - let voice extension handle it
 
-  // ✅ FIXED: User data for per-user storage
   window.currentUserData = {
     id: {{ user.id | tojson }},
     username: {{ user.username | tojson }},
@@ -74,52 +73,50 @@
     is_creator: {{ user.is_creator | tojson }},
     is_team: {{ user.is_team | tojson }}
   };
-  
-  // ✅ NEW: Structured data access for voice extension
+
+  // Structured data placeholders (loaded async)
   window.trackData = null;
   window.userData = null;
-  
-  // ✅ Load structured data from JSON
-  document.addEventListener('DOMContentLoaded', function() {
-    try {
-        const playerDataElement = document.getElementById('player-data');
-        if (playerDataElement) {
-            const data = JSON.parse(playerDataElement.textContent);
-            window.trackData = data.track;
-            window.userData = data.user;
-            window.albumData = data.album; // ✅ This must include ordered_track_ids
-            window.streamConfigData = data.stream_config;
-            
-            console.log('✅ Loaded track data:', window.trackData);
-            console.log('✅ Loaded album data:', window.albumData);
-            console.log('✅ Track order:', window.albumData?.ordered_track_ids);
-        }
-    } catch (e) {
-        console.error('❌ Failed to parse player data:', e);
-        // Fallback data
-        window.trackData = {
-            id: {{ track.id | tojson }},
-            track_type: {{ track.track_type | tojson }},
-            default_voice: {{ (track.default_voice or 'en-US-AvaNeural') | tojson }},
-            current_voice: {{ (track.current_voice or track.default_voice or 'en-US-AvaNeural') | tojson }}
-        };
-        window.userData = {
-            id: {{ user.id | tojson }},
-            username: {{ user.username | tojson }}
-        };
-        window.albumData = {
-            id: {{ album.id | tojson }},
-            ordered_track_ids: {{ album.ordered_track_ids | default([]) | tojson }}
-        };
-    }
-});
+  window.albumData = null;
+  window.streamConfigData = null;
+</script>
 
-  // ✅ REMOVED: Body class now managed by PlayerController mount/destroy for proper cleanup
-  // document.body.classList.add('player-page');
+<!-- Parse structured data asynchronously -->
+<script defer>
+  try {
+    const playerDataElement = document.getElementById('player-data');
+    if (playerDataElement) {
+      const data = JSON.parse(playerDataElement.textContent);
+      window.trackData = data.track;
+      window.userData = data.user;
+      window.albumData = data.album;
+      window.streamConfigData = data.stream_config;
+
+      console.log('[Player Data] Track loaded:', window.trackData);
+      console.log('[Player Data] Album loaded:', window.albumData);
+    }
+  } catch (e) {
+    console.error('[Player Data] Parse failed:', e);
+    // Fallback data
+    window.trackData = {
+      id: {{ track.id | tojson }},
+      track_type: {{ track.track_type | tojson }},
+      default_voice: {{ (track.default_voice or 'en-US-AvaNeural') | tojson }},
+      current_voice: {{ (track.current_voice or track.default_voice or 'en-US-AvaNeural') | tojson }}
+    };
+    window.userData = {
+      id: {{ user.id | tojson }},
+      username: {{ user.username | tojson }}
+    };
+    window.albumData = {
+      id: {{ album.id | tojson }},
+      ordered_track_ids: {{ album.ordered_track_ids | default([]) | tojson }}
+    };
+  }
 </script>
 
 <div class="player-container">
-    <div class="player-background" style="background-image: url('{{ album.cover_path }}')"></div>
+    <div class="player-background" data-bg-image="{{ album.cover_path }}"></div>
 
     <div class="player-header">
         <a href="/album/{{ album.id }}" class="back-btn" data-spa-href="/album/{{ album.id }}">
@@ -129,7 +126,7 @@
     </div>
 
     <div class="player-content">
-        <img src="{{ album.cover_path }}" alt="{{ album.title }}" class="album-art">
+        <img src="{{ album.cover_path }}" alt="{{ album.title }}" class="album-art" loading="lazy" decoding="async" fetchpriority="low">
 
         <div class="track-info">
             <h1 class="track-title">{{ track.title }}</h1>
@@ -518,23 +515,31 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/comment-system.js') }}"></script>
-<script src="{{ url_for('static', path='/js/ReadAlongUI.js') }}"></script>
-<script src="{{ url_for('static', path='/js/ReadAlongContent.js') }}"></script>
-<script src="{{ url_for('static', path='/js/ReadAlongCore.js') }}"></script>
+<script defer src="{{ url_for('static', path='/js/comment-system.js') }}"></script>
+<script defer src="{{ url_for('static', path='/js/ReadAlongUI.js') }}"></script>
+<script defer src="{{ url_for('static', path='/js/ReadAlongContent.js') }}"></script>
+<script defer src="{{ url_for('static', path='/js/ReadAlongCore.js') }}"></script>
 
-<!-- ✅ SSR Initialization Script (following team pattern) -->
+<!-- SSR Initialization Script -->
 <script type="module">
 import { PlayerController } from '{{ url_for("static", path="/js/player-shared-spa.js") }}';
 
+// Lazy load background image to prevent blocking critical path
+const bgElement = document.querySelector('.player-background');
+if (bgElement && bgElement.dataset.bgImage) {
+    requestIdleCallback(() => {
+        bgElement.style.backgroundImage = `url('${bgElement.dataset.bgImage}')`;
+    }, { timeout: 1000 });
+}
+
 // Initialize in SSR mode on page load
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🎵 Player SSR: Initializing controller...');
+    console.log('[Player SSR] Initializing controller...');
     const playerController = new PlayerController('ssr');
     window.playerController = playerController;
 
     await playerController.mount();
-    console.log('✅ Player SSR: Controller mounted and ready');
+    console.log('[Player SSR] Controller mounted and ready');
 });
 
 // Clean up on page unload

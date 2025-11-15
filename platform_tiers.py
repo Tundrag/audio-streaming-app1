@@ -23,31 +23,8 @@ platform_router = APIRouter(
 # Platform types enum - now we can reference these from the model
 PLATFORM_TYPES = ["PATREON", "KOFI"]
 
-# Define the verify_role_permission function directly here instead of importing it
-def verify_role_permission(allowed_roles: List[str]):
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(
-            *args,
-            current_user: User = Depends(login_required),
-            **kwargs
-        ):
-            # Get user permissions
-            if current_user.role.value.lower() not in [r.lower() for r in allowed_roles]:
-                raise HTTPException(
-                    status_code=403,
-                    detail={
-                        "message": "Access denied",
-                        "required_roles": allowed_roles,
-                        "current_role": current_user.role.value
-                    }
-                )
-
-            return await func(*args, current_user=current_user, **kwargs)
-        return wrapper
-    return decorator
-
-# Need to import wraps here after defining the decorator that uses it
+# Import verify_role_permission from centralized permissions module
+from permissions import verify_role_permission
 from functools import wraps
 
 @platform_router.get("/tiers")

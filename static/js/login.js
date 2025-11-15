@@ -1209,15 +1209,13 @@ let isOnline = navigator.onLine;
 window.addEventListener('online', function() {
   if (!isOnline) {
     isOnline = true;
-    console.log('✅ Connection restored');
-    // Optionally show a success message
+    // Connection restored - no console spam on phone unlock
   }
 });
 
 window.addEventListener('offline', function() {
   if (isOnline) {
     isOnline = false;
-    console.log('❌ Connection lost');
     showError('Connection lost. Please check your internet connection.');
   }
 });

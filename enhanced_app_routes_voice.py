@@ -19,10 +19,11 @@ import json
 # Import everything - FIXED: Removed TrackLike, TrackShare (don't exist in models)
 from database import get_db, get_async_db
 from models import (
-    Track, Album, User, PlaybackProgress, Comment, UserSession, UserRole, 
+    Track, Album, User, PlaybackProgress, Comment, UserSession, UserRole,
     AvailableVoice, TTSWordTiming, TTSTextSegment
 )
 from auth import login_required
+from authorization_service import AuthorizationService
 from storage import storage
 from hls_streaming import stream_manager
 from duration_manager import duration_manager
@@ -73,67 +74,36 @@ async def _file_iter(path: Path, chunk_size: int = 64 * 1024):
 # HELPER FUNCTIONS
 # ========================================
 
-def get_user_permissions(user):
-    """Get user permissions"""
-    return {
-        "can_comment": True,
-        "can_like": True,
-        "can_share": True,
-        "can_create": user.is_creator or user.is_team,
-        "can_edit": user.is_creator or user.is_team,
-        "can_delete": user.is_creator
-    }
-
-def check_tier_access(track: Track, current_user: User) -> tuple[bool, str]:
+def append_token_to_playlist(playlist_content: str, token: str, is_master: bool = True) -> str:
     """
-    Check if user has sufficient tier level to access track.
-    Returns (has_access, error_message)
+    Append grant token to playlist URLs.
 
-    Security: This prevents users from bypassing frontend checks by directly
-    requesting HLS segments, playlists, or master files.
+    For master playlist: Adds token to variant playlist URLs
+    For variant playlist: Adds token to segment URLs
     """
-    # Creator and team bypass all restrictions
-    if current_user.is_creator or current_user.is_team:
-        return True, ""
+    if not token:
+        return playlist_content
 
-    # Get album restrictions
-    album = track.album
-    if not album:
-        return True, ""
+    lines = playlist_content.split('\n')
+    modified_lines = []
 
-    restrictions = album.tier_restrictions
+    for line in lines:
+        if is_master and line.endswith('.m3u8'):
+            # Add token to variant playlist URLs
+            separator = '?' if '?' not in line else '&'
+            modified_lines.append(f"{line}{separator}token={token}")
+        elif not is_master and line.endswith('.ts'):
+            # Add token to segment URLs
+            separator = '?' if '?' not in line else '&'
+            modified_lines.append(f"{line}{separator}token={token}")
+        else:
+            modified_lines.append(line)
 
-    # If no restrictions or not explicitly restricted, grant access
-    if not restrictions or restrictions.get("is_restricted") is not True:
-        return True, ""
+    return '\n'.join(modified_lines)
 
-    # Get required tier info for error message
-    required_tier = restrictions.get("minimum_tier", "").strip()
-    tier_message = f"the {required_tier} tier or above" if required_tier else "a higher tier subscription"
 
-    # Get user's tier data
-    tier_data = current_user.patreon_tier_data if current_user.patreon_tier_data else {}
-    user_amount = tier_data.get("amount_cents", 0)
-    required_amount = restrictions.get("minimum_tier_amount", 0)
-
-    # Check Patreon, Ko-fi, and guest trial users
-    if (current_user.is_patreon or current_user.is_kofi or current_user.is_guest_trial) and tier_data:
-        # Simple amount check
-        if user_amount >= required_amount:
-            return True, ""
-
-        # Special case for Ko-fi users with donations
-        if current_user.is_kofi and tier_data.get('has_donations', False):
-            donation_amount = tier_data.get('donation_amount_cents', 0)
-            total_amount = user_amount + donation_amount
-
-            if total_amount >= required_amount:
-                return True, ""
-
-    # Access denied
-    error_msg = f"This content requires {tier_message}"
-    logger.warning(f"Tier access denied for user {current_user.email} on track {track.id}: {error_msg}")
-    return False, error_msg
+# Permission functions now imported from centralized permissions.py
+from permissions import get_simple_user_permissions as get_user_permissions, check_tier_access
 
 def _update_session_sync(session_id: str):
     """Pure sync function - runs in thread pool"""
@@ -165,8 +135,24 @@ async def update_session_activity(request: Request):
     except Exception as e:
         logger.error(f"Session activity error: {e}")
 
+# 🚀 PERFORMANCE: In-memory cache for voices (avoids DB query on every request)
+_voices_cache = {"voices": [], "expires_at": 0}
+_VOICES_CACHE_TTL = 5.0  # 5 seconds
+
+# 🚀 PERFORMANCE: In-memory cache for track metadata (avoids DB query on every segment)
+_track_cache = {}  # {track_id: {"track": Track, "expires_at": float}}
+_TRACK_CACHE_TTL = 10.0  # 10 seconds
+
 async def get_available_voices_from_db_async() -> List[str]:
-    """Get available voices from database - fully async - FIXED: Removed manual close"""
+    """Get available voices from database - CACHED for 5 seconds to avoid repeated DB hits"""
+    global _voices_cache
+
+    # Check cache
+    now = time.time()
+    if now < _voices_cache["expires_at"] and _voices_cache["voices"]:
+        return _voices_cache["voices"]
+
+    # Cache miss - fetch from DB
     try:
         async for db in get_async_db():
             try:
@@ -176,16 +162,21 @@ async def get_available_voices_from_db_async() -> List[str]:
                     )
                 )
                 voices = result.scalars().all()
-                return list(voices)
+                voices_list = list(voices)
+
+                # Update cache
+                _voices_cache["voices"] = voices_list
+                _voices_cache["expires_at"] = now + _VOICES_CACHE_TTL
+
+                return voices_list
             except Exception as e:
                 logger.error(f"Error fetching voices from DB: {e}")
-                return []
+                return _voices_cache["voices"] if _voices_cache["voices"] else []
             finally:
-                # FIXED: Don't manually close - generator handles it
                 pass
     except Exception as e:
         logger.error(f"Error in get_available_voices_from_db_async: {e}")
-        return []
+        return _voices_cache["voices"] if _voices_cache["voices"] else []
 
 def get_available_voices_from_db(db: Session) -> List[str]:
     """Get available voices - sync version for compatibility"""
@@ -282,6 +273,18 @@ async def serve_hls_master(
             logger.warning(f"Master playlist access denied for track {track_id}: {error_msg}")
             raise HTTPException(status_code=403, detail=error_msg)
 
+        # Generate grant token for this track
+        session_id = request.cookies.get("session_id")
+        grant_token = None
+        if session_id:
+            grant_token = AuthorizationService.create_grant_token(
+                session_id=session_id,
+                track_id=track_id,
+                voice_id=voice_id,  # Will be None for regular audio
+                content_version=track.content_version or 1,
+                user_id=current_user.id
+            )
+
         # Play recording
         user_agent = request.headers.get('User-Agent', '')
         is_hls_request = any(keyword in user_agent.lower() for keyword in ['hls', 'avplayer', 'mediaplayer'])
@@ -340,7 +343,9 @@ async def serve_hls_master(
                     is_complete = await stream_manager._is_playlist_complete(master_playlist_path)
                     if is_complete:
                         content = await async_read_file(master_playlist_path)
-                        
+                        # Add token to playlist URLs
+                        content = append_token_to_playlist(content, grant_token, is_master=True)
+
                         headers = {
                             'Content-Type': 'application/vnd.apple.mpegurl',
                             'Access-Control-Allow-Origin': '*',
@@ -481,7 +486,9 @@ async def serve_hls_master(
             if await async_exists(master_playlist_path):
                 try:
                     content = await async_read_file(master_playlist_path)
-                    
+                    # Add token to playlist URLs
+                    content = append_token_to_playlist(content, grant_token, is_master=True)
+
                     headers = {
                         'Content-Type': 'application/vnd.apple.mpegurl',
                         'Access-Control-Allow-Origin': '*',
@@ -538,6 +545,8 @@ async def serve_hls_master(
             # Serve newly created playlist
             try:
                 content = await async_read_file(master_playlist_path)
+                # Add token to playlist URLs
+                content = append_token_to_playlist(content, grant_token, is_master=True)
             except Exception as e:
                 logger.error(f"Error reading master playlist: {e}")
                 raise HTTPException(status_code=500, detail="Error reading playlist")
@@ -614,6 +623,20 @@ async def serve_variant_playlist(
             logger.warning(f"Playlist access denied for track {track_id}: {error_msg}")
             raise HTTPException(status_code=403, detail=error_msg)
 
+        # Get or validate grant token for segments
+        token = request.query_params.get('token') or request.headers.get('X-Grant-Token')
+        if not token:
+            # Generate token if not provided (for backward compatibility)
+            session_id = request.cookies.get("session_id")
+            if session_id:
+                token = AuthorizationService.create_grant_token(
+                    session_id=session_id,
+                    track_id=track_id,
+                    voice_id=voice_id,
+                    content_version=track.content_version or 1,
+                    user_id=current_user.id
+                )
+
         # Handle track type
         track_type = getattr(track, 'track_type', 'audio')
         
@@ -644,7 +667,10 @@ async def serve_variant_playlist(
         if await async_exists(playlist_path):
             try:
                 content = await async_read_file(playlist_path)
-                
+                # Add token to segment URLs
+                if token:
+                    content = append_token_to_playlist(content, token, is_master=False)
+
                 headers = {
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -730,6 +756,9 @@ async def serve_variant_playlist(
         # Serve newly created
         try:
             content = await async_read_file(playlist_path)
+            # Add token to segment URLs
+            if token:
+                content = append_token_to_playlist(content, token, is_master=False)
         except Exception as e:
             logger.error(f"Error reading variant playlist {playlist_path}: {str(e)}")
             raise HTTPException(status_code=500, detail="Error reading playlist")
@@ -795,33 +824,66 @@ async def serve_segment(
         skip_activity = request.headers.get('X-No-Activity-Update') == 'true'
 
         # Get track
+        perf_db_start = time.perf_counter()
         track = db.query(Track).filter(Track.id == track_id).first()
+        perf_db = (time.perf_counter() - perf_db_start) * 1000
         if not track:
             raise HTTPException(status_code=404, detail="Track not found")
+        log_segment_event("track-loaded", f"dbQuery={perf_db:.1f}ms")
 
-        # ✅ SECURITY: Verify tier access on segment requests
-        # Note: This check runs on every .ts segment request (~60 times per track)
-        # Consider implementing token-based auth (see access_control_plan.md) to reduce DB load
-        has_access, error_msg = check_tier_access(track, current_user)
-        if not has_access:
-            logger.warning(f"Segment access denied for track {track_id} segment {segment_id}: {error_msg}")
-            raise HTTPException(status_code=403, detail=error_msg)
+        # ✅ SECURITY: Token-based auth for segment requests
+        # Try token validation first to avoid DB hits on every segment
+        token = request.query_params.get('token') or request.headers.get('X-Grant-Token')
+
+        perf_auth_start = time.perf_counter()
+        if token:
+            # Validate token (no DB hit!)
+            is_valid, reason = AuthorizationService.validate_grant_token(
+                token=token,
+                track_id=track_id,
+                voice_id=voice_id,
+                current_content_version=track.content_version or 1
+            )
+
+            if is_valid:
+                # Token is valid, skip tier check
+                logger.debug(f"Segment access granted via token for track {track_id} segment {segment_id}")
+            else:
+                # Token invalid, fall back to full check
+                logger.debug(f"Token validation failed: {reason}, falling back to tier check")
+                has_access, error_msg = check_tier_access(track, current_user)
+                if not has_access:
+                    logger.warning(f"Segment access denied for track {track_id} segment {segment_id}: {error_msg}")
+                    raise HTTPException(status_code=403, detail=error_msg)
+        else:
+            # No token provided, use traditional tier check (for backwards compatibility)
+            has_access, error_msg = check_tier_access(track, current_user)
+            if not has_access:
+                logger.warning(f"Segment access denied for track {track_id} segment {segment_id}: {error_msg}")
+                raise HTTPException(status_code=403, detail=error_msg)
+        perf_auth = (time.perf_counter() - perf_auth_start) * 1000
 
         # Determine segment path
         track_type = getattr(track, 'track_type', 'audio')
-        
+
         if track_type == 'tts':
             if not voice_id:
                 voice_id = track.default_voice
-            
+
             # Validate voice
+            perf_voice_start = time.perf_counter()
             available_voices = await get_available_voices_from_db_async()
             if voice_id not in available_voices:
                 voice_id = track.default_voice
-            
+            perf_voice = (time.perf_counter() - perf_voice_start) * 1000
+
             # Track voice access
+            perf_tracker_start = time.perf_counter()
             from voice_cache_manager import voice_access_tracker
             voice_access_tracker.record_segment_access(track_id, voice_id, segment_id)
+            perf_tracker = (time.perf_counter() - perf_tracker_start) * 1000
+
+            log_segment_event("voice-validated", f"auth={perf_auth:.1f}ms voiceLookup={perf_voice:.1f}ms tracker={perf_tracker:.1f}ms")
             
             voice_stream_dir = stream_manager.segment_dir / track_id / f"voice-{voice_id}"
             segment_path = voice_stream_dir / quality / f"segment_{segment_id}.ts"
@@ -832,8 +894,13 @@ async def serve_segment(
             segment_path = stream_dir / quality / f"segment_{segment_id}.ts"
 
         # FAST PATH: Serve if exists
+        perf_exists_start = time.perf_counter()
         if await async_exists(segment_path):
+            perf_exists = (time.perf_counter() - perf_exists_start) * 1000
+            perf_stat_start = time.perf_counter()
             segment_stat = await async_stat(segment_path)
+            perf_stat = (time.perf_counter() - perf_stat_start) * 1000
+
             if segment_stat.st_size > 0:
                 if is_keep_alive:
                     log_segment_event("keep-alive-hit")
@@ -845,6 +912,7 @@ async def serve_segment(
 
                 # Serve segment
                 segment_size = segment_stat.st_size
+                logger.info(f"[SEGMENT-Perf] File I/O - exists: {perf_exists:.1f}ms, stat: {perf_stat:.1f}ms")
                 headers = {
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -1294,18 +1362,19 @@ async def get_track_metadata(
         calibration_data = None
         if track_type == 'tts':
             available_voices = await get_available_voices_from_db_async()
-            
-            # Get all voice durations
-            all_voice_durations = await duration_manager.get_all_voice_durations(track_id, db)
-            
-            # Current voice duration
+
+            # ⚡ OPTIMIZED: Only get current voice duration, not all voices
+            # Frontend only needs the active voice duration on load
             current_voice_id = voice_id or track.default_voice
             current_voice_duration = duration
-            
-            if current_voice_id in all_voice_durations:
-                current_voice_duration = all_voice_durations[current_voice_id]
-                response_data["track"]["duration"] = current_voice_duration
-                response_data["hls"]["duration"] = current_voice_duration
+
+            # Get just the current voice duration if different from default
+            if current_voice_id:
+                voice_dur = await duration_manager.get_voice_duration(track_id, current_voice_id, db)
+                if voice_dur:
+                    current_voice_duration = voice_dur
+                    response_data["track"]["duration"] = current_voice_duration
+                    response_data["hls"]["duration"] = current_voice_duration
             
             # Get Plan B calibration
             if current_voice_id:
@@ -1335,13 +1404,6 @@ async def get_track_metadata(
                 "current_voice": current_voice_id,
                 "available_voices": available_voices,
                 "voice_source": "database",
-                "voice_durations": {
-                    voice: {
-                        "duration": dur,
-                        "formatted": duration_manager.format_duration(dur)
-                    }
-                    for voice, dur in all_voice_durations.items()
-                },
                 "current_voice_duration": {
                     "duration": current_voice_duration,
                     "formatted": duration_manager.format_duration(current_voice_duration)

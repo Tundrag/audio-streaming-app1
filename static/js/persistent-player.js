@@ -1,15 +1,29 @@
-// persistence.js – Voice-aware HLS audio player with version-aware cache busting and minimal UI noise
+/**
+ * @fileoverview Voice-aware HLS audio player with adaptive streaming, progress persistence,
+ * and database-driven voice preferences. Implements enterprise-grade HLS.js integration with
+ * performance monitoring, error recovery, and cross-device state synchronization.
+ *
+ * @requires hls.js - HLS.js library for adaptive bitrate streaming
+ * @version 2.0.0
+ */
 
 if (typeof Hls === 'undefined') {
   throw new Error('Hls.js is required for this player to function.');
 }
 
+/**
+ * Returns device-specific HLS buffer configuration optimized for audiobook listening.
+ * Aggressive buffering allows offline listening during commutes, tunnels, and screen-off usage.
+ *
+ * @returns {Object} HLS configuration with buffer lengths in seconds
+ */
 function getDeviceConfig() {
   const cores = navigator.hardwareConcurrency || 4;
   const isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent);
-  if (isMobile) return { maxBufferLength: 300, backBufferLength: 60, enableWorker: false };
-  if (cores <= 4) return { maxBufferLength: 480, backBufferLength: 90, enableWorker: true };
-  return { maxBufferLength: 720, backBufferLength: 120, enableWorker: true };
+  // Audiobook-optimized buffering: 1-2 hours for uninterrupted listening with screen off
+  if (isMobile) return { maxBufferLength: 3600, backBufferLength: 600, enableWorker: false };  // 60 min buffer
+  if (cores <= 4) return { maxBufferLength: 5400, backBufferLength: 900, enableWorker: true };   // 90 min buffer
+  return { maxBufferLength: 7200, backBufferLength: 1200, enableWorker: true };                  // 120 min buffer
 }
 
 /* ----------------------- Progress persistence ----------------------- */
@@ -203,6 +217,11 @@ class VoiceAwareDownloadManager {
         return { hasAccess: false, error: data.error?.message || 'This content requires a higher tier subscription', type: 'track_access' };
       }
       if (!trackRes.ok) return { hasAccess: false, error: 'Failed to verify track access', type: 'track_access' };
+
+      // Parse the response to get grant token
+      const trackData = await trackRes.json();
+      const grantToken = trackData.grant_token || null;
+
       if (albumId) {
         const albumRes = await fetch(`/api/albums/${encodeURIComponent(albumId)}/check-access`);
         if (albumRes.status === 403) {
@@ -210,7 +229,7 @@ class VoiceAwareDownloadManager {
           return { hasAccess: false, error: data.error?.message || 'This content requires a higher tier subscription', type: 'album_access' };
         }
       }
-      return { hasAccess: true };
+      return { hasAccess: true, grantToken };
     } catch { return { hasAccess: false, error: 'Error checking access permissions', type: 'network_error' }; }
   }
 
@@ -319,6 +338,7 @@ class PersistentPlayer {
     this.currentVoice = null;
     this.trackType = 'audio';
     this.currentTrackId = sessionStorage.getItem('currentTrackId') || null;
+    this.grantToken = null;  // Store grant token for HLS requests
     this.isPlayerPage = window.location.pathname.startsWith('/player/');
 
     this.trackMetadata = {
@@ -332,6 +352,12 @@ class PersistentPlayer {
 
     this.recoveryAttempts = 0;
     this.maxRecoveryAttempts = 5;
+
+    // Connection status tracking with audio feedback
+    this.connectionBeep = new Audio();
+    this.connectionBeep.volume = 0.3;
+    this.wasOffline = false;
+    this.connectionIndicator = null;
 
     this.networkMonitor = new NetworkMonitor();
     this.downloadManager = new VoiceAwareDownloadManager(this);
@@ -354,8 +380,156 @@ class PersistentPlayer {
     this.initializeElements();
     this.setupEventListeners();
     this.setupMiniPlayer();
+    this.setupMediaSession();
     this.progress = new PlaybackProgress(this);
     this.loadExistingState();
+  }
+
+  /**
+   * Setup Media Session API for lock screen controls.
+   * Provides track info and controls on mobile lock screens and system media controls.
+   */
+  setupMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+
+    // Register action handlers for lock screen controls
+    navigator.mediaSession.setActionHandler('play', () => this.audio.play());
+    navigator.mediaSession.setActionHandler('pause', () => this.audio.pause());
+    navigator.mediaSession.setActionHandler('seekbackward', (details) => this.seek(-(details.seekOffset || 15)));
+    navigator.mediaSession.setActionHandler('seekforward', (details) => this.seek(details.seekOffset || 15));
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime) this.audio.currentTime = details.seekTime;
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      const prevBtn = document.getElementById('prevTrackBtn');
+      if (prevBtn) prevBtn.click();
+    });
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      const nextBtn = document.getElementById('nextTrackBtn');
+      if (nextBtn) nextBtn.click();
+    });
+
+    // Update position state on playback rate change
+    this.audio.addEventListener('ratechange', () => {
+      if (!('setPositionState' in navigator.mediaSession)) return;
+      const duration = this.audio.duration;
+      const position = this.audio.currentTime;
+      const rate = this.audio.playbackRate;
+
+      if (Number.isFinite(duration) && duration > 0 &&
+          Number.isFinite(position) && position >= 0 &&
+          Number.isFinite(rate) && rate > 0) {
+        try {
+          navigator.mediaSession.setPositionState({ duration, playbackRate: rate, position: Math.min(position, duration) });
+        } catch {}
+      }
+    });
+
+    // Update position state when metadata loads
+    this.audio.addEventListener('loadedmetadata', () => {
+      if (!('setPositionState' in navigator.mediaSession)) return;
+      const duration = this.audio.duration;
+      const position = this.audio.currentTime;
+      const rate = this.audio.playbackRate;
+
+      if (Number.isFinite(duration) && duration > 0 &&
+          Number.isFinite(position) && position >= 0 &&
+          Number.isFinite(rate) && rate > 0) {
+        try {
+          navigator.mediaSession.setPositionState({ duration, playbackRate: rate, position: Math.min(position, duration) });
+        } catch {}
+      }
+    });
+
+    // Update position state when duration changes (HLS streams)
+    let lastReportedDuration = 0;
+    this.audio.addEventListener('durationchange', () => {
+      if (!('setPositionState' in navigator.mediaSession)) return;
+      const duration = this.audio.duration;
+      const position = this.audio.currentTime;
+      const rate = this.audio.playbackRate;
+
+      if (Math.abs(duration - lastReportedDuration) < 0.1) return;
+
+      if (Number.isFinite(duration) && duration > 0 &&
+          Number.isFinite(position) && position >= 0 &&
+          Number.isFinite(rate) && rate > 0) {
+        try {
+          navigator.mediaSession.setPositionState({ duration, playbackRate: rate, position: Math.min(position, duration) });
+          lastReportedDuration = duration;
+        } catch {}
+      }
+    });
+
+    // Update playback state on play
+    this.audio.addEventListener('play', () => {
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+    });
+
+    // Update position and playback state on pause
+    this.audio.addEventListener('pause', () => {
+      if (!('mediaSession' in navigator)) return;
+      if ('setPositionState' in navigator.mediaSession) {
+        const duration = this.audio.duration;
+        const position = this.audio.currentTime;
+        const rate = this.audio.playbackRate;
+
+        if (Number.isFinite(duration) && duration > 0 &&
+            Number.isFinite(position) && position >= 0 &&
+            Number.isFinite(rate) && rate > 0) {
+          try {
+            navigator.mediaSession.setPositionState({ duration, playbackRate: rate, position: Math.min(position, duration) });
+          } catch {}
+        }
+      }
+      navigator.mediaSession.playbackState = 'paused';
+    });
+
+    // Clear playback state on track end
+    this.audio.addEventListener('ended', () => {
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
+    });
+
+    // Update position after seek operations
+    this.audio.addEventListener('seeked', () => {
+      if (!('setPositionState' in navigator.mediaSession)) return;
+      const duration = this.audio.duration;
+      const position = this.audio.currentTime;
+      const rate = this.audio.playbackRate;
+
+      if (Number.isFinite(duration) && duration > 0 &&
+          Number.isFinite(position) && position >= 0 &&
+          Number.isFinite(rate) && rate > 0) {
+        try {
+          navigator.mediaSession.setPositionState({ duration, playbackRate: rate, position: Math.min(position, duration) });
+        } catch {}
+      }
+    });
+  }
+
+  /**
+   * Update Media Session metadata (track info on lock screen).
+   */
+  updateMediaSessionMetadata() {
+    if (!('mediaSession' in navigator)) return;
+
+    const title = this.trackMetadata.title || 'Unknown Track';
+    const artist = this.trackMetadata.album || 'Unknown Album';
+    const artwork = this.trackMetadata.coverPath || this.DEFAULT_COVER;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title,
+      artist: artist,
+      album: this.trackMetadata.album || '',
+      artwork: [
+        { src: artwork, sizes: '96x96', type: 'image/jpeg' },
+        { src: artwork, sizes: '128x128', type: 'image/jpeg' },
+        { src: artwork, sizes: '192x192', type: 'image/jpeg' },
+        { src: artwork, sizes: '256x256', type: 'image/jpeg' },
+        { src: artwork, sizes: '384x384', type: 'image/jpeg' },
+        { src: artwork, sizes: '512x512', type: 'image/jpeg' }
+      ]
+    });
   }
 
   setWordIndexProvider(providerFn) { this.wordIndexProvider = typeof providerFn === 'function' ? providerFn : null; }
@@ -367,11 +541,28 @@ class PersistentPlayer {
   getTrackDownloadStatus(trackId, voiceId = null) { return this.downloadManager.getDownloadStatus(trackId, voiceId); }
   cancelTrackDownload(trackId, voiceId = null) { this.downloadManager.cancelDownload(trackId, voiceId); }
 
+  /**
+   * Generates HLS master playlist URL with cache-busting and voice-aware routing.
+   * Voice preferences are database-driven; no client-side storage is consulted.
+   *
+   * @param {string} trackId - Unique track identifier
+   * @param {string|null} voice - Optional voice ID for TTS tracks
+   * @returns {string} Fully-qualified HLS master playlist URL with version parameter
+   */
   generateHlsUrl(trackId, voice = null) {
-    const voiceToUse = voice || sessionStorage.getItem(`voice_pref_${trackId}`) || this.currentVoice;
+    const voiceToUse = voice || this.currentVoice;
     const version = Number(this.trackMetadata?.content_version) || Number(this.trackMetadata?.cache_bust) || Date.now();
-    if (this.trackType === 'tts' && voiceToUse) return `/hls/${trackId}/voice/${voiceToUse}/master.m3u8?v=${version}`;
-    return `/hls/${trackId}/master.m3u8?v=${version}`;
+    let url;
+    if (this.trackType === 'tts' && voiceToUse) {
+      url = `/hls/${trackId}/voice/${voiceToUse}/master.m3u8?v=${version}`;
+    } else {
+      url = `/hls/${trackId}/master.m3u8?v=${version}`;
+    }
+    // Append grant token if available
+    if (this.grantToken) {
+      url += `&token=${encodeURIComponent(this.grantToken)}`;
+    }
+    return url;
   }
 
   async isVoiceAvailable(trackId, voiceId) {
@@ -386,6 +577,14 @@ class PersistentPlayer {
     } catch { return true; }
   }
 
+  /**
+   * Validates voice availability for track and resolves to fallback if unavailable.
+   * Voice validation is database-driven to ensure cached voices are used.
+   *
+   * @param {string} trackId - Unique track identifier
+   * @param {string|null} preferredVoice - Requested voice ID
+   * @returns {Promise<string>} Validated voice ID or default voice fallback
+   */
   async validateAndResolveVoice(trackId, preferredVoice) {
     if (!preferredVoice) {
       const def = this.trackMetadata?.defaultVoice || this.getTrackDefaultVoice();
@@ -396,7 +595,6 @@ class PersistentPlayer {
       const ok = await this.isVoiceAvailable(trackId, preferredVoice);
       if (ok) return preferredVoice;
       const def = this.trackMetadata?.defaultVoice || this.getTrackDefaultVoice();
-      sessionStorage.removeItem(`voice_pref_${trackId}`);
       return def;
     } catch {
       const def = this.trackMetadata?.defaultVoice || this.getTrackDefaultVoice();
@@ -534,7 +732,24 @@ class PersistentPlayer {
     const speedSelect = document.getElementById('speedSelect');
     if (speedSelect) speedSelect.addEventListener('change', (e) => this.setPlaybackSpeed(parseFloat(e.target.value)));
 
-    this.audio.addEventListener('timeupdate', () => { this.needsUI = true; });
+    // Simple stall detection: if playing but time not updating, recover
+    this.lastTimeUpdate = Date.now();
+    this.stallCheckInterval = setInterval(() => {
+      if (!this.audio.paused && !this.audio.ended && this.hls) {
+        const now = Date.now();
+        if (now - this.lastTimeUpdate > 5000) {
+          console.warn('[Player] Audio stalled, reloading stream...');
+          this.hls.stopLoad();
+          setTimeout(() => this.hls.startLoad(), 100);
+          this.lastTimeUpdate = now;
+        }
+      }
+    }, 3000);
+
+    this.audio.addEventListener('timeupdate', () => {
+      this.needsUI = true;
+      this.lastTimeUpdate = Date.now();
+    });
     const step = () => { if (this.needsUI) { this.updateProgress(); this.needsUI = false; } requestAnimationFrame(step); };
     requestAnimationFrame(step);
 
@@ -562,19 +777,31 @@ class PersistentPlayer {
     });
   }
 
+  /**
+   * Updates player metadata for the current track with locking to prevent race conditions.
+   * Preserves existing metadata when called with placeholder values during initialization.
+   *
+   * @param {string} trackId - Unique track identifier
+   * @param {string} title - Track title
+   * @param {string} album - Album name
+   * @param {string} coverPath - Path to cover artwork
+   * @param {string|null} voice - Voice ID for TTS tracks
+   * @param {string} trackType - Track type ('audio' or 'tts')
+   * @param {string|null} albumId - Album identifier
+   * @param {number|null} contentVersion - Content version for cache busting
+   */
   setTrackMetadata(trackId, title, album, coverPath, voice = null, trackType = 'audio', albumId = null, contentVersion = null) {
     if (this._voiceLock) return;
     this._voiceLock = true;
     try {
-      // ✅ Prevent overwriting good metadata with defaults if we're already playing this track
+      // Prevent overwriting existing metadata with placeholder values
       if (this.currentTrackId === trackId && this.trackMetadata.id === trackId) {
         if ((!title || title === 'Unknown Track') && this.trackMetadata.title && this.trackMetadata.title !== 'Unknown Track') {
-          return;  // Don't overwrite good metadata with "Unknown Track"
+          return;
         }
       }
 
-      const savedVoicePreference = sessionStorage.getItem(`voice_pref_${trackId}`);
-      const preferredVoice = savedVoicePreference || this.currentVoice || voice;
+      const preferredVoice = this.currentVoice || voice;
       const trackDefaultVoice = this.getTrackDefaultVoice();
       this.trackMetadata = {
         id: trackId,
@@ -591,11 +818,16 @@ class PersistentPlayer {
       this.currentVoice = preferredVoice;
       this.trackType = trackType || 'audio';
       this.saveTrackMetadata();
+      this.updateMediaSessionMetadata();
     } finally {
       this._voiceLock = false;
     }
   }
 
+  /**
+   * Persists track metadata to sessionStorage for page reload recovery.
+   * Voice preferences are excluded as they are database-driven.
+   */
   saveTrackMetadata() {
     if (this._isSaving || !this.trackMetadata.id) return;
     try {
@@ -608,27 +840,25 @@ class PersistentPlayer {
       };
       sessionStorage.setItem('trackMetadata', JSON.stringify(metadata));
       sessionStorage.setItem('currentTrackId', this.trackMetadata.id);
-      if (this.currentVoice) {
-        sessionStorage.setItem(`voice_pref_${this.trackMetadata.id}`, this.currentVoice);
-        sessionStorage.setItem('currentVoice', this.currentVoice);
-      }
       if (this.trackType) sessionStorage.setItem('trackType', this.trackType);
     } finally {
       this._isSaving = false;
     }
   }
 
+  /**
+   * Restores track metadata from sessionStorage after page reload.
+   * Voice preferences are loaded from database via player initialization.
+   *
+   * @returns {boolean} True if metadata was successfully loaded
+   */
   loadTrackMetadata() {
     try {
       const stored = sessionStorage.getItem('trackMetadata');
       if (!stored) return false;
       const metadata = JSON.parse(stored);
       if (!metadata.id) return false;
-      const savedVoice =
-        sessionStorage.getItem(`voice_pref_${metadata.id}`) ||
-        metadata.voice ||
-        sessionStorage.getItem('currentVoice') ||
-        this.getTrackDefaultVoice();
+      const savedVoice = metadata.voice || this.getTrackDefaultVoice();
       this.trackMetadata = {
         id: metadata.id,
         title: metadata.title || 'Unknown Track',
@@ -670,10 +900,6 @@ class PersistentPlayer {
       };
       sessionStorage.setItem(`playerState_${this.currentTrackId}`, JSON.stringify(state));
       sessionStorage.setItem('currentTrackId', this.currentTrackId);
-      if (this.currentVoice) {
-        sessionStorage.setItem('currentVoice', this.currentVoice);
-        sessionStorage.setItem(`voice_pref_${this.currentTrackId}`, this.currentVoice);
-      }
       const metadata = {
         ...this.trackMetadata,
         voice: this.currentVoice,
@@ -684,16 +910,39 @@ class PersistentPlayer {
     } finally { this._isSaving = false; }
   }
 
+  /**
+   * Attaches HLS.js event handlers for monitoring playback and error handling.
+   * Tracks segment loading performance and implements error recovery strategies.
+   *
+   * @param {Hls} hls - HLS.js instance to wire events for
+   */
   wireHlsEvents(hls) {
     if (!hls) return;
+
+    // Performance tracking for segment loading diagnostics
+    let firstFragLoadTime = null;
+    let manifestParsedTime = performance.now();
+
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      manifestParsedTime = performance.now();
+    });
+
     hls.on(Hls.Events.ERROR, (event, data) => this.handleHlsError(event, data));
+
     hls.on(Hls.Events.FRAG_LOADED, (_event, data) => {
       const s = data.stats;
+
+      // Track first segment load for performance monitoring
+      if (firstFragLoadTime === null && data.frag?.sn === 0) {
+        firstFragLoadTime = performance.now();
+      }
+
       if (s?.total && s?.trequest) {
         const bps = (s.total * 8) / ((s.tload - s.trequest) / 1000);
         if (Number.isFinite(bps)) this.networkMonitor.addBandwidthSample(bps);
       }
     });
+
     hls.on(Hls.Events.FRAG_CHANGED, (_evt, data) => {
       document.dispatchEvent(new CustomEvent('hlsFragChanged', { detail: { sn: data?.frag?.sn ?? null } }));
     });
@@ -752,7 +1001,15 @@ class PersistentPlayer {
     }
   }
 
-  /* ---------- Core init ---------- */
+  /**
+   * Initializes HLS stream for current track with validated voice and progress restoration.
+   * Destroys existing HLS instance, validates voice availability, and sets up new stream.
+   *
+   * @param {Object} opts - Configuration options
+   * @param {string} opts.voice - Optional voice override for TTS tracks
+   * @returns {Promise<void>}
+   * @throws {Error} If HLS initialization fails or times out
+   */
   async initializeTrackForPlayback(opts = {}) {
     if (!this.trackMetadata.id) return;
     const overrideVoice = opts.voice;
@@ -766,7 +1023,6 @@ class PersistentPlayer {
       if (resolvedVoice !== this.currentVoice) {
         this.currentVoice = resolvedVoice;
         if (this.voiceExtension) { this.voiceExtension.currentVoice = resolvedVoice; this.voiceExtension.updateVoiceButton?.(); }
-        sessionStorage.setItem(`voice_pref_${this.currentTrackId}`, resolvedVoice);
       }
 
       await this.refreshContentVersion(this.currentTrackId, this.trackType === 'tts' ? this.currentVoice : null);
@@ -790,7 +1046,7 @@ class PersistentPlayer {
         });
         if (startPosition > 0) {
           await new Promise(resolve => {
-            const t = setTimeout(resolve, 5000);
+            const t = setTimeout(resolve, 2000); // ✅ Reduced from 5s to 2s
             this.audio.addEventListener('loadedmetadata', () => { clearTimeout(t); this.audio.currentTime = startPosition; resolve(); }, { once: true });
           });
         }
@@ -803,7 +1059,7 @@ class PersistentPlayer {
         this.audio.src = hlsUrl;
         if (startPosition > 0) {
           await new Promise(resolve => {
-            const t = setTimeout(resolve, 8000);
+            const t = setTimeout(resolve, 3000); // ✅ Reduced from 8s to 3s
             this.audio.addEventListener('loadedmetadata', () => { clearTimeout(t); this.audio.currentTime = startPosition; resolve(); }, { once: true });
           });
         }
@@ -814,7 +1070,9 @@ class PersistentPlayer {
         if (savedState.isPlaying) { setTimeout(() => { this.audio.play().catch(()=>{}); }, 300); }
       }
 
-      if (navigator.onLine) { await this.checkAndStartProgressMonitoring(); }
+      // ✅ REMOVED: Segment progress check - only needed when HLS errors occur
+      // The HLS error handler (wireHlsEvents) will call checkAndStartProgressMonitoring()
+      // if fragments fail to load. No need to check preemptively.
     } catch (_) {
       // silent: keep UI minimal; play button spinner handles the feedback
     } finally {
@@ -828,10 +1086,8 @@ class PersistentPlayer {
       const savedTrackId = sessionStorage.getItem('currentTrackId');
       if (savedTrackId) {
         this.currentTrackId = savedTrackId;
-        this.currentVoice =
-          sessionStorage.getItem(`voice_pref_${savedTrackId}`) ||
-          sessionStorage.getItem('currentVoice') ||
-          this.getTrackDefaultVoice();
+        // ✅ DB-driven only: voice will be loaded from DB in player-shared-spa.js
+        this.currentVoice = this.getTrackDefaultVoice();
         this.trackType = sessionStorage.getItem('trackType') || 'audio';
         const savedState = JSON.parse(sessionStorage.getItem(`playerState_${savedTrackId}`) || '{}');
         if (savedState.title || savedState.album || savedState.coverPath) {
@@ -849,7 +1105,9 @@ class PersistentPlayer {
         }
       }
     }
-    if (this.currentTrackId && this.trackMetadata.id) {
+    // ✅ FIX: Skip initialization on player page - playTrack() will handle it
+    // This prevents duplicate HLS requests with different version parameters
+    if (this.currentTrackId && this.trackMetadata.id && !this.isPlayerPage) {
       this.showMiniPlayerLoading(true);
       this.initializeTrackForPlayback();
       this.updateMiniPlayerUI();
@@ -857,14 +1115,25 @@ class PersistentPlayer {
     }
   }
 
+  /**
+   * Loads and initializes track with HLS streaming, handling metadata, voice, and progress.
+   * Executes parallel network requests for optimal performance and validates access permissions.
+   *
+   * @param {string} trackId - Unique track identifier
+   * @param {string} title - Track title
+   * @param {string} album - Album name
+   * @param {string} coverPath - Path to cover artwork
+   * @param {boolean|null} shouldAutoPlay - Auto-play behavior (null = check saved state)
+   * @param {string|null} voice - Voice ID for TTS tracks
+   * @param {string} trackType - Track type ('audio' or 'tts')
+   * @param {string|null} albumId - Album identifier
+   * @returns {Promise<void>}
+   */
   async playTrack(trackId, title, album, coverPath, shouldAutoPlay = null, voice = null, trackType = 'audio', albumId = null) {
-    const perfStart = performance.now();
-    console.log(`[PlayerPerf] playTrack(${trackId}) start (voice=${voice || 'default'}, type=${trackType})`);
     try {
-      // ✅ OPTIMIZATION: Run all independent network requests in parallel
-      const parallelStart = performance.now();
-      const [metaData, progressData] = await Promise.all([
-        // Fetch metadata (also gets content_version, eliminating need for refreshContentVersion later)
+      // Parallel network requests for metadata and progress
+      const [metaData, progressData, accessCheck] = await Promise.all([
+        // Fetch track metadata including content version
         (async () => {
           const metaUrl = (trackType === 'tts' && (voice || this.currentVoice))
             ? `/api/tracks/${encodeURIComponent(trackId)}/voice/${encodeURIComponent(voice || this.currentVoice)}/metadata`
@@ -882,49 +1151,44 @@ class PersistentPlayer {
           } catch {
             return null;
           }
+        })(),
+        // Check access (only if online and not on player page)
+        (async () => {
+          if (navigator.onLine && !this.isPlayerPage) {
+            try {
+              return await this.checkAccess(trackId, albumId, voice || this.currentVoice);
+            } catch {
+              return { hasAccess: true }; // Fail open for network errors
+            }
+          }
+          return { hasAccess: true }; // Skip check if offline or on player page
         })()
       ]);
-      console.log(`[PlayerPerf] Parallel requests completed in ${(performance.now() - parallelStart).toFixed(1)}ms`);
 
       const contentVersion = metaData?.track?.content_version || null;
-
-      // ✅ Save the previous track ID BEFORE setTrackMetadata changes it
       const previousTrackId = this.currentTrackId;
 
       this.setTrackMetadata(trackId, title, album, coverPath, voice, trackType, albumId, contentVersion);
 
-      if (navigator.onLine && !this.isPlayerPage) {
-        console.log('🔍 [Access Check] Starting check for track:', trackId);
-        const accessStart = performance.now();
-        const accessCheck = await this.checkAccess(trackId, albumId, voice || this.currentVoice);
-        console.log('🔍 [Access Check] Result:', accessCheck, `(took ${(performance.now() - accessStart).toFixed(1)}ms)`);
-
-        if (!accessCheck.hasAccess) {
-          console.error('❌ Access check failed, exiting playTrack');
-          console.log('🔐 Access denied - attempting to show upgrade modal');
-          console.log('🔐 Error message:', accessCheck.error);
-          console.log('🔍 window.showUpgradeModal exists?', typeof window.showUpgradeModal);
-          console.log('🔍 upgradeAccessModal element exists?', !!document.getElementById('upgradeAccessModal'));
-          console.log('🔍 upgradeMessage element exists?', !!document.getElementById('upgradeMessage'));
-
-          // Show upgrade modal if available
-          if (typeof window.showUpgradeModal === 'function') {
-            console.log('✅ Calling window.showUpgradeModal...');
-            window.showUpgradeModal(accessCheck.error || 'This content requires a higher tier subscription');
-            console.log('✅ window.showUpgradeModal called');
-          } else {
-            console.warn('⚠️ showUpgradeModal not available, cannot show upgrade prompt');
-            console.log('🔍 Available window functions:', Object.keys(window).filter(k => k.includes('Modal') || k.includes('Upgrade')));
-          }
-          return;
+      // Handle access check result
+      if (accessCheck && !accessCheck.hasAccess) {
+        if (typeof window.showUpgradeModal === 'function') {
+          window.showUpgradeModal(accessCheck.error || 'This content requires a higher tier subscription');
         }
-        console.log('✅ [Access Check] Access granted');
+        return;
       }
 
-      // ✅ OPTIMIZATION: Start progress monitoring asynchronously (don't wait)
-      if (navigator.onLine) {
-        this.checkAndStartProgressMonitoring().catch(() => {});
+      // Store grant token for HLS requests
+      if (accessCheck && accessCheck.grantToken) {
+        this.grantToken = accessCheck.grantToken;
+        console.log('Grant token received for track:', trackId);
       }
+
+      // ✅ REMOVED: Unnecessary segment progress check on every playTrack
+      // Progress monitoring is only needed when:
+      // 1. HLS encounters fragment load errors (handled in wireHlsEvents)
+      // 2. Switching voices (handled in initializeTrackForPlayback)
+      // This eliminates wasteful API calls for already-cached tracks
 
       const savedState = JSON.parse(sessionStorage.getItem(`playerState_${trackId}`) || '{}');
       let shouldPlay = false;
@@ -934,7 +1198,7 @@ class PersistentPlayer {
       } else if (savedState.hasOwnProperty('isPlaying')) {
         shouldPlay = savedState.isPlaying;
       } else {
-        // ✅ When clicking a track explicitly (even if same track), always auto-play it
+        // Default to auto-play for explicit track selection
         shouldPlay = true;
       }
 
@@ -943,27 +1207,21 @@ class PersistentPlayer {
       this.audio.removeAttribute('src');
       this.audio.load();
 
-      // ✅ OPTIMIZATION: Use metadata from parallel fetch to validate voice (avoid extra API call)
+      // Validate voice using metadata to avoid additional API call
       let resolvedVoice = voice || this.currentVoice;
       if (trackType === 'tts' && metaData?.voice_info) {
         const availableVoices = metaData.voice_info.available_voices || [];
         const defaultVoice = metaData.voice_info.current_voice;
         if (resolvedVoice && !availableVoices.includes(resolvedVoice) && resolvedVoice !== defaultVoice) {
           resolvedVoice = defaultVoice || resolvedVoice;
-          sessionStorage.removeItem(`voice_pref_${trackId}`);
         }
       }
       if (resolvedVoice !== this.currentVoice) {
         this.currentVoice = resolvedVoice;
-        sessionStorage.setItem(`voice_pref_${trackId}`, resolvedVoice);
       }
 
-      // ✅ REMOVED: redundant refreshContentVersion - we already got this from metadata fetch above
-
-      // ✅ Use progress data from parallel fetch
+      // Use progress data from parallel fetch
       const pd2 = progressData;
-      console.log(`[PlayerPerf] Using cached progress data`);
-      // ✅ If track was completed, reset to beginning. Otherwise resume from saved position.
       const startPosition = (!pd2 || pd2.completed || pd2.position <= 0) ? 0 : pd2.position;
 
       this.updateMiniPlayerUI();
@@ -972,17 +1230,13 @@ class PersistentPlayer {
       this.progress.pauseSync();
 
       if (Hls.isSupported()) {
-        const hlsStart = performance.now();
         this.hls = new Hls(this.hlsConfig);
         this.wireHlsEvents(this.hls);
         await new Promise((resolve, reject) => {
-          this.hls.once(Hls.Events.MANIFEST_PARSED, () => {
-            console.log(`[PlayerPerf] HLS manifest parsed in ${(performance.now() - hlsStart).toFixed(1)}ms`);
-            resolve();
-          });
+          this.hls.once(Hls.Events.MANIFEST_PARSED, () => resolve());
           this.hls.once(Hls.Events.ERROR, (_evt, data) => {
             if (data.fatal) {
-              console.error('❌ HLS fatal error:', data);
+              console.error('HLS fatal error:', data);
               reject(new Error('HLS Fatal Error'));
             }
           });
@@ -998,20 +1252,16 @@ class PersistentPlayer {
         setTimeout(() => this.progress.resumeSync(), 500);
 
         if (shouldPlay) {
-          this.audio.play().catch(err => {
-            console.error('❌ Auto-play failed:', err);
-          });
+          this.audio.play().catch(() => {});
         }
         this.saveState();
         this.updatePlayerState();
       }
     } catch (error) {
-      console.error('❌ playTrack error:', error);
+      console.error('playTrack error:', error);
       this.progress.resumeSync();
-      console.log(`[PlayerPerf] playTrack(${trackId}) failed after ${(performance.now() - perfStart).toFixed(1)}ms`);
     } finally {
       this.showMiniPlayerLoading(false);
-      console.log(`[PlayerPerf] playTrack(${trackId}) total ${(performance.now() - perfStart).toFixed(1)}ms`);
     }
   }
 
@@ -1035,30 +1285,16 @@ class PersistentPlayer {
       if (navigator.onLine && !this.isPlayerPage) {
         this.showMiniPlayerLoading(true);
         try {
-          console.log('🔍 [Play Method] Checking access for track:', this.currentTrackId);
           const access = await this.checkAccess(this.currentTrackId, this.trackMetadata.albumId, this.currentVoice);
-          console.log('🔍 [Play Method] Access result:', access);
           this.showMiniPlayerLoading(false);
 
           if (!access.hasAccess) {
-            console.log('🔐 Play attempt blocked - attempting to show upgrade modal');
-            console.log('🔐 Error message:', access.error);
-            console.log('🔍 window.showUpgradeModal exists?', typeof window.showUpgradeModal);
-            console.log('🔍 upgradeAccessModal element exists?', !!document.getElementById('upgradeAccessModal'));
-
-            // Show upgrade modal if available
             if (typeof window.showUpgradeModal === 'function') {
-              console.log('✅ Calling window.showUpgradeModal from play()...');
               window.showUpgradeModal(access.error || 'This content requires a higher tier subscription');
-              console.log('✅ window.showUpgradeModal called from play()');
-            } else {
-              console.warn('⚠️ showUpgradeModal not available in play()');
             }
             return;
           }
-          console.log('✅ [Play Method] Access granted');
         } catch (err) {
-          console.error('❌ [Play Method] Error during access check:', err);
           this.showMiniPlayerLoading(false);
           return;
         }
@@ -1198,6 +1434,7 @@ class PersistentPlayer {
 
   handleHlsError(_event, data) {
     if (!data.fatal) return;
+
     if (data.type === Hls.ErrorTypes.NETWORK_ERROR &&
         (data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR ||
          data.details === Hls.ErrorDetails.FRAG_LOAD_TIMEOUT ||
@@ -1223,15 +1460,116 @@ class PersistentPlayer {
     this.reinitializeStream();
   }
 
+  /**
+   * Handles network connectivity changes with audio/visual feedback.
+   * Plays beep and shows indicator when connection drops or returns.
+   */
   async handleNetworkChange() {
     const isOnline = navigator.onLine;
-    if (isOnline) {
+
+    if (isOnline && this.wasOffline) {
+      // Connection restored - only show notification if we were offline for at least 2 seconds
+      const offlineDuration = Date.now() - (this.offlineTimestamp || 0);
+      if (offlineDuration >= 2000) {
+        this.playConnectionBeep(800, 150); // High-pitched beep for reconnect
+        this.showConnectionIndicator('Connection Restored', 'success');
+      }
+      this.wasOffline = false;
+      this.offlineTimestamp = null;
+
       await this.progress.processQueue();
       await this.refreshContentVersion(this.currentTrackId, this.trackType === 'tts' ? this.currentVoice : null);
       if (this.hls && this.currentTrackId && !this.audio.paused) this.reinitializeStream();
-    } else {
+    } else if (!isOnline && !this.wasOffline) {
+      // Connection lost
+      this.wasOffline = true;
+      this.offlineTimestamp = Date.now();
+      this.playConnectionBeep(400, 200); // Low-pitched beep for disconnect
+      this.showConnectionIndicator('Connection Lost - Buffering...', 'warning');
+
       await this.progress.syncProgress(true);
     }
+  }
+
+  /**
+   * Plays a synthesized beep using Web Audio API.
+   *
+   * @param {number} frequency - Beep frequency in Hz (400 = low, 800 = high)
+   * @param {number} duration - Beep duration in milliseconds
+   */
+  playConnectionBeep(frequency = 400, duration = 200) {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sine';
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + duration / 1000);
+    } catch (error) {
+      console.error('[Network] Beep failed:', error);
+    }
+  }
+
+  /**
+   * Shows a temporary connection status indicator.
+   *
+   * @param {string} message - Status message to display
+   * @param {string} type - Indicator type ('warning' or 'success')
+   */
+  showConnectionIndicator(message, type = 'warning') {
+    // Remove existing indicator if present
+    if (this.connectionIndicator) {
+      this.connectionIndicator.remove();
+      this.connectionIndicator = null;
+    }
+
+    const indicator = document.createElement('div');
+    indicator.className = `connection-indicator connection-indicator-${type}`;
+    indicator.innerHTML = `
+      <i class="fas fa-${type === 'warning' ? 'exclamation-triangle' : 'check-circle'}"></i>
+      <span>${message}</span>
+    `;
+    indicator.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: ${type === 'warning' ? 'rgba(255, 152, 0, 0.95)' : 'rgba(76, 175, 80, 0.95)'};
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 10000;
+      animation: slideInRight 0.3s ease-out;
+    `;
+
+    document.body.appendChild(indicator);
+    this.connectionIndicator = indicator;
+
+    // Auto-remove after delay (longer for warnings)
+    const removeDelay = type === 'warning' ? 10000 : 3000;
+    setTimeout(() => {
+      if (this.connectionIndicator === indicator) {
+        indicator.style.animation = 'slideOutRight 0.3s ease-in';
+        setTimeout(() => {
+          indicator.remove();
+          if (this.connectionIndicator === indicator) this.connectionIndicator = null;
+        }, 300);
+      }
+    }, removeDelay);
   }
 
   async reinitializeStream() {
@@ -1292,6 +1630,9 @@ class PersistentPlayer {
     }
 
     if (this.elements.playIcon) this.elements.playIcon.className = `fas ${this.audio.paused ? 'fa-play' : 'fa-pause'}`;
+
+    // Update media session metadata
+    this.updateMediaSessionMetadata();
   }
 
   showToast(message, type = 'info', duration = null) {

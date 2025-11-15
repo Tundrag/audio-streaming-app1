@@ -22,7 +22,6 @@ export class MyBookRequestsController {
 
     // ✅ For both modes: attach event listeners and initialize
     async mount() {
-        console.log(`📚 MyBookRequests: Mounting in ${this.mode} mode...`);
 
         if (this.mode === 'ssr') {
             // SSR: Read bootstrap data from DOM if available
@@ -47,7 +46,6 @@ export class MyBookRequestsController {
 
         this.initWebSocket();
 
-        console.log('✅ MyBookRequests: Mounted successfully');
     }
 
     // ✅ Read data from DOM (SSR mode)
@@ -59,7 +57,6 @@ export class MyBookRequestsController {
                 this.quota = data.quota || null;
                 this.bookRequests = data.requests || [];
                 this.organizeRequests();
-                console.log('📦 Hydrated book requests data from DOM');
             } catch (error) {
                 console.error('Error parsing bootstrap data:', error);
             }
@@ -122,7 +119,6 @@ export class MyBookRequestsController {
     }
 
     async destroy() {
-        console.log('📚 MyBookRequests: Destroying...');
         if (this.ws) {
             this.ws.close();
             this.ws = null;
@@ -579,7 +575,6 @@ export class MyBookRequestsController {
             this.ws = new WebSocket(wsUrl);
 
             this.ws.onopen = () => {
-                console.log('📚 Book Requests WebSocket connected');
             };
 
             this.ws.onmessage = (event) => {
@@ -601,7 +596,6 @@ export class MyBookRequestsController {
             };
 
             this.ws.onclose = () => {
-                console.log('📚 Book Requests WebSocket disconnected');
                 this.ws = null;
             };
         } catch (error) {
@@ -610,15 +604,12 @@ export class MyBookRequestsController {
     }
 
     async handleWebSocketMessage(data) {
-        console.log('📚 [SPA] WebSocket message received:', data.type);
 
         switch (data.type) {
             case 'book_request_update':
-                console.log('📚 [SPA] book_request_update - delegating to global WebSocket handler');
                 // ✅ FIX: Don't reload all data - let book-request-websocket.js handle card updates
                 // Only update if this is a NEW book request (created action)
                 if (data.action === 'created' && data.book_request) {
-                    console.log('📚 [SPA] New book request created, adding to list');
                     // Add the new request to our data
                     this.bookRequests.unshift(data.book_request);
                     // Re-organize and re-render
@@ -626,7 +617,6 @@ export class MyBookRequestsController {
                     this.renderRequests();
                     this.setupEventListeners();
                 } else {
-                    console.log('📚 [SPA] Status update - book-request-websocket.js will handle card update');
                     // For status updates, just update our local data without re-rendering
                     // (book-request-websocket.js already updated the DOM)
                     const index = this.bookRequests.findIndex(r => r.id === data.book_request?.id);
@@ -640,12 +630,10 @@ export class MyBookRequestsController {
                 }
                 break;
             case 'quota_update':
-                console.log('📚 [SPA] quota_update:', data.quota);
                 this.quota = data.quota;
                 this.renderSubmitForm();
                 break;
             case 'connected':
-                console.log('📚 WebSocket connected:', data.message);
                 break;
         }
     }

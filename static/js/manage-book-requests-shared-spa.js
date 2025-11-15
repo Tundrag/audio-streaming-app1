@@ -1,11 +1,9 @@
 // manage-book-requests-shared-spa.js - Universal controller for Manage Book Requests page (SSR and SPA modes)
 // Version: 2025-10-27-card-removal-fix
 
-console.log('📦 [Admin SPA] Loading manage-book-requests-shared-spa.js v2025-10-27-card-removal-fix');
 
 export class ManageBookRequestsController {
     constructor(mode = 'spa') {
-        console.log('🏗️ [Admin SPA] Constructor called in', mode, 'mode');
         this.mode = mode; // 'ssr' or 'spa'
         this.bookRequests = [];
         this.availableMonths = [];
@@ -29,7 +27,6 @@ export class ManageBookRequestsController {
 
     // ✅ For both modes: attach event listeners and initialize
     async mount() {
-        console.log(`📚 ManageBookRequests: Mounting in ${this.mode} mode...`);
 
         if (this.mode === 'ssr') {
             // SSR: Read bootstrap data from DOM if available
@@ -69,7 +66,6 @@ export class ManageBookRequestsController {
         // ✅ Clear badge when page is opened (mark as "viewed")
         this.clearBookRequestBadge();
 
-        console.log('✅ ManageBookRequests: Mounted successfully');
     }
 
     // ✅ Read data from DOM (SSR mode)
@@ -85,7 +81,6 @@ export class ManageBookRequestsController {
                     this.requestsByMonth = this.bootstrapData.requests_by_month || {};
                     this.activeMonth = this.bootstrapData.active_month || '';
                     this.activeStatus = this.bootstrapData.active_status || '';
-                    console.log('📦 Hydrated manage-book-requests data from DOM');
 
                     // Render immediately with hydrated data
                     this.renderAll();
@@ -231,7 +226,6 @@ export class ManageBookRequestsController {
     async loadData(forceReload = false) {
         // Skip if we already have hydrated data unless a reload was requested
         if (!forceReload && this.bookRequests.length > 0 && this.mode === 'ssr') {
-            console.log('✅ Using hydrated book requests data');
             return;
         }
 
@@ -831,7 +825,6 @@ export class ManageBookRequestsController {
             this.ws = new WebSocket(wsUrl);
 
             this.ws.onopen = () => {
-                console.log('📚 Book Requests WebSocket connected (admin)');
             };
 
             this.ws.onmessage = (event) => {
@@ -840,7 +833,6 @@ export class ManageBookRequestsController {
                     return;
                 }
 
-                console.log('🔌 [Admin SPA] Raw WebSocket message received:', event.data.substring(0, 200));
 
                 try {
                     const data = JSON.parse(event.data);
@@ -855,7 +847,6 @@ export class ManageBookRequestsController {
             };
 
             this.ws.onclose = () => {
-                console.log('📚 Book Requests WebSocket disconnected');
                 this.ws = null;
             };
         } catch (error) {
@@ -864,7 +855,6 @@ export class ManageBookRequestsController {
     }
 
     async handleWebSocketMessage(data) {
-        console.log('📨 [Admin SPA] WebSocket message received:', {
             type: data.type,
             action: data.action,
             timestamp: new Date().toISOString()
@@ -874,7 +864,6 @@ export class ManageBookRequestsController {
             case 'book_request_update': {
                 const updatedRequest = data.book_request;
                 if (!updatedRequest) {
-                    console.warn('⚠️ [Admin SPA] No book_request in update, reloading data');
                     await this.loadData(true);
                     return;
                 }
@@ -884,7 +873,6 @@ export class ManageBookRequestsController {
                 const activeStatus = (this.activeStatus || '').toLowerCase();
                 const requestIndex = this.bookRequests.findIndex(req => Number(req.id) === updatedId);
 
-                console.log('📚 [Admin SPA] book_request_update received', {
                     action: data.action,
                     updatedId,
                     updatedStatus,
@@ -921,7 +909,6 @@ export class ManageBookRequestsController {
                 }
 
                 if (requestIndex !== -1) {
-                    console.log(`🔍 [Admin SPA] Request #${updatedId} found in array at index ${requestIndex}`);
 
                     // Merge updated fields into existing record
                     this.bookRequests[requestIndex] = {
@@ -930,7 +917,6 @@ export class ManageBookRequestsController {
                         id: updatedId
                     };
 
-                    console.log(`🔍 [Admin SPA] Checking removal condition:`, {
                         hasActiveFilter: !!activeStatus,
                         activeStatus,
                         updatedStatus,
@@ -940,53 +926,41 @@ export class ManageBookRequestsController {
 
                     // If the updated request no longer matches the active status, remove it
                     if (activeStatus && updatedStatus !== activeStatus) {
-                        console.log(`✂️ [Admin SPA] REMOVING: Status filter is "${activeStatus}", new status is "${updatedStatus}" - request #${updatedId} no longer matches`);
 
                         // Remove from array
                         this.bookRequests.splice(requestIndex, 1);
-                        console.log(`✅ [Admin SPA] Removed from array. New array length: ${this.bookRequests.length}`);
 
                         // Find and remove card element
                         const cardEl = document.getElementById(`request-${updatedId}`);
-                        console.log(`🔍 [Admin SPA] Looking for card element #request-${updatedId}:`, cardEl ? 'FOUND' : 'NOT FOUND');
 
                         if (cardEl) {
-                            console.log(`✂️ [Admin SPA] Fading out and removing card element #${updatedId}`);
                             cardEl.style.transition = 'opacity 0.3s ease-out';
                             cardEl.style.opacity = '0';
                             setTimeout(() => {
                                 cardEl.remove();
-                                console.log(`✅ [Admin SPA] Card #${updatedId} removed from DOM`);
                             }, 300);
                         } else {
-                            console.warn(`⚠️ [Admin SPA] Card element #request-${updatedId} not found in DOM!`);
                         }
 
                         // Recalculate and render after removal
                         this.recalculateAggregates();
                         this.renderStatusBadges();
-                        console.log(`✅ [Admin SPA] Recalculated aggregates and updated badges. Returning early (no renderAll).`);
                         return; // Don't call renderAll(), we've handled the removal
                     } else {
-                        console.log(`✅ [Admin SPA] Request #${updatedId} still matches filter or no filter active - updating in place`);
                     }
                 } else {
-                    console.log(`🔍 [Admin SPA] Request #${updatedId} NOT in current array`);
 
                     // Not currently in view (likely different filter) – add it only if it now matches
                     if (!activeStatus || updatedStatus === activeStatus) {
-                        console.log(`➕ [Admin SPA] Adding request #${updatedId} to view (matches filter or no filter)`);
                         this.bookRequests.unshift({
                             ...updatedRequest,
                             id: updatedId
                         });
                     } else {
-                        console.log(`🚫 [Admin SPA] Request #${updatedId} doesn't match filter "${activeStatus}" - ignoring`);
                         return;
                     }
                 }
 
-                console.log(`🔄 [Admin SPA] Calling recalculateAggregates() and renderAll()`);
                 this.recalculateAggregates();
                 this.renderAll();
                 break;
@@ -1003,7 +977,6 @@ export class ManageBookRequestsController {
 
                 // ✅ Update global navigation badges (desktop, mobile sidebar, mobile quick nav)
                 if (window.BadgeManager) {
-                    console.log(`🔄 [Admin SPA] Updating BadgeManager with count: ${data.pending_count}`);
                     window.BadgeManager.state.count = data.pending_count;
                     window.BadgeManager.updateBadges();
                     window.BadgeManager.updateMobileQuickNavBadge();
@@ -1014,16 +987,12 @@ export class ManageBookRequestsController {
                     window.updateAdminDropdownBadge();
                 }
 
-                console.log(`✅ [Admin SPA] Pending badge updated to ${data.pending_count} (page + global nav)`);
                 break;
             case 'connected':
-                console.log('📚 WebSocket connected:', data.message);
                 break;
             case 'initial_data':
-                console.log('📚 [Admin SPA] Initial data received, ignoring (already loaded from API)');
                 break;
             default:
-                console.warn('⚠️ [Admin SPA] Unknown WebSocket message type:', {
                     type: data.type,
                     fullData: data
                 });
@@ -1077,7 +1046,6 @@ export class ManageBookRequestsController {
     }
 
     clearBookRequestBadge() {
-        console.log('🧹 [Admin SPA] Clearing book request badge (page viewed)');
 
         // Clear BadgeManager state
         if (window.BadgeManager) {
@@ -1094,11 +1062,9 @@ export class ManageBookRequestsController {
             window.updateAdminDropdownBadge();
         }
 
-        console.log('✅ [Admin SPA] Badge cleared');
     }
 
     async destroy() {
-        console.log('🧹 ManageBookRequests: Destroying...');
         if (this.ws) {
             this.ws.close();
             this.ws = null;

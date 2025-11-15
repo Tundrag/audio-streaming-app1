@@ -61,7 +61,9 @@ class VoiceExtension {
         this.requireConfirmation = false;
         this.autoSwitchOnComplete = true;
         this.autoCloseModalOnAutoSwitch = false;
-        this.init();
+
+        // ✅ Store init promise so player can wait for global favorite to load
+        this.initPromise = this.init();
     }
 
     async init() {
@@ -70,13 +72,14 @@ class VoiceExtension {
         this.hookIntoPlayer();
 
         // Load global favorite on initialization (early, so it's available for first track)
-        console.log('🎬 [Voice] Initializing voice extension...');
         await this.fetchUserVoicePreference().catch(() => {});
-        console.log('🎬 [Voice] Voice extension initialized with favorite:', this._cachedVoicePreference);
 
         if (this.ttsChannel) {
             this.ttsChannel.connect();
         }
+
+        // Mark as fully initialized
+        this.isInitialized = true;
     }
 
     getUserInfo() {
@@ -476,129 +479,33 @@ class VoiceExtension {
         if (this.isEnabled) {
             this.trackDefaultVoice = this.getTrackDefaultVoice();
 
-            console.log('🎵 [Voice] Track changed:', {
-                trackId,
-                voice,
-                cachedFavorite: this._cachedVoicePreference,
-                trackDefault: this.trackDefaultVoice
-            });
-
-            // Load generated voices first to check availability
+            // Load available voices for this track
             await this.loadGeneratedVoices(trackId);
 
-            // Set initial voice immediately, with validation
-            // Priority:
-            // 1. Cached favorite (if available and cached for this track)
-            // 2. Explicit voice from URL (if different from default)
-            // 3. Track default
+            // Voice parameter has been pre-validated in player-shared-spa.js with correct priority.
+            // Priority: explicit voice parameter > cached favorite > track default
             let initialVoice;
-            if (this._cachedVoicePreference && this.generatedVoices.includes(this._cachedVoicePreference)) {
-                // Use cached favorite if it's generated for this track
-                initialVoice = this._cachedVoicePreference;
-                console.log('🎵 [Voice] Using cached favorite (already generated):', initialVoice);
-            } else if (voice && voice !== this.trackDefaultVoice) {
-                // Explicit voice from URL that's different from default
+            if (voice) {
                 initialVoice = voice;
-                console.log('🎵 [Voice] Using explicit voice from URL:', initialVoice);
-            } else if (this._cachedVoicePreference) {
-                // Use cached favorite even if not generated yet (will generate on play)
+            } else if (this._cachedVoicePreference && this.generatedVoices.includes(this._cachedVoicePreference)) {
                 initialVoice = this._cachedVoicePreference;
-                console.log('🎵 [Voice] Using cached favorite (will generate if needed):', initialVoice);
+            } else if (this._cachedVoicePreference) {
+                initialVoice = this._cachedVoicePreference;
             } else {
-                // Fall back to track default
                 initialVoice = this.trackDefaultVoice;
-                console.log('🎵 [Voice] Using track default:', initialVoice);
-            }
-
-            // Validate initial voice is cached (unless it's the default voice OR favorite)
-            const isInitialVoiceCached = this.generatedVoices.includes(initialVoice);
-            const isInitialDefault = initialVoice === this.trackDefaultVoice;
-            const isInitialFavorite = initialVoice === this._cachedVoicePreference;
-
-            // Don't fall back to default if it's the user's favorite - they want this voice!
-            if (initialVoice && !isInitialVoiceCached && !isInitialDefault && !isInitialFavorite) {
-                console.warn(`⚠️ Initial voice "${initialVoice}" not cached and not favorite, using default "${this.trackDefaultVoice}"`);
-                initialVoice = this.trackDefaultVoice;
-            } else if (isInitialFavorite && !isInitialVoiceCached) {
-                console.log(`❤️ [Voice] Favorite voice "${initialVoice}" not cached yet - will use it anyway (track default as fallback until loaded)`);
             }
 
             this.currentVoice = initialVoice;
 
-            // Update player voice immediately
             if (this.player) {
                 this.player.currentVoice = this.currentVoice;
             }
 
-            // Load voice preference from DB (async) and update if different
-            this.loadVoicePreference(trackId).then(preferredVoice => {
-                console.log('🎵 [Voice] DB preference loaded:', preferredVoice);
-
-                // Priority: explicit voice (if different from default) > DB preference
-                // If voice param is the same as default, ignore it and use DB preference
-                let finalVoice;
-                if (voice && voice !== this.trackDefaultVoice) {
-                    // User explicitly set a different voice, respect it
-                    finalVoice = voice;
-                    console.log('🎵 [Voice] Using explicit voice from URL:', finalVoice);
-                } else {
-                    // No explicit voice or it's the default, use DB preference
-                    finalVoice = preferredVoice;
-                    console.log('🎵 [Voice] Using DB preference:', finalVoice);
-                }
-
-                // Validate that the voice is actually cached/generated
-                const isVoiceCached = this.generatedVoices.includes(finalVoice);
-                const isDefaultVoice = finalVoice === this.trackDefaultVoice;
-
-                console.log('🎵 [Voice] Validation:', {
-                    finalVoice,
-                    isVoiceCached,
-                    isDefaultVoice,
-                    generatedVoices: this.generatedVoices
-                });
-
-                // If voice is not cached and not the default, fallback to default
-                if (finalVoice && !isVoiceCached && !isDefaultVoice) {
-                    console.warn(`⚠️ [Voice] Preferred voice "${finalVoice}" not cached, falling back to default "${this.trackDefaultVoice}"`);
-                    finalVoice = this.trackDefaultVoice;
-                }
-
-                // Only update if voice changed
-                if (finalVoice && finalVoice !== this.currentVoice) {
-                    console.log(`🔄 [Voice] Voice changed! ${this.currentVoice} → ${finalVoice}`);
-
-                    const oldVoice = this.currentVoice;
-                    this.currentVoice = finalVoice;
-
-                    if (this.player) {
-                        this.player.currentVoice = finalVoice;
-                    }
-
-                    this.updateVoiceButton();
-
-                    // CRITICAL FIX: Actually reload the player stream with the new voice!
-                    // This ensures the audio switches to the preferred voice, not just the variable
-                    if (this.player && this.player.initializeTrackForPlayback) {
-                        console.log(`🔄 [Voice] Reinitializing player stream for voice change: ${oldVoice} → ${finalVoice}`);
-                        this.player.initializeTrackForPlayback().catch(err => {
-                            console.error('❌ [Voice] Failed to reinitialize stream:', err);
-                        });
-                    }
-
-                    // Reload word timings for new voice
-                    this.loadWordTimings(trackId, finalVoice).catch(() => {});
-                } else {
-                    console.log('✓ [Voice] Voice unchanged, staying with:', this.currentVoice);
-                }
-            }).catch(err => {
-                console.error('❌ [Voice] Error loading preference:', err);
-            });
-
-            // Load initial word timings
-            if (this.currentVoice) {
-                this.loadWordTimings(trackId, this.currentVoice).catch(() => {});
-            }
+            // ⚠️ REMOVED: Don't preload word-timings on every track load
+            // Word-timings are ONLY needed for:
+            // 1. Read-along overlay (loaded on-demand when opened)
+            // 2. Voice switching (loaded when user switches voice)
+            // Preloading wastes 400ms+ of network/backend time unnecessarily
         } else {
             this.currentVoice = null;
             this.wordTimingsCache = {};
@@ -681,16 +588,11 @@ class VoiceExtension {
 
     async fetchUserVoicePreference() {
         // Return cached value if already fetched
-        if (this._voicePreferenceFetched) {
-            console.log('❤️ [Voice] Returning cached favorite:', this._cachedVoicePreference);
-            return this._cachedVoicePreference;
-        }
+        if (this._voicePreferenceFetched) return this._cachedVoicePreference;
 
-        console.log('❤️ [Voice] Fetching global favorite from API...');
         try {
             const response = await fetch('/api/user/preferences');
             if (!response.ok) {
-                console.log('❤️ [Voice] No global favorite found');
                 this._voicePreferenceFetched = true;
                 this._cachedVoicePreference = null;
                 return null;
@@ -698,10 +600,8 @@ class VoiceExtension {
             const data = await response.json();
             this._cachedVoicePreference = data.preferred_voice;
             this._voicePreferenceFetched = true;
-            console.log('❤️ [Voice] Global favorite loaded:', data.preferred_voice);
             return data.preferred_voice;
         } catch (error) {
-            console.error('❤️ [Voice] Error fetching global favorite:', error);
             this._voicePreferenceFetched = true;
             this._cachedVoicePreference = null;
             return null;
@@ -712,8 +612,6 @@ class VoiceExtension {
         try {
             const trackId = this.player.currentTrackId;
             if (!trackId) return false;
-
-            console.log(`💾 [Voice] Saving preference: voice=${voiceId}, isFavorite=${isFavorite}, track=${trackId}`);
 
             const response = await fetch(`/api/user/voice-preference/${encodeURIComponent(trackId)}`, {
                 method: 'PUT',
@@ -726,45 +624,30 @@ class VoiceExtension {
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('💾 [Voice] Save response:', data);
-                // Update in-memory cache if it's a favorite
                 if (data.is_favorite) {
                     this._cachedVoicePreference = voiceId;
                     this._voicePreferenceFetched = true;
-                    console.log('💾 [Voice] Updated favorite cache to:', voiceId);
                 }
                 return data;
             }
-            console.error('💾 [Voice] Save failed with status:', response.status);
             return null;
         } catch (error) {
-            console.error('💾 [Voice] Save error:', error);
             return null;
         }
     }
 
     async loadVoicePreference(trackId) {
-        console.log(`🔍 [Voice] Loading preference for track ${trackId}...`);
         try {
             const response = await fetch(`/api/user/voice-preference/${encodeURIComponent(trackId)}`);
             if (!response.ok) {
-                console.log('🔍 [Voice] No preference found, using track default');
-                return this.getTrackDefaultVoice();
+                return this._cachedVoicePreference || this.getTrackDefaultVoice();
             }
 
             const data = await response.json();
-            console.log('🔍 [Voice] Preference data:', data);
-
-            // Don't update the global favorite cache here - it's loaded separately in init()
-            // and updated only when user explicitly favorites a voice
-
-            // Return the voice_id (could be favorite, track-specific, or null)
-            const result = data.voice_id || this.getTrackDefaultVoice();
-            console.log('🔍 [Voice] Returning preference:', result);
-            return result;
+            // Priority: track-specific > global favorite > track default
+            return data.voice_id || this._cachedVoicePreference || this.getTrackDefaultVoice();
         } catch (error) {
-            console.error('🔍 [Voice] Error loading preference:', error);
-            return this.getTrackDefaultVoice();
+            return this._cachedVoicePreference || this.getTrackDefaultVoice();
         }
     }
 
@@ -1882,7 +1765,9 @@ class VoiceExtension {
             if (res.ok) {
                 const data = await res.json();
                 this.generatedVoices = data.generated_voices || [];
-                this.generatedVoices.forEach(v => this.loadWordTimings(trackId, v).catch(() => {}));
+                // ✅ OPTIMIZATION: Don't preload word timings for all voices
+                // They will be loaded on-demand when user switches voices
+                // This eliminates unnecessary API calls on page load
             }
         } catch (_) {}
     }

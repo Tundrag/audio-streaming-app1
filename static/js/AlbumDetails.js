@@ -453,7 +453,7 @@ class AlbumDetails {
                 voiceSymbol.title = 'Default voice generation failed';
                 break;
             default:
-                voiceSymbol.innerHTML = '🔄';
+                voiceSymbol.innerHTML = '<i class="fas fa-infinity" style="color: #3b82f6;"></i>';
                 voiceSymbol.style.cursor = 'pointer';
                 voiceSymbol.title = 'Switch voice';
                 voiceSymbol.onclick = (e) => {
@@ -1415,7 +1415,7 @@ class AlbumDetails {
             if (track.tts_status === 'processing') {
                 symbolsHtml += '<span class="voice-symbol">⏳</span>';
             } else {
-                symbolsHtml += '<span class="voice-symbol" style="cursor: pointer;" onclick="window.albumDetails.playTrack(\'' + track.id + '\')">🔄</span>';
+                symbolsHtml += '<span class="voice-symbol" style="cursor: pointer;" onclick="window.albumDetails.playTrack(\'' + track.id + '\')"><i class="fas fa-infinity" style="color: #3b82f6;"></i></span>';
             }
 
             if (track.has_read_along) {
@@ -2269,15 +2269,9 @@ class AlbumDetails {
             const data = await response.json();
 
             if (response.ok) {
-                console.log(`✅ [Track Schedule] Cancelled schedule for track ${trackId}`);
                 this.showToast('Scheduled visibility change cancelled', 'success');
-
-                // Update modal schedule display
                 this.updateTrackScheduleDisplay(null);
                 this.updateTTSTrackScheduleDisplay(null);
-
-                // Hide the track card countdown badge
-                console.log(`🎨 [Track Schedule] Hiding countdown badge for track ${trackId}`);
                 this.hideTrackCardScheduleDisplay(trackId);
             } else {
                 this.showToast(data.detail || 'Failed to cancel schedule', 'error');
@@ -2505,75 +2499,52 @@ class AlbumDetails {
         document.body.style.overflow = 'hidden';
     }
 
-    // Check schedules for all tracks and display countdowns on cards
+    /**
+     * Check schedules for all tracks and display countdowns on cards.
+     * Only visible to creators and team members.
+     */
     async checkAllTrackSchedules() {
-        console.log('🔍 [Track Schedule] checkAllTrackSchedules called');
-        console.log('🔍 [Track Schedule] User permissions:', this.userPermissions);
-
-        // Only creators and team members can see schedule timers
-        if (!this.userPermissions.is_creator && !this.userPermissions.is_team) {
-            console.log('⚠️ [Track Schedule] User is not creator/team, skipping schedule checks');
-            return;
-        }
+        if (!this.userPermissions.is_creator && !this.userPermissions.is_team) return;
 
         const trackItems = document.querySelectorAll('.track-item[data-track-id]');
-        console.log(`🔍 [Track Schedule] Found ${trackItems.length} track items to check`);
-
         for (const trackItem of trackItems) {
             const trackId = trackItem.dataset.trackId;
-            if (trackId) {
-                console.log(`🔍 [Track Schedule] Checking schedule for track: ${trackId}`);
-                await this.checkTrackCardSchedule(trackId);
-            }
+            if (trackId) await this.checkTrackCardSchedule(trackId);
         }
     }
 
+    /**
+     * Check and display schedule countdown for a single track card.
+     */
     async checkTrackCardSchedule(trackId) {
         try {
-            console.log(`📡 [Track Schedule] Fetching schedule for track ${trackId}...`);
             const response = await fetch(`/api/tracks/${trackId}/schedule-visibility`);
-            console.log(`📡 [Track Schedule] Response status: ${response.status}`);
-
-            // Handle permission denied (403) - regular users cannot see schedules
             if (response.status === 403) {
-                console.log(`⚠️ [Track Schedule] Track ${trackId}: Access denied (403)`);
                 this.hideTrackCardScheduleDisplay(trackId);
                 return;
             }
 
             const data = await response.json();
-            console.log(`📡 [Track Schedule] Track ${trackId} data:`, data);
-
             if (response.ok && data.has_schedule) {
-                console.log(`✅ [Track Schedule] Track ${trackId} HAS schedule, displaying countdown`);
                 this.updateTrackCardScheduleDisplay(trackId, data.schedule);
             } else {
-                console.log(`❌ [Track Schedule] Track ${trackId} has NO schedule`);
                 this.hideTrackCardScheduleDisplay(trackId);
             }
         } catch (error) {
-            console.error(`❌ [Track Schedule] Error checking schedule for track ${trackId}:`, error);
             this.hideTrackCardScheduleDisplay(trackId);
         }
     }
 
+    /**
+     * Update track card schedule countdown display.
+     */
     updateTrackCardScheduleDisplay(trackId, schedule) {
-        console.log(`🎨 [Track Schedule] updateTrackCardScheduleDisplay called for track ${trackId}`);
-        console.log(`🎨 [Track Schedule] Schedule data:`, schedule);
-
         const indicator = document.getElementById(`track-schedule-${trackId}`);
-        console.log(`🎨 [Track Schedule] Indicator element found:`, !!indicator);
-
-        if (!indicator) {
-            console.error(`❌ [Track Schedule] Could not find indicator element with id: track-schedule-${trackId}`);
-            return;
-        }
+        if (!indicator) return;
 
         const compactText = indicator.querySelector('.schedule-countdown-compact');
         const targetText = indicator.querySelector('.schedule-target');
         const countdownText = indicator.querySelector('.schedule-countdown');
-
-        console.log(`🎨 [Track Schedule] Elements found - compact: ${!!compactText}, target: ${!!targetText}, countdown: ${!!countdownText}`);
 
         if (targetText && countdownText && compactText) {
             const targetLabel = this.getVisibilityLabel(schedule.visibility_status);
@@ -2581,35 +2552,21 @@ class AlbumDetails {
             countdownText.textContent = schedule.countdown;
             compactText.textContent = schedule.countdown;
 
-            // Add color class based on target visibility
             indicator.className = 'track-schedule-indicator';
             indicator.classList.add(`schedule-${schedule.visibility_status}`);
-
-            // Set tooltip for mobile
             indicator.dataset.tooltip = `Scheduled: ${targetLabel} in ${schedule.countdown}`;
-
             indicator.style.display = 'inline-flex';
-            console.log(`✅ [Track Schedule] Countdown display updated and shown for track ${trackId}`);
-            console.log(`✅ [Track Schedule] Target: ${targetLabel}, Countdown: ${schedule.countdown}, Seconds: ${schedule.countdown_seconds}`);
 
-            // Start countdown update for this track card
             this.startTrackCardCountdown(trackId, schedule.countdown_seconds);
-        } else {
-            console.error(`❌ [Track Schedule] Missing required child elements in indicator`);
         }
     }
 
+    /**
+     * Hide track card schedule countdown display.
+     */
     hideTrackCardScheduleDisplay(trackId) {
-        console.log(`🎨 [Track Schedule] hideTrackCardScheduleDisplay called for track ${trackId}`);
         const indicator = document.getElementById(`track-schedule-${trackId}`);
-        console.log(`🎨 [Track Schedule] Indicator found: ${!!indicator}`);
-
-        if (indicator) {
-            indicator.style.display = 'none';
-            console.log(`✅ [Track Schedule] Countdown badge hidden for track ${trackId}`);
-        }
-
-        // Stop countdown for this track
+        if (indicator) indicator.style.display = 'none';
         this.stopTrackCardCountdown(trackId);
     }
 
