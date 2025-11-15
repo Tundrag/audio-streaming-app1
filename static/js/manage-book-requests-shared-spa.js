@@ -855,11 +855,6 @@ export class ManageBookRequestsController {
     }
 
     async handleWebSocketMessage(data) {
-            type: data.type,
-            action: data.action,
-            timestamp: new Date().toISOString()
-        });
-
         switch (data.type) {
             case 'book_request_update': {
                 const updatedRequest = data.book_request;
@@ -872,17 +867,6 @@ export class ManageBookRequestsController {
                 const updatedId = Number(updatedRequest.id);
                 const activeStatus = (this.activeStatus || '').toLowerCase();
                 const requestIndex = this.bookRequests.findIndex(req => Number(req.id) === updatedId);
-
-                    action: data.action,
-                    updatedId,
-                    updatedStatus,
-                    activeStatus: activeStatus || 'NONE (showing all)',
-                    requestIndex,
-                    requestInArray: requestIndex !== -1 ? 'YES' : 'NO',
-                    listLength: this.bookRequests.length,
-                    url: window.location.href,
-                    queryParams: window.location.search
-                });
 
                 if (data.action === 'created') {
                     // Insert new request at the top if it matches current filter
@@ -916,13 +900,6 @@ export class ManageBookRequestsController {
                         ...updatedRequest,
                         id: updatedId
                     };
-
-                        hasActiveFilter: !!activeStatus,
-                        activeStatus,
-                        updatedStatus,
-                        statusMismatch: updatedStatus !== activeStatus,
-                        shouldRemove: activeStatus && updatedStatus !== activeStatus
-                    });
 
                     // If the updated request no longer matches the active status, remove it
                     if (activeStatus && updatedStatus !== activeStatus) {
@@ -993,9 +970,6 @@ export class ManageBookRequestsController {
             case 'initial_data':
                 break;
             default:
-                    type: data.type,
-                    fullData: data
-                });
                 break;
         }
     }

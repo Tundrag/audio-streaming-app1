@@ -31,7 +31,9 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(cat:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(find:*)",
+      "Bash(git -C /home/tundragoon/audio-streaming-app1 commit -m \"Fix book requests syntax errors and remove blue infinity badge\")"
     ],
     "deny": [],
     "ask": []

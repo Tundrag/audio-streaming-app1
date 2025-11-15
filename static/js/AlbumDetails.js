@@ -453,13 +453,7 @@ class AlbumDetails {
                 voiceSymbol.title = 'Default voice generation failed';
                 break;
             default:
-                voiceSymbol.innerHTML = '<i class="fas fa-infinity" style="color: #3b82f6;"></i>';
-                voiceSymbol.style.cursor = 'pointer';
-                voiceSymbol.title = 'Switch voice';
-                voiceSymbol.onclick = (e) => {
-                    e.stopPropagation();
-                    this.playTrack(track.id);
-                };
+                // Don't overwrite - the correct badge is already there
                 break;
         }
     }
