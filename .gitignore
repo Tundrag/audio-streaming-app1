@@ -30,6 +30,10 @@ env/
 .env
 .env.local
 
+# Tokens and secrets
+git_token.txt
+*token*.txt
+
 # IDE
 .vscode/
 .idea/

@@ -3735,9 +3735,7 @@ async def secure_global_websocket_endpoint(
                 # Send heartbeat if no messages received
                 try:
                     await websocket.send_json({"type": "heartbeat", "timestamp": asyncio.get_event_loop().time()})
-                    print(f"💓 DEBUG: Sent heartbeat to user {user_info['user_id']}")
                 except:
-                    print(f"💔 DEBUG: Heartbeat failed for user {user_info['user_id']}, connection lost")
                     break
 
             except WebSocketDisconnect:

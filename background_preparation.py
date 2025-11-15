@@ -657,6 +657,7 @@ class BackgroundPreparationManager:
         logger.info("Resource monitor started")
         scale_interval = worker_config.scale_check_interval
         elapsed = 0
+        log_counter = 0
         while True:
             try:
                 mem = psutil.virtual_memory().percent
@@ -674,17 +675,30 @@ class BackgroundPreparationManager:
 
                 queue_sizes = {wid: q.qsize() for wid, q in self._worker_queues.items()}
 
-                logger.info(
-                    "System Status:\n"
-                    f"- Active workers: {len(active_workers)}/{self._current_workers}\n"
-                    f"- Active tasks: {total_active_tasks}\n"
-                    f"- Memory usage: {mem:.1f}% (limit: {self.max_memory_percent}%)\n"
-                    f"- Queue sizes per worker: {queue_sizes}"
-                )
+                # Only log frequently if there are active tasks, otherwise log every 5 minutes
+                should_log = False
+                if total_active_tasks > 0 or any(q > 0 for q in queue_sizes.values()):
+                    # Active work - log every 30 seconds
+                    if log_counter % 6 == 0:
+                        should_log = True
+                else:
+                    # Idle - log every 5 minutes
+                    if log_counter % 60 == 0:
+                        should_log = True
+
+                if should_log:
+                    logger.info(
+                        "System Status:\n"
+                        f"- Active workers: {len(active_workers)}/{self._current_workers}\n"
+                        f"- Active tasks: {total_active_tasks}\n"
+                        f"- Memory usage: {mem:.1f}% (limit: {self.max_memory_percent}%)\n"
+                        f"- Queue sizes per worker: {queue_sizes}"
+                    )
 
                 if any(size > self.max_queue_per_worker for size in queue_sizes.values()):
                     logger.warning("High queue pressure: worker queue exceeds target queue per worker.")
 
+                log_counter += 1
                 elapsed += 5
                 if elapsed >= scale_interval:
                     elapsed = 0

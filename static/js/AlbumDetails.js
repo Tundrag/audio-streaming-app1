@@ -1493,8 +1493,6 @@ class AlbumDetails {
     }
 
     addNewTrackToUI(track) {
-        console.log('Adding new track to UI:', track);
-        
         // Add to tracks array
         this.tracks.push(track);
         

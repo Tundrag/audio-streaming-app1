@@ -808,8 +808,10 @@ async def serve_segment(
     try:
         segment_timer = time.perf_counter()
         def log_segment_event(label: str, extra: str = ""):
+            # Only log errors or slow requests (>100ms)
             elapsed = (time.perf_counter() - segment_timer) * 1000
-            logger.info(f"[SEGMENT] {label} track={track_id} voice={voice_id} seg={segment_id} {extra} ({elapsed:.1f}ms)")
+            if elapsed > 100:
+                logger.warning(f"[SEGMENT-SLOW] {label} track={track_id} voice={voice_id} seg={segment_id} {extra} ({elapsed:.1f}ms)")
 
         # Validate segment_id
         try:
@@ -912,7 +914,7 @@ async def serve_segment(
 
                 # Serve segment
                 segment_size = segment_stat.st_size
-                logger.info(f"[SEGMENT-Perf] File I/O - exists: {perf_exists:.1f}ms, stat: {perf_stat:.1f}ms")
+                # Removed verbose performance logging
                 headers = {
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'GET, OPTIONS',

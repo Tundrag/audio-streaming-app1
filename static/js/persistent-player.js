@@ -162,10 +162,6 @@ class PlaybackProgress {
         if (progress?.position > 0) {
           this.lastSyncedTime = progress.position;
           this.lastSyncedTrackId = trackId;
-          // Log if position was translated from a different voice
-          if (progress.voice_translated) {
-            console.log(`✓ Position translated from voice ${progress.last_voice_id} to ${voiceId} (word ${progress.word_position})`);
-          }
           return progress;
         }
       }
@@ -400,13 +396,15 @@ class PersistentPlayer {
     navigator.mediaSession.setActionHandler('seekto', (details) => {
       if (details.seekTime) this.audio.currentTime = details.seekTime;
     });
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
-      const prevBtn = document.getElementById('prevTrackBtn');
-      if (prevBtn) prevBtn.click();
-    });
+
+    // Double-tap headphones cycles playback speed instead of skipping tracks
     navigator.mediaSession.setActionHandler('nexttrack', () => {
-      const nextBtn = document.getElementById('nextTrackBtn');
-      if (nextBtn) nextBtn.click();
+      this.cycleSpeedUp();
+    });
+
+    // Triple-tap headphones decreases playback speed
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      this.cycleSpeedDown();
     });
 
     // Update position state on playback rate change
@@ -711,7 +709,65 @@ class PersistentPlayer {
   }
 
   setupEventListeners() {
-    if (this.elements.playPauseBtn) this.elements.playPauseBtn.addEventListener('click', () => this.togglePlay());
+    // Tap handler for multi-tap detection
+    const self = this;
+    const tapHandler = {
+      tapCount: 0,
+      tapTimer: null,
+      tapWindow: 300, // ms between taps
+
+      registerTap(callback) {
+        this.tapCount++;
+        if (this.tapTimer) clearTimeout(this.tapTimer);
+        this.tapTimer = setTimeout(() => {
+          callback(this.tapCount);
+          this.tapCount = 0;
+        }, this.tapWindow);
+      },
+
+      adjustSpeed(direction) {
+        const currentSpeed = self.audio.playbackRate;
+        const increment = 0.25;
+        const minSpeed = 0.25;
+        const maxSpeed = 3.0;
+
+        let newSpeed;
+        if (direction === 'increase') {
+          newSpeed = Math.min(maxSpeed, currentSpeed + increment);
+        } else {
+          newSpeed = Math.max(minSpeed, currentSpeed - increment);
+        }
+
+        if (newSpeed !== currentSpeed) {
+          self.setPlaybackSpeed(newSpeed);
+          const icon = direction === 'increase' ? '⏩' : '⏪';
+          self.showToast(`${icon} Speed: ${newSpeed}x`, 'info', 1500);
+        } else {
+          const icon = direction === 'increase' ? '🚀' : '🐌';
+          const limit = direction === 'increase' ? 'Max' : 'Min';
+          self.showToast(`${icon} ${limit} speed: ${newSpeed}x`, 'info', 1500);
+        }
+      }
+    };
+
+    // Play/Pause with double-tap speed control
+    if (this.elements.playPauseBtn) {
+      this.elements.playPauseBtn.addEventListener('click', () => {
+        tapHandler.registerTap((count) => {
+          if (count === 2) {
+            // Double-tap: increase speed
+            tapHandler.adjustSpeed('increase');
+          } else if (count === 3) {
+            // Triple-tap: decrease speed
+            tapHandler.adjustSpeed('decrease');
+          } else {
+            // Single tap: play/pause
+            this.togglePlay();
+          }
+        });
+      });
+    }
+
     if (this.elements.rewindBtn) this.elements.rewindBtn.addEventListener('click', () => this.seek(-15));
     if (this.elements.forwardBtn) this.elements.forwardBtn.addEventListener('click', () => this.seek(15));
     if (this.elements.expandBtn) this.elements.expandBtn.addEventListener('click', () => this.expandPlayer());
@@ -1181,7 +1237,6 @@ class PersistentPlayer {
       // Store grant token for HLS requests
       if (accessCheck && accessCheck.grantToken) {
         this.grantToken = accessCheck.grantToken;
-        console.log('Grant token received for track:', trackId);
       }
 
       // ✅ REMOVED: Unnecessary segment progress check on every playTrack
@@ -1353,6 +1408,30 @@ class PersistentPlayer {
     );
     document.dispatchEvent(new CustomEvent('playbackSpeedChanged', { detail: { speed } }));
     this.saveState();
+  }
+
+  cycleSpeedUp() {
+    const currentSpeed = this.audio.playbackRate;
+    const increment = 0.25;
+    const maxSpeed = 3.0;
+    const newSpeed = Math.min(maxSpeed, currentSpeed + increment);
+
+    this.setPlaybackSpeed(newSpeed);
+    const icon = newSpeed === maxSpeed ? '🚀' : '⏩';
+    const msg = newSpeed === maxSpeed ? `Max speed: ${newSpeed}x` : `Speed: ${newSpeed}x`;
+    this.showToast(`${icon} ${msg}`, 'info', 1500);
+  }
+
+  cycleSpeedDown() {
+    const currentSpeed = this.audio.playbackRate;
+    const increment = 0.25;
+    const minSpeed = 0.25;
+    const newSpeed = Math.max(minSpeed, currentSpeed - increment);
+
+    this.setPlaybackSpeed(newSpeed);
+    const icon = newSpeed === minSpeed ? '🐌' : '⏪';
+    const msg = newSpeed === minSpeed ? `Min speed: ${newSpeed}x` : `Speed: ${newSpeed}x`;
+    this.showToast(`${icon} ${msg}`, 'info', 1500);
   }
 
   updateProgress() {

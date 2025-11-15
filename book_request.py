@@ -714,8 +714,10 @@ async def get_pending_book_request_count(current_user: User, db: Session) -> int
         
         pending_count = result.scalar() or 0
         db.commit()
-        
-        logger.info(f"Found {pending_count} pending book requests for creator_id {creator_id}")
+
+        # Only log if there are pending requests
+        if pending_count > 0:
+            logger.info(f"Found {pending_count} pending book requests for creator_id {creator_id}")
         return pending_count
         
     except Exception as e:

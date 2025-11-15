@@ -63,7 +63,9 @@ async def get_unread_activity_logs_count(user_id: int, db: Session) -> int:
             )
         ).scalar()
 
-        logger.info(f"Unread activity logs for user {user_id}: {count} (since {cutoff_time})")
+        # Only log if there are unread logs
+        if count and count > 0:
+            logger.info(f"Unread activity logs for user {user_id}: {count} (since {cutoff_time})")
         return count or 0
 
     except Exception as e:
