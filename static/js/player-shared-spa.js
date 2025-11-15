@@ -967,7 +967,7 @@ ${this.generateCustomTimerToast()}
       // Check for expanded player state
       const expandedState = sessionStorage.getItem('expandedPlayerState');
       let isExpandedFromMiniplayer = false;
-      let shouldAutoPlay = false; // ✅ FIX: Default to false instead of null to prevent auto-play
+      let shouldAutoPlay = false;
 
       if (expandedState) {
         try {
@@ -978,6 +978,21 @@ ${this.generateCustomTimerToast()}
           }
           sessionStorage.removeItem('expandedPlayerState');
         } catch (error) {
+        }
+      }
+
+      // Check if we should restore playing state from previous session (page refresh)
+      if (!isExpandedFromMiniplayer) {
+        const savedState = sessionStorage.getItem(`playerState_${this.trackId}`);
+        if (savedState) {
+          try {
+            const state = JSON.parse(savedState);
+            // If track was playing before refresh, resume playback
+            if (state.isPlaying) {
+              shouldAutoPlay = true;
+            }
+          } catch (error) {
+          }
         }
       }
 
@@ -1111,9 +1126,15 @@ ${this.generateCustomTimerToast()}
 
         if (newSpeed !== currentSpeed) {
           window.persistentPlayer.setPlaybackSpeed(newSpeed);
+          // Play ding sound
+          const freq = direction === 'increase' ? 660 : 440;
+          window.persistentPlayer.playSpeedChangeSound?.(freq);
           const icon = direction === 'increase' ? '⏩' : '⏪';
           window.persistentPlayer.showToast(`${icon} Speed: ${newSpeed}x`, 'info', 1500);
         } else {
+          // At limit - play different tone
+          const freq = direction === 'increase' ? 880 : 330;
+          window.persistentPlayer.playSpeedChangeSound?.(freq);
           const icon = direction === 'increase' ? '🚀' : '🐌';
           const limit = direction === 'increase' ? 'Max' : 'Min';
           window.persistentPlayer.showToast(`${icon} ${limit} speed: ${newSpeed}x`, 'info', 1500);
@@ -1160,20 +1181,61 @@ ${this.generateCustomTimerToast()}
         }
       };
 
+      let wasPlayingBeforeFirstTap = false;
+
       const handleClick = () => {
         if (!isLongPress) {
-          tapHandler.registerTap((count) => {
-            if (count === 2) {
-              // Double-tap: increase speed
-              tapHandler.adjustSpeed('increase');
-            } else if (count === 3) {
-              // Triple-tap: decrease speed
-              tapHandler.adjustSpeed('decrease');
-            } else {
-              // Single tap: play/pause
-              window.persistentPlayer.togglePlay();
+          // Check if audio is playing or paused
+          const isCurrentlyPaused = window.persistentPlayer.audio.paused;
+
+          // If paused (track not started or stopped), single tap starts immediately - no multi-tap detection
+          if (isCurrentlyPaused && tapHandler.tapCount === 0) {
+            window.persistentPlayer.togglePlay();
+            return;
+          }
+
+          // Multi-tap detection only when playing
+          tapHandler.tapCount++;
+
+          // Clear existing timer
+          if (tapHandler.tapTimer) {
+            clearTimeout(tapHandler.tapTimer);
+          }
+
+          if (tapHandler.tapCount === 1) {
+            // First tap - remember if we were playing BEFORE toggling
+            wasPlayingBeforeFirstTap = !window.persistentPlayer.audio.paused;
+            window.persistentPlayer.togglePlay();
+
+            // Wait for potential second tap
+            tapHandler.tapTimer = setTimeout(() => {
+              tapHandler.tapCount = 0;
+              wasPlayingBeforeFirstTap = false;
+            }, tapHandler.tapWindow);
+          } else if (tapHandler.tapCount === 2) {
+            // Second tap - wait to see if there's a third tap
+            tapHandler.tapTimer = setTimeout(() => {
+              // Only increase speed if no third tap came
+              if (tapHandler.tapCount === 2) {
+                // If we were playing before first tap, resume playing
+                if (wasPlayingBeforeFirstTap) {
+                  window.persistentPlayer.audio.play().catch(() => {});
+                }
+                tapHandler.adjustSpeed('increase');
+              }
+              tapHandler.tapCount = 0;
+              wasPlayingBeforeFirstTap = false;
+            }, tapHandler.tapWindow);
+          } else if (tapHandler.tapCount >= 3) {
+            // Third tap - decrease speed
+            // If we were playing before first tap, resume playing
+            if (wasPlayingBeforeFirstTap) {
+              window.persistentPlayer.audio.play().catch(() => {});
             }
-          });
+            tapHandler.adjustSpeed('decrease');
+            tapHandler.tapCount = 0;
+            wasPlayingBeforeFirstTap = false;
+          }
         }
         isLongPress = false;
       };

@@ -752,19 +752,60 @@ class PersistentPlayer {
 
     // Play/Pause with double-tap speed control
     if (this.elements.playPauseBtn) {
+      let wasPlayingBeforeFirstTap = false;
+
       this.elements.playPauseBtn.addEventListener('click', () => {
-        tapHandler.registerTap((count) => {
-          if (count === 2) {
-            // Double-tap: increase speed
-            tapHandler.adjustSpeed('increase');
-          } else if (count === 3) {
-            // Triple-tap: decrease speed
-            tapHandler.adjustSpeed('decrease');
-          } else {
-            // Single tap: play/pause
-            this.togglePlay();
+        // Check if audio is playing or paused
+        const isCurrentlyPaused = this.audio.paused;
+
+        // If paused (track not started or stopped), single tap starts immediately - no multi-tap detection
+        if (isCurrentlyPaused && tapHandler.tapCount === 0) {
+          this.togglePlay();
+          return;
+        }
+
+        // Multi-tap detection only when playing
+        tapHandler.tapCount++;
+
+        // Clear existing timer
+        if (tapHandler.tapTimer) {
+          clearTimeout(tapHandler.tapTimer);
+        }
+
+        if (tapHandler.tapCount === 1) {
+          // First tap - remember if we were playing BEFORE toggling
+          wasPlayingBeforeFirstTap = !this.audio.paused;
+          this.togglePlay();
+
+          // Wait for potential second tap
+          tapHandler.tapTimer = setTimeout(() => {
+            tapHandler.tapCount = 0;
+            wasPlayingBeforeFirstTap = false;
+          }, tapHandler.tapWindow);
+        } else if (tapHandler.tapCount === 2) {
+          // Second tap - wait to see if there's a third tap
+          tapHandler.tapTimer = setTimeout(() => {
+            // Only increase speed if no third tap came
+            if (tapHandler.tapCount === 2) {
+              // If we were playing before first tap, resume playing
+              if (wasPlayingBeforeFirstTap) {
+                this.audio.play().catch(() => {});
+              }
+              tapHandler.adjustSpeed('increase');
+            }
+            tapHandler.tapCount = 0;
+            wasPlayingBeforeFirstTap = false;
+          }, tapHandler.tapWindow);
+        } else if (tapHandler.tapCount >= 3) {
+          // Third tap - decrease speed
+          // If we were playing before first tap, resume playing
+          if (wasPlayingBeforeFirstTap) {
+            this.audio.play().catch(() => {});
           }
-        });
+          tapHandler.adjustSpeed('decrease');
+          tapHandler.tapCount = 0;
+          wasPlayingBeforeFirstTap = false;
+        }
       });
     }
 
@@ -859,6 +900,7 @@ class PersistentPlayer {
 
       const preferredVoice = this.currentVoice || voice;
       const trackDefaultVoice = this.getTrackDefaultVoice();
+
       this.trackMetadata = {
         id: trackId,
         title: title || 'Unknown Track',
@@ -868,8 +910,9 @@ class PersistentPlayer {
         trackType: trackType || 'audio',
         albumId,
         defaultVoice: trackDefaultVoice,
-        content_version: contentVersion || 1
+        content_version: contentVersion ? Number(contentVersion) : 1
       };
+
       this.currentTrackId = trackId;
       this.currentVoice = preferredVoice;
       this.trackType = trackType || 'audio';
@@ -1030,6 +1073,7 @@ class PersistentPlayer {
         Number(meta?.track?.content_version) ||
         Number(meta?.track?.cache_bust) ||
         Date.now();
+
       if (fresh && fresh !== this.trackMetadata.content_version) {
         this.trackMetadata.content_version = fresh;
         sessionStorage.setItem('trackMetadata', JSON.stringify(this.trackMetadata));
@@ -1221,7 +1265,7 @@ class PersistentPlayer {
         })()
       ]);
 
-      const contentVersion = metaData?.track?.content_version || null;
+      const contentVersion = metaData?.track?.content_version ? Number(metaData.track.content_version) : null;
       const previousTrackId = this.currentTrackId;
 
       this.setTrackMetadata(trackId, title, album, coverPath, voice, trackType, albumId, contentVersion);
@@ -1333,6 +1377,8 @@ class PersistentPlayer {
             this.audio.removeAttribute('src');
             this.audio.load();
             await this.initializeTrackForPlayback();
+            // After reinitialization, play the track
+            this.audio.play().catch(() => {});
             return;
           }
         } catch {}
@@ -1417,6 +1463,8 @@ class PersistentPlayer {
     const newSpeed = Math.min(maxSpeed, currentSpeed + increment);
 
     this.setPlaybackSpeed(newSpeed);
+    // Play ding sound
+    this.playSpeedChangeSound(newSpeed === maxSpeed ? 880 : 660);
     const icon = newSpeed === maxSpeed ? '🚀' : '⏩';
     const msg = newSpeed === maxSpeed ? `Max speed: ${newSpeed}x` : `Speed: ${newSpeed}x`;
     this.showToast(`${icon} ${msg}`, 'info', 1500);
@@ -1429,9 +1477,33 @@ class PersistentPlayer {
     const newSpeed = Math.max(minSpeed, currentSpeed - increment);
 
     this.setPlaybackSpeed(newSpeed);
+    // Play ding sound
+    this.playSpeedChangeSound(newSpeed === minSpeed ? 330 : 440);
     const icon = newSpeed === minSpeed ? '🐌' : '⏪';
     const msg = newSpeed === minSpeed ? `Min speed: ${newSpeed}x` : `Speed: ${newSpeed}x`;
     this.showToast(`${icon} ${msg}`, 'info', 1500);
+  }
+
+  playSpeedChangeSound(frequency = 660) {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sine';
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+    } catch (error) {
+      // Silently fail if audio context not available
+    }
   }
 
   updateProgress() {

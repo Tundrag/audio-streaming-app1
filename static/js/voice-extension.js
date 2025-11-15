@@ -99,8 +99,8 @@ class VoiceExtension {
 
     hookIntoPlayer() {
         const originalSetTrackMetadata = this.player.setTrackMetadata.bind(this.player);
-        this.player.setTrackMetadata = (trackId, title, album, coverPath, voice = null, trackType = 'audio', albumId = null) => {
-            originalSetTrackMetadata(trackId, title, album, coverPath, voice, trackType, albumId);
+        this.player.setTrackMetadata = (trackId, title, album, coverPath, voice = null, trackType = 'audio', albumId = null, contentVersion = null) => {
+            originalSetTrackMetadata(trackId, title, album, coverPath, voice, trackType, albumId, contentVersion);
             this.onTrackChanged(trackId, voice, trackType);
         };
     }

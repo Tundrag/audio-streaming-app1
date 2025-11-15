@@ -316,30 +316,30 @@ export class AlbumSPA {
     
     async initializeAlbum() {
         // console.log('AlbumSPA: Initializing album...');
-        
+
         // Clean up existing instance
         if (window.albumDetail?.cleanup) {
             // console.log('AlbumSPA: Cleaning up previous instance');
             window.albumDetail.cleanup();
         }
-        
+
         // Clear any existing instances
         window.albumDetail = null;
         window.audioUpload = null;
         window.ttsManager = null;
         window.documentManager = null;
-        
+
         // Verify data is set
         if (!window.albumId) {
             throw new Error('window.albumId not set');
         }
-        
+
         if (typeof AlbumDetails === 'undefined') {
             throw new Error('AlbumDetails class not available');
         }
-        
+
         // console.log('AlbumSPA: Creating AlbumDetails instance for album:', window.albumId);
-        
+
         // Create instances (AlbumDetails initializes itself)
         const albumDetails = new AlbumDetails();
         

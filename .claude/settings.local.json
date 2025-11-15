@@ -26,7 +26,11 @@
       "Bash(git -C /home/tundragoon/audio-streaming-app1 commit -m \"Clean up logs, fix WebSocket issues, improve UI\")",
       "Bash(git -C /home/tundragoon/audio-streaming-app1 push origin main)",
       "Bash(docker build:*)",
-      "Bash(docker push:*)"
+      "Bash(docker push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
